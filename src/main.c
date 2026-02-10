@@ -14,10 +14,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    for (usize i = 0; i < tokens.len; i++) {
-        printToken(tokens.arr[i]);
-    }
-
     Expr *root = parse(tokens);
     int result = eval(root);
     printf("Result: %d\n", result);
