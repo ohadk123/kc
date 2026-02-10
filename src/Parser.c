@@ -234,6 +234,11 @@ void freeExpr(Expr *e) {
         case EXPR_GROUPING:
             freeExpr(e->as.grouping.inner);
             break;
+        case EXPR_CONDITIONAL:
+            freeExpr(e->as.conditional.condition);
+            freeExpr(e->as.conditional.thenBranch);
+            freeExpr(e->as.conditional.elseBranch);
+            break;
     }
     free(e);
 }

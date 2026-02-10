@@ -42,6 +42,12 @@ Expr *makeConditionalExpr(Expr *condition, Expr *thenBranch, Expr *elseBranch) {
     return e;
 }
 
+#define EVAL_BINARY(TOK, op)                                                                                           \
+    case TOK:                                                                                                          \
+        lhs = eval(root->as.binary.lhs);                                                                               \
+        rhs = eval(root->as.binary.rhs);                                                                               \
+        return lhs op rhs
+
 int eval(Expr *root) {
     int lhs, rhs;
 
@@ -55,22 +61,18 @@ int eval(Expr *root) {
             }
         case EXPR_BINARY:
             switch (root->as.binary.op) {
-                case TOK_PLUS:
-                    lhs = eval(root->as.binary.lhs);
-                    rhs = eval(root->as.binary.rhs);
-                    return lhs + rhs;
-                case TOK_MINUS:
-                    lhs = eval(root->as.binary.lhs);
-                    rhs = eval(root->as.binary.rhs);
-                    return lhs - rhs;
-                case TOK_STAR:
-                    lhs = eval(root->as.binary.lhs);
-                    rhs = eval(root->as.binary.rhs);
-                    return lhs * rhs;
-                case TOK_SLASH:
-                    lhs = eval(root->as.binary.lhs);
-                    rhs = eval(root->as.binary.rhs);
-                    return lhs / rhs;
+                EVAL_BINARY(TOK_PLUS, +);
+                EVAL_BINARY(TOK_MINUS, -);
+                EVAL_BINARY(TOK_STAR, *);
+                EVAL_BINARY(TOK_SLASH, /);
+                EVAL_BINARY(TOK_PERCENT, %);
+                EVAL_BINARY(TOK_AMPERSAND, &);
+                EVAL_BINARY(TOK_CARET, ^);
+                EVAL_BINARY(TOK_PIPE, |);
+                EVAL_BINARY(TOK_LESS_LESS, <<);
+                EVAL_BINARY(TOK_GREATER_GREATER, >>);
+                case TOK_EQUALS:
+                    return eval(root->as.binary.rhs);
                 default:
                     TODO("Binary Operators");
             }
@@ -79,9 +81,9 @@ int eval(Expr *root) {
         case EXPR_UNARY:
             TODO("Unary Expressions");
         case EXPR_CONDITIONAL:
-            eval(root->as.conditional.condition) ? eval(root->as.conditional.thenBranch)
-                                                 : eval(root->as.conditional.elseBranch);
-            break;
+            return eval(root->as.conditional.condition) ? eval(root->as.conditional.thenBranch)
+                                                        : eval(root->as.conditional.elseBranch);
     }
+    printf("Unknown expression type: %d\n", root->type);
     UNIMPLEMENTED("Don't come here");
 }
