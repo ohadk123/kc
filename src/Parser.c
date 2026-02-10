@@ -10,9 +10,7 @@ typedef struct {
 
 static Bool isAtEnd(Parser *p) { return p->index == p->input.len; }
 
-static Token previous(Parser *p) {
-    return p->input.arr[p->index - 1];
-}
+static Token previous(Parser *p) { return p->input.arr[p->index - 1]; }
 
 static Bool match(Parser *p, TokenType next) {
     if (isAtEnd(p)) return FALSE;
@@ -27,8 +25,7 @@ static Token peek(Parser *p) {
     return p->input.arr[p->index];
 }
 
-__attribute__ ((__noreturn__))
-static void parseError(Parser *p, cstr msg) {
+__attribute__((__noreturn__)) static void parseError(Parser *p, cstr msg) {
     fprintf(stderr, "[%zu:%zu]: %s\n", peek(p).line, peek(p).col, msg);
     abort();
 }
@@ -42,59 +39,169 @@ static void expect(Parser *p, TokenType expected, cstr msg) {
  * Parsing Functions
  *****************************************************************************/
 
-static Expr *parseExpression(Parser *p);
-static Expr *parseAdd(Parser *p);
-static Expr *parseMult(Parser *p);
-static Expr *parsePrimary(Parser *p);
+static Expr *expression(Parser *p);
+static Expr *comma(Parser *p);
+static Expr *conditional(Parser *p);
+static Expr *logicalOr(Parser *p);
+static Expr *logicalAnd(Parser *p);
+static Expr *bitwiseOr(Parser *p);
+static Expr *bitwiseXor(Parser *p);
+static Expr *bitwiseAnd(Parser *p);
+static Expr *assignment(Parser *p);
+static Expr *equality(Parser *p);
+static Expr *relational(Parser *p);
+static Expr *shift(Parser *p);
+static Expr *additive(Parser *p);
+static Expr *multipicative(Parser *p);
+static Expr *primary(Parser *p);
 
-static Expr *parseExpression(Parser *p) {
-    return parseAdd(p);
+//*****************************************************************************
+
+static Expr *expression(Parser *p) { return comma(p); }
+
+static Expr *comma(Parser *p) {
+    Expr *expr = assignment(p);
+
+    if (match(p, TOK_COMMA)) {
+        Expr *rhs = comma(p);
+        expr = makeBinaryExpr(TOK_COMMA, expr, rhs);
+    }
+
+    return expr;
 }
 
-static Expr *parseAdd(Parser *p) {
-    Expr *expr = parseMult(p);
+#define DESUGAR_ASSIGNMENT(op)                                                                                         \
+    if (match(p, op##_EQUALS)) {                                                                                       \
+        Expr *rhs = assignment(p);                                                                                     \
+        expr = makeBinaryExpr(op, lhs, rhs);                                                                           \
+        expr = makeBinaryExpr(TOK_EQUALS, lhs, expr);                                                                  \
+    }
+
+static Expr *assignment(Parser *p) {
+    Expr *expr = conditional(p);
+    Expr *lhs = expr;
+
+    if (match(p, TOK_EQUALS)) {
+        Expr *rhs = assignment(p);
+        expr = makeBinaryExpr(TOK_EQUALS, expr, rhs);
+    }
+    DESUGAR_ASSIGNMENT(TOK_PLUS);
+    DESUGAR_ASSIGNMENT(TOK_MINUS);
+    DESUGAR_ASSIGNMENT(TOK_STAR);
+    DESUGAR_ASSIGNMENT(TOK_SLASH);
+    DESUGAR_ASSIGNMENT(TOK_PERCENT);
+    DESUGAR_ASSIGNMENT(TOK_AMPERSAND);
+    DESUGAR_ASSIGNMENT(TOK_CARET);
+    DESUGAR_ASSIGNMENT(TOK_PIPE);
+    DESUGAR_ASSIGNMENT(TOK_LESS_LESS);
+    DESUGAR_ASSIGNMENT(TOK_GREATER_GREATER);
+
+    return expr;
+}
+
+static Expr *conditional(Parser *p) {
+    Expr *expr = logicalOr(p);
+
+    if (match(p, TOK_QUESTION_MARK)) {
+    }
+
+    return expr;
+}
+
+static Expr *logicalOr(Parser *p) {
+    Expr *expr = logicalAnd(p);
+
+    return expr;
+}
+
+static Expr *logicalAnd(Parser *p) {
+    Expr *expr = bitwiseOr(p);
+
+    return expr;
+}
+
+static Expr *bitwiseOr(Parser *p) {
+    Expr *expr = bitwiseXor(p);
+
+    return expr;
+}
+
+static Expr *bitwiseXor(Parser *p) {
+    Expr *expr = bitwiseAnd(p);
+
+    return expr;
+}
+
+static Expr *bitwiseAnd(Parser *p) {
+    Expr *expr = equality(p);
+
+    return expr;
+}
+
+static Expr *equality(Parser *p) {
+    Expr *expr = relational(p);
+
+    return expr;
+}
+
+static Expr *relational(Parser *p) {
+    Expr *expr = shift(p);
+
+    return expr;
+}
+
+static Expr *shift(Parser *p) {
+    Expr *expr = additive(p);
+
+    return expr;
+}
+
+static Expr *additive(Parser *p) {
+    Expr *expr = multipicative(p);
 
     while (match(p, TOK_PLUS)) {
-        Expr *rhs = parseMult(p);
+        Expr *rhs = multipicative(p);
         expr = makeBinaryExpr(TOK_PLUS, expr, rhs);
     }
 
     while (match(p, TOK_MINUS)) {
-        Expr *rhs = parseMult(p);
+        Expr *rhs = multipicative(p);
         expr = makeBinaryExpr(TOK_MINUS, expr, rhs);
     }
 
     return expr;
 }
 
-static Expr *parseMult(Parser *p) {
-    Expr *expr = parsePrimary(p);
+static Expr *multipicative(Parser *p) {
+    Expr *expr = primary(p);
 
     while (match(p, TOK_STAR)) {
-        Expr *rhs = parsePrimary(p);
+        Expr *rhs = primary(p);
         expr = makeBinaryExpr(TOK_STAR, expr, rhs);
     }
 
     while (match(p, TOK_SLASH)) {
-        Expr *rhs = parsePrimary(p);
+        Expr *rhs = primary(p);
         expr = makeBinaryExpr(TOK_SLASH, expr, rhs);
     }
 
     return expr;
 }
 
-static Expr *parsePrimary(Parser *p) {
+static Expr *primary(Parser *p) {
     if (match(p, TOK_INTEGER_LITERAL)) {
         Token prev = previous(p);
         return makePrimaryExpr(prev);
     } else if (match(p, TOK_LEFT_PAREN)) {
-        Expr *inner = parseExpression(p);
+        Expr *inner = expression(p);
         expect(p, TOK_RIGHT_PAREN, "Expected \')\'");
         return makeGroupingExpr(inner);
     }
 
     parseError(p, "Expected expression");
 }
+
+//*****************************************************************************
 
 Expr *parse(TokensList tokens) {
     Parser parser = {
@@ -104,7 +211,7 @@ Expr *parse(TokensList tokens) {
         .hasErros = FALSE,
     };
 
-    Expr *root = parseExpression(&parser);
+    Expr *root = expression(&parser);
 
     return root;
 }
@@ -122,7 +229,7 @@ void freeExpr(Expr *e) {
             break;
         case EXPR_GROUPING:
             freeExpr(e->as.grouping.inner);
-          break;
-        }
+            break;
+    }
     free(e);
 }
