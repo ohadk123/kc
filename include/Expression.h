@@ -32,19 +32,12 @@ typedef struct {
     Expr *inner;
 } UnaryExpr;
 
-typedef struct {
-    Token ident;
-    ArgsList args;
-} FuncCallExpr;
-
 struct Expr {
     ExprType type;
     union {
-        Token *var;
         Token num;
         BinaryExpr binary;
         UnaryExpr unary;
-        FuncCallExpr funcCall;
     } as;
 };
 
