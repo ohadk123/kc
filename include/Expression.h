@@ -31,6 +31,7 @@ typedef enum {
     EXPR_GROUPING,
     EXPR_BINARY,
     EXPR_UNARY,
+    EXPR_CONDITIONAL,
 } ExprType;
 
 typedef struct {
@@ -52,6 +53,12 @@ typedef struct {
     Expr *inner;
 } UnaryExpr;
 
+typedef struct {
+    Expr *condition;
+    Expr *thenBranch;
+    Expr *elseBranch;
+} ConditionalExpr;
+
 struct Expr {
     ExprType type;
     union {
@@ -59,6 +66,7 @@ struct Expr {
         GroupingExpr grouping;
         BinaryExpr binary;
         UnaryExpr unary;
+        ConditionalExpr conditional;
     } as;
 };
 
@@ -66,6 +74,7 @@ Expr *makePrimaryExpr(Token value);
 Expr *makeGroupingExpr(Expr *inner);
 Expr *makeBinaryExpr(TokenType op, Expr *lhs, Expr *rhs);
 Expr *makeUnaryExpr(TokenType op, Expr *inner);
+Expr *makeConditionalExpr(Expr *condition, Expr *thenBranch, Expr *elseBranch);
 
 void freeExpr(Expr *e);
 int eval(Expr *root);

@@ -33,6 +33,15 @@ Expr *makeUnaryExpr(TokenType op, Expr *inner) {
     return e;
 }
 
+Expr *makeConditionalExpr(Expr *condition, Expr *thenBranch, Expr *elseBranch) {
+    Expr *e = malloc(sizeof(Expr));
+    e->type = EXPR_CONDITIONAL;
+    e->as.conditional.condition = condition;
+    e->as.conditional.thenBranch = thenBranch;
+    e->as.conditional.elseBranch = elseBranch;
+    return e;
+}
+
 int eval(Expr *root) {
     int lhs, rhs;
 
@@ -69,6 +78,10 @@ int eval(Expr *root) {
             return eval(root->as.grouping.inner);
         case EXPR_UNARY:
             TODO("Unary Expressions");
+        case EXPR_CONDITIONAL:
+            eval(root->as.conditional.condition) ? eval(root->as.conditional.thenBranch)
+                                                 : eval(root->as.conditional.elseBranch);
+            break;
     }
     UNIMPLEMENTED("Don't come here");
 }

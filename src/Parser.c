@@ -103,6 +103,10 @@ static Expr *conditional(Parser *p) {
     Expr *expr = logicalOr(p);
 
     if (match(p, TOK_QUESTION_MARK)) {
+        Expr *trueBranch = expression(p);
+        expect(p, TOK_COLON, "Expected \':\'");
+        Expr *falseBranch = conditional(p);
+        expr = makeConditionalExpr(expr, trueBranch, falseBranch);
     }
 
     return expr;
