@@ -1,0 +1,92 @@
+[
+ {
+  "directory": "/home/ohad/personal/programing/kc",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-pedantic",
+   "-Werror",
+   "-g",
+   "-I./include",
+   "-lk",
+   "-c",
+   "src/Expression.c",
+   "-o",
+   "build/Expression.o"
+  ],
+  "file": "src/Expression.c"
+ },
+ {
+  "directory": "/home/ohad/personal/programing/kc",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-pedantic",
+   "-Werror",
+   "-g",
+   "-I./include",
+   "-lk",
+   "-c",
+   "src/Lexer.c",
+   "-o",
+   "build/Lexer.o"
+  ],
+  "file": "src/Lexer.c"
+ },
+ {
+  "directory": "/home/ohad/personal/programing/kc",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-pedantic",
+   "-Werror",
+   "-g",
+   "-I./include",
+   "-lk",
+   "-c",
+   "src/main.c",
+   "-o",
+   "build/main.o"
+  ],
+  "file": "src/main.c"
+ },
+ {
+  "directory": "/home/ohad/personal/programing/kc",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-pedantic",
+   "-Werror",
+   "-g",
+   "-I./include",
+   "-lk",
+   "-c",
+   "src/Parser.c",
+   "-o",
+   "build/Parser.o"
+  ],
+  "file": "src/Parser.c"
+ },
+ {
+  "directory": "/home/ohad/personal/programing/kc",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-pedantic",
+   "-Werror",
+   "-g",
+   "-I./include",
+   "-lk",
+   "-c",
+   "src/Token.c",
+   "-o",
+   "build/Token.o"
+  ],
+  "file": "src/Token.c"
+ }
+]
