@@ -115,11 +115,21 @@ static Expr *conditional(Parser *p) {
 static Expr *logicalOr(Parser *p) {
     Expr *expr = logicalAnd(p);
 
+    if (match(p, TOK_PIPE_PIPE)) {
+        Expr *rhs = logicalAnd(p);
+        expr = makeBinaryExpr(TOK_PIPE_PIPE, expr, rhs);
+    }
+
     return expr;
 }
 
 static Expr *logicalAnd(Parser *p) {
     Expr *expr = bitwiseOr(p);
+
+    if (match(p, TOK_AMPERSAND_AMPERSAND)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_AMPERSAND_AMPERSAND, expr, rhs);
+    }
 
     return expr;
 }
@@ -127,11 +137,21 @@ static Expr *logicalAnd(Parser *p) {
 static Expr *bitwiseOr(Parser *p) {
     Expr *expr = bitwiseXor(p);
 
+    if (match(p, TOK_PIPE)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_PIPE, expr, rhs);
+    }
+
     return expr;
 }
 
 static Expr *bitwiseXor(Parser *p) {
     Expr *expr = bitwiseAnd(p);
+
+    if (match(p, TOK_CARET)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_CARET, expr, rhs);
+    }
 
     return expr;
 }
@@ -139,11 +159,24 @@ static Expr *bitwiseXor(Parser *p) {
 static Expr *bitwiseAnd(Parser *p) {
     Expr *expr = equality(p);
 
+    if (match(p, TOK_AMPERSAND)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_AMPERSAND, expr, rhs);
+    }
+
     return expr;
 }
 
 static Expr *equality(Parser *p) {
     Expr *expr = relational(p);
+
+    if (match(p, TOK_EQUALS_EQUALS)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_EQUALS_EQUALS, expr, rhs);
+    } else if (match(p, TOK_BANG_EQUALS)) {
+        Expr *rhs = bitwiseOr(p);
+        expr = makeBinaryExpr(TOK_BANG_EQUALS, expr, rhs);
+    }
 
     return expr;
 }

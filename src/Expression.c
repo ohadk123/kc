@@ -71,6 +71,10 @@ int eval(Expr *root) {
                 EVAL_BINARY(TOK_PIPE, |);
                 EVAL_BINARY(TOK_LESS_LESS, <<);
                 EVAL_BINARY(TOK_GREATER_GREATER, >>);
+                EVAL_BINARY(TOK_PIPE_PIPE, ||);
+                EVAL_BINARY(TOK_AMPERSAND_AMPERSAND, &&);
+                EVAL_BINARY(TOK_EQUALS_EQUALS, ==);
+                EVAL_BINARY(TOK_BANG_EQUALS, !=);
                 case TOK_EQUALS:
                     return eval(root->as.binary.rhs);
                 default:
