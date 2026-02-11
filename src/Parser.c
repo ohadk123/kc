@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include <libk/Errors.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 typedef struct {
@@ -13,12 +14,20 @@ static Bool isAtEnd(Parser *p) { return p->index == p->input.len; }
 
 static Token previous(Parser *p) { return p->input.arr[p->index - 1]; }
 
-static Bool match(Parser *p, TokenType next) {
+static Bool match(Parser *p, usize count, ...) {
     if (isAtEnd(p)) return FALSE;
-    if (p->input.arr[p->index].type != next) return FALSE;
 
-    p->index++;
-    return TRUE;
+    va_list args;
+    va_start(args, count);
+    for (usize i = 0; i < count; i++) {
+        if (p->input.arr[p->index].type == va_arg(args, TokenType)) {
+            va_end(args);
+            p->index++;
+            return TRUE;
+        }
+    }
+    va_end(args);
+    return FALSE;
 }
 
 static Token peek(Parser *p) {
@@ -32,7 +41,7 @@ __attribute__((__noreturn__)) static void parseError(Parser *p, cstr msg) {
 }
 
 static void expect(Parser *p, TokenType expected, cstr msg) {
-    if (match(p, expected)) return;
+    if (match(p, 1, expected)) return;
     parseError(p, msg);
 }
 
@@ -63,7 +72,7 @@ static Expr *expression(Parser *p) { return comma(p); }
 static Expr *comma(Parser *p) {
     Expr *expr = assignment(p);
 
-    while (match(p, TOK_COMMA)) {
+    while (match(p, 1, TOK_COMMA)) {
         Expr *rhs = assignment(p);
         expr = makeBinaryExpr(TOK_COMMA, expr, rhs);
     }
@@ -72,7 +81,7 @@ static Expr *comma(Parser *p) {
 }
 
 #define DESUGAR_ASSIGNMENT(op)                                                                                         \
-    else if (match(p, op##_EQUALS)) {                                                                                  \
+    else if (match(p, 1, op##_EQUALS)) {                                                                               \
         Expr *rhs = assignment(p);                                                                                     \
         expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, expr, rhs));                                        \
     }
@@ -80,7 +89,7 @@ static Expr *comma(Parser *p) {
 static Expr *assignment(Parser *p) {
     Expr *expr = conditional(p);
 
-    if (match(p, TOK_EQUALS)) {
+    if (match(p, 1, TOK_EQUALS)) {
         Expr *rhs = assignment(p);
         expr = makeBinaryExpr(TOK_EQUALS, expr, rhs);
     }
@@ -101,7 +110,7 @@ static Expr *assignment(Parser *p) {
 static Expr *conditional(Parser *p) {
     Expr *expr = logicalOr(p);
 
-    if (match(p, TOK_QUESTION_MARK)) {
+    if (match(p, 1, TOK_QUESTION_MARK)) {
         Expr *trueBranch = expression(p);
         expect(p, TOK_COLON, "Expected \':\'");
         Expr *falseBranch = conditional(p);
@@ -162,14 +171,10 @@ static Expr *shift(Parser *p) {
 static Expr *additive(Parser *p) {
     Expr *expr = multipicative(p);
 
-    while (match(p, TOK_PLUS)) {
+    while (match(p, 2, TOK_PLUS, TOK_MINUS)) {
+        TokenType op = previous(p).type;
         Expr *rhs = multipicative(p);
-        expr = makeBinaryExpr(TOK_PLUS, expr, rhs);
-    }
-
-    while (match(p, TOK_MINUS)) {
-        Expr *rhs = multipicative(p);
-        expr = makeBinaryExpr(TOK_MINUS, expr, rhs);
+        expr = makeBinaryExpr(op, expr, rhs);
     }
 
     return expr;
@@ -178,24 +183,20 @@ static Expr *additive(Parser *p) {
 static Expr *multipicative(Parser *p) {
     Expr *expr = primary(p);
 
-    while (match(p, TOK_STAR)) {
+    while (match(p, 2, TOK_STAR, TOK_SLASH)) {
+        TokenType op = previous(p).type;
         Expr *rhs = primary(p);
-        expr = makeBinaryExpr(TOK_STAR, expr, rhs);
-    }
-
-    while (match(p, TOK_SLASH)) {
-        Expr *rhs = primary(p);
-        expr = makeBinaryExpr(TOK_SLASH, expr, rhs);
+        expr = makeBinaryExpr(op, expr, rhs);
     }
 
     return expr;
 }
 
 static Expr *primary(Parser *p) {
-    if (match(p, TOK_INTEGER_LITERAL)) {
+    if (match(p, 1, TOK_INTEGER_LITERAL)) {
         Token prev = previous(p);
         return makePrimaryExpr(prev);
-    } else if (match(p, TOK_LEFT_PAREN)) {
+    } else if (match(p, 1, TOK_LEFT_PAREN)) {
         Expr *inner = expression(p);
         expect(p, TOK_RIGHT_PAREN, "Expected \')\'");
         return makeGroupingExpr(inner);
