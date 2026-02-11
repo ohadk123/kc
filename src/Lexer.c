@@ -228,7 +228,6 @@ static void makeChar(Lexer *l) {
 Bool scanFile(TokensList *dest, cstr path) {
     if (dest == NULL) return NULLPTR_ERR;
     StringBuilder input = {0};
-    joinEntireFile(&input, path);
     ErrCode err = joinEntireFile(&input, path);
     if (err != NO_ERR) return err;
 
