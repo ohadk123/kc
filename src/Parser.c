@@ -1,4 +1,5 @@
 #include "Parser.h"
+#include <libk/Errors.h>
 #include <stdio.h>
 
 typedef struct {
@@ -62,8 +63,8 @@ static Expr *expression(Parser *p) { return comma(p); }
 static Expr *comma(Parser *p) {
     Expr *expr = assignment(p);
 
-    if (match(p, TOK_COMMA)) {
-        Expr *rhs = comma(p);
+    while (match(p, TOK_COMMA)) {
+        Expr *rhs = assignment(p);
         expr = makeBinaryExpr(TOK_COMMA, expr, rhs);
     }
 
@@ -71,30 +72,28 @@ static Expr *comma(Parser *p) {
 }
 
 #define DESUGAR_ASSIGNMENT(op)                                                                                         \
-    if (match(p, op##_EQUALS)) {                                                                                       \
+    else if (match(p, op##_EQUALS)) {                                                                                  \
         Expr *rhs = assignment(p);                                                                                     \
-        expr = makeBinaryExpr(op, lhs, rhs);                                                                           \
-        expr = makeBinaryExpr(TOK_EQUALS, lhs, expr);                                                                  \
+        expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, expr, rhs));                                        \
     }
 
 static Expr *assignment(Parser *p) {
     Expr *expr = conditional(p);
-    Expr *lhs = expr;
 
     if (match(p, TOK_EQUALS)) {
         Expr *rhs = assignment(p);
         expr = makeBinaryExpr(TOK_EQUALS, expr, rhs);
     }
-    DESUGAR_ASSIGNMENT(TOK_PLUS);
-    DESUGAR_ASSIGNMENT(TOK_MINUS);
-    DESUGAR_ASSIGNMENT(TOK_STAR);
-    DESUGAR_ASSIGNMENT(TOK_SLASH);
-    DESUGAR_ASSIGNMENT(TOK_PERCENT);
-    DESUGAR_ASSIGNMENT(TOK_AMPERSAND);
-    DESUGAR_ASSIGNMENT(TOK_CARET);
-    DESUGAR_ASSIGNMENT(TOK_PIPE);
-    DESUGAR_ASSIGNMENT(TOK_LESS_LESS);
-    DESUGAR_ASSIGNMENT(TOK_GREATER_GREATER);
+    DESUGAR_ASSIGNMENT(TOK_PLUS)
+    DESUGAR_ASSIGNMENT(TOK_MINUS)
+    DESUGAR_ASSIGNMENT(TOK_STAR)
+    DESUGAR_ASSIGNMENT(TOK_SLASH)
+    DESUGAR_ASSIGNMENT(TOK_PERCENT)
+    DESUGAR_ASSIGNMENT(TOK_AMPERSAND)
+    DESUGAR_ASSIGNMENT(TOK_CARET)
+    DESUGAR_ASSIGNMENT(TOK_PIPE)
+    DESUGAR_ASSIGNMENT(TOK_LESS_LESS)
+    DESUGAR_ASSIGNMENT(TOK_GREATER_GREATER)
 
     return expr;
 }
@@ -115,21 +114,11 @@ static Expr *conditional(Parser *p) {
 static Expr *logicalOr(Parser *p) {
     Expr *expr = logicalAnd(p);
 
-    if (match(p, TOK_PIPE_PIPE)) {
-        Expr *rhs = logicalAnd(p);
-        expr = makeBinaryExpr(TOK_PIPE_PIPE, expr, rhs);
-    }
-
     return expr;
 }
 
 static Expr *logicalAnd(Parser *p) {
     Expr *expr = bitwiseOr(p);
-
-    if (match(p, TOK_AMPERSAND_AMPERSAND)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_AMPERSAND_AMPERSAND, expr, rhs);
-    }
 
     return expr;
 }
@@ -137,21 +126,11 @@ static Expr *logicalAnd(Parser *p) {
 static Expr *bitwiseOr(Parser *p) {
     Expr *expr = bitwiseXor(p);
 
-    if (match(p, TOK_PIPE)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_PIPE, expr, rhs);
-    }
-
     return expr;
 }
 
 static Expr *bitwiseXor(Parser *p) {
     Expr *expr = bitwiseAnd(p);
-
-    if (match(p, TOK_CARET)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_CARET, expr, rhs);
-    }
 
     return expr;
 }
@@ -159,24 +138,11 @@ static Expr *bitwiseXor(Parser *p) {
 static Expr *bitwiseAnd(Parser *p) {
     Expr *expr = equality(p);
 
-    if (match(p, TOK_AMPERSAND)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_AMPERSAND, expr, rhs);
-    }
-
     return expr;
 }
 
 static Expr *equality(Parser *p) {
     Expr *expr = relational(p);
-
-    if (match(p, TOK_EQUALS_EQUALS)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_EQUALS_EQUALS, expr, rhs);
-    } else if (match(p, TOK_BANG_EQUALS)) {
-        Expr *rhs = bitwiseOr(p);
-        expr = makeBinaryExpr(TOK_BANG_EQUALS, expr, rhs);
-    }
 
     return expr;
 }
@@ -272,6 +238,9 @@ void freeExpr(Expr *e) {
             freeExpr(e->as.conditional.thenBranch);
             freeExpr(e->as.conditional.elseBranch);
             break;
+        default:
+            fprintf(stderr, "Unknown expression type: %d\n", e->type);
+            abort();
     }
     free(e);
 }
