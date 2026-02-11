@@ -183,7 +183,7 @@ static Expr *additive(Parser *p) {
 static Expr *multipicative(Parser *p) {
     Expr *expr = primary(p);
 
-    while (match(p, 2, TOK_STAR, TOK_SLASH)) {
+    while (match(p, 3, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
         TokenType op = previous(p).type;
         Expr *rhs = primary(p);
         expr = makeBinaryExpr(op, expr, rhs);
