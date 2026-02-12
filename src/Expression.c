@@ -97,9 +97,9 @@ int eval(Expr *root) {
                 EVAL_UNARY(TOK_TILDE, ~);
                 EVAL_UNARY(TOK_BANG, !);
                 case TOK_PLUS_PLUS:
-                    return eval(root->as.unary.inner) + 1;
+                    UNIMPLEMENTED("++");
                 case TOK_MINUS_MINUS:
-                    return eval(root->as.unary.inner) - 1;
+                    UNIMPLEMENTED("--");
                 case TOK_AMPERSAND:
                     UNIMPLEMENTED("Unary Ampersand");
                 case TOK_STAR:
