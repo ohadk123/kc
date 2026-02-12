@@ -48,6 +48,10 @@ Expr *makeConditionalExpr(Expr *condition, Expr *thenBranch, Expr *elseBranch) {
         rhs = eval(root->as.binary.rhs);                                                                               \
         return lhs op rhs
 
+#define EVAL_UNARY(TOK, op)                                                                                            \
+    case TOK:                                                                                                          \
+        return op eval(root->as.unary.inner)
+
 int eval(Expr *root) {
     int lhs, rhs;
 
@@ -75,6 +79,10 @@ int eval(Expr *root) {
                 EVAL_BINARY(TOK_AMPERSAND_AMPERSAND, &&);
                 EVAL_BINARY(TOK_EQUALS_EQUALS, ==);
                 EVAL_BINARY(TOK_BANG_EQUALS, !=);
+                EVAL_BINARY(TOK_LESS, <);
+                EVAL_BINARY(TOK_LESS_EQUALS, <=);
+                EVAL_BINARY(TOK_GREATER, >);
+                EVAL_BINARY(TOK_GREATER_EQUALS, >=);
                 case TOK_EQUALS:
                     return eval(root->as.binary.rhs);
                 default:
@@ -83,7 +91,23 @@ int eval(Expr *root) {
         case EXPR_GROUPING:
             return eval(root->as.grouping.inner);
         case EXPR_UNARY:
-            TODO("Unary Expressions");
+            switch (root->as.unary.op) {
+                EVAL_UNARY(TOK_PLUS, +);
+                EVAL_UNARY(TOK_MINUS, -);
+                EVAL_UNARY(TOK_TILDE, ~);
+                EVAL_UNARY(TOK_BANG, !);
+                case TOK_PLUS_PLUS:
+                    return eval(root->as.unary.inner) + 1;
+                case TOK_MINUS_MINUS:
+                    return eval(root->as.unary.inner) - 1;
+                case TOK_AMPERSAND:
+                    UNIMPLEMENTED("Unary Ampersand");
+                case TOK_STAR:
+                    UNIMPLEMENTED("Unary Star");
+                default:
+                    fprintf(stderr, "Not a valid unary operator: %d(%c)", root->as.unary.op, root->as.unary.op);
+                    abort();
+            }
         case EXPR_CONDITIONAL:
             return eval(root->as.conditional.condition) ? eval(root->as.conditional.thenBranch)
                                                         : eval(root->as.conditional.elseBranch);
