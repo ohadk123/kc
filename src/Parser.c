@@ -7,7 +7,7 @@ typedef struct {
     TokensList input;
     String fileName;
     usize index;
-    Bool hasErros;
+    Bool hasErrors;
 } Parser;
 
 static Bool isAtEnd(Parser *p) { return p->index == p->input.len; }
@@ -62,7 +62,7 @@ static Expr *equality(Parser *p);
 static Expr *relational(Parser *p);
 static Expr *shift(Parser *p);
 static Expr *additive(Parser *p);
-static Expr *multipicative(Parser *p);
+static Expr *multiplicative(Parser *p);
 static Expr *primary(Parser *p);
 
 //*****************************************************************************
@@ -169,18 +169,18 @@ static Expr *shift(Parser *p) {
 }
 
 static Expr *additive(Parser *p) {
-    Expr *expr = multipicative(p);
+    Expr *expr = multiplicative(p);
 
     while (match(p, 2, TOK_PLUS, TOK_MINUS)) {
         TokenType op = previous(p).type;
-        Expr *rhs = multipicative(p);
+        Expr *rhs = multiplicative(p);
         expr = makeBinaryExpr(op, expr, rhs);
     }
 
     return expr;
 }
 
-static Expr *multipicative(Parser *p) {
+static Expr *multiplicative(Parser *p) {
     Expr *expr = primary(p);
 
     while (match(p, 3, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
@@ -212,7 +212,7 @@ Expr *parse(TokensList tokens) {
         .input = tokens,
         .fileName = {0},
         .index = 0,
-        .hasErros = FALSE,
+        .hasErrors = FALSE,
     };
 
     Expr *root = expression(&parser);
