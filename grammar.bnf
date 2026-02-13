@@ -1,0 +1,73 @@
+(* === Constants === *)
+
+IDENTIFIER      = [a-zA-Z_] [a-zA-Z0-9_]* ;
+
+PRIMITIVE       = ('void' | 'bool' | 'u8' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i32' | 'i64' | 'f32' | 'f64') ;
+
+CHAR_LITERAL    = '\'' ( [^\'\\\n] | '\\' . ) '\'' ;
+
+STRING_LITERAL  = '"' ( [^\"\\\n] | '\\' . )* '"' ;
+
+INTEGER_LITERAL = [0-9]+ ;
+
+FLOAT_LITERAL   = [0-9]* '.' [0-9]+ ;
+
+(* === Expressions === *)
+
+expression     = comma ;
+
+comma          = assignment {',' assignment}* ;
+
+assignment     = conditional {('=' | '+=' | '-=' | '*=' | '/=' | '%='
+                                   | '&=' | '^=' | '|=' | '<<=' | '>>=') assignment}? ;
+
+conditional    = logical_or {'?' expression ':' conditional}? ;
+
+logical_or     = logical_and {'||' logical_and}* ;
+
+logical_and    = bitwise_or {'&&' bitwise_or}* ;
+
+bitwise_or     = bitwise_xor {'|' bitwise_xor}* ;
+
+bitwise_xor    = bitwise_and {'^' bitwise_and}* ;
+
+bitwise_and    = equality {'&' equality}* ;
+
+equality       = relational {('==' | '!=') relational}* ;
+
+relational     = shift {('<' | '>' | '<=' | '>=') shift}* ;
+
+shift          = additive {('<<' | '>>') additive}* ;
+
+additive       = multiplicative {('+' | '-') multiplicative}* ;
+
+multiplicative = unary {('*' | '/' | '%') unary}* ;
+
+unary      = ('++' | '--') unary
+           | ('&' | '*' | '+' | '-' | '~' | '!') unary
+           | postfix ;
+
+postfix    = primary postfix_op* ;
+
+postfix_op = '[' expression ']'
+           | '(' arg_list? ')'
+           | '.' IDENTIFIER
+           | '->' IDENTIFIER
+           | '++' | '--' ;
+
+arg_list   = assignment {',' assignment}* ;
+
+primary    = INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
+           | STRING_LITERAL | IDENTIFIER
+           | '(' expression ')' ;
+
+(* === Types === *)
+
+storage    = ('extern' | 'static')
+
+type            = PRIMITIVE
+                | IDENTIFIER ;
+
+(* === Declarations === *)
+
+variable_declaration   = storage? 'const'? type {'*' 'const'?}* IDENTIFIER {'[' expression? ']' }? {'=' expression}? ';' ;
