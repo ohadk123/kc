@@ -146,7 +146,7 @@ Token makeErrorToken(String errorMsg, usize line, usize col) {
 static Bool isPrintableChar(u8 c) { return ' ' <= c && c <= '~'; }
 
 void printToken(Token token) {
-    printf("{ \"type\": \"%s\", \"line\": %zu, \"col\": %zu", tokenTypesStrings[token.type], token.line, token.col);
+    printf("{ [%zu:%zu] \"type\": \"%s\", ", token.line, token.col, tokenTypesStrings[token.type]);
     switch (token.type) {
         case TOK_IDENTIFIER:
             printf(", \"name\": \"%.*s\"", (int)token.as.identifier.len, token.as.identifier.data);

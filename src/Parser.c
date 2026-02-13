@@ -312,32 +312,32 @@ static Expr *primary(Parser *p) {
  *****************************************************************************/
 
 static Stmt *statement(Parser *p);
-static Stmt *declaration(Parser *p);
+static Stmt *declaration(Parser *p, TokenType type);
 
 //*****************************************************************************
 
 static Stmt *statement(Parser *p) {
     if (match(p, 12, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32, TOK_F64, TOK_BOOL,
               TOK_VOID)) {
-        return declaration(p);
+        return declaration(p, previous(p).type);
     }
 
     parseError(p, "Expected statement");
 }
 
-static Stmt *declaration(Parser *p) {
+static Stmt *declaration(Parser *p, TokenType type) {
     expect(p, TOK_IDENTIFIER, "Expected identifier in declaration");
     Token identifier = previous(p);
 
     if (match(p, 1, TOK_EQUALS)) {
         Expr *initializer = expression(p);
         expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
-        return makeDeclStmt(previous(p).type, identifier, initializer);
+        return makeDeclStmt(type, identifier, initializer);
     } else if (match(p, 1, TOK_LEFT_PAREN)) {
         UNIMPLEMENTED("Function declarations not implemented yet");
     } else {
         expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
-        return makeDeclStmt(previous(p).type, identifier, NULL);
+        return makeDeclStmt(type, identifier, NULL);
     }
 }
 
