@@ -1,22 +1,29 @@
 #ifndef INCLUDE_KC_STATEMENT_H_
 #define INCLUDE_KC_STATEMENT_H_
 
-#include "Expression.h"
+#include "Type.h"
 
 typedef enum {
     STMT_DECLARATION,
 } StmtType;
 
+typedef enum {
+    STORAGE_NONE,
+    STORAGE_EXTERN,
+    STORAGE_STATIC,
+} StorageClass;
+
 typedef struct {
-    TokenType type;
+    Type *type;
+    StorageClass storageClass;
     Token identifier;
     Expr *initializer;
-} DeclStmt;
+} VarDeclStmt;
 
 typedef struct {
     StmtType type;
     union {
-        DeclStmt declaration;
+        VarDeclStmt declaration;
     } as;
 } Stmt;
 
@@ -24,7 +31,7 @@ typedef struct {
     LIST_FIELDS(Stmt *);
 } StmtList;
 
-Stmt *makeDeclStmt(TokenType type, Token identifier, Expr *initializer);
+Stmt *makeDeclStmt(Type *type, StorageClass storageClass, Token identifier, Expr *initializer);
 
 Stmt *cloneStmt(Stmt *src);
 void printStmt(Stmt *root);

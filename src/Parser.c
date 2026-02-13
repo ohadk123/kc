@@ -71,6 +71,7 @@ static Expr *primary(Parser *p);
 
 static Expr *expression(Parser *p) { return comma(p); }
 
+// comma := assignment {',' assignment}*
 static Expr *comma(Parser *p) {
     Expr *expr = assignment(p);
 
@@ -88,6 +89,7 @@ static Expr *comma(Parser *p) {
         expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, cloneExpr(expr), rhs));                             \
     }
 
+// assignment := conditional {('=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '^=' | '|=' | '<<=' | '>>=') assignment}*
 static Expr *assignment(Parser *p) {
     Expr *expr = conditional(p);
 
@@ -95,6 +97,7 @@ static Expr *assignment(Parser *p) {
         Expr *rhs = assignment(p);
         expr = makeBinaryExpr(TOK_EQUALS, expr, rhs);
     }
+    // Desugar compound assignments like a += b into a = a + b
     DESUGAR_ASSIGNMENT(TOK_PLUS)
     DESUGAR_ASSIGNMENT(TOK_MINUS)
     DESUGAR_ASSIGNMENT(TOK_STAR)
@@ -109,6 +112,7 @@ static Expr *assignment(Parser *p) {
     return expr;
 }
 
+// conditional := logicalOr {'?' expression ':' conditional}?
 static Expr *conditional(Parser *p) {
     Expr *expr = logicalOr(p);
 
@@ -122,6 +126,7 @@ static Expr *conditional(Parser *p) {
     return expr;
 }
 
+// logicalOr := logicalAnd {'||' logicalAnd}*
 static Expr *logicalOr(Parser *p) {
     Expr *expr = logicalAnd(p);
 
@@ -133,6 +138,7 @@ static Expr *logicalOr(Parser *p) {
     return expr;
 }
 
+// logicalAnd := bitwiseOr {'&&' bitwiseOr}*
 static Expr *logicalAnd(Parser *p) {
     Expr *expr = bitwiseOr(p);
 
@@ -144,6 +150,7 @@ static Expr *logicalAnd(Parser *p) {
     return expr;
 }
 
+// bitwiseOr := bitwiseXor {'|' bitwiseXor}*
 static Expr *bitwiseOr(Parser *p) {
     Expr *expr = bitwiseXor(p);
 
@@ -155,6 +162,7 @@ static Expr *bitwiseOr(Parser *p) {
     return expr;
 }
 
+// bitwiseXor := bitwiseAnd {'^' bitwiseAnd}*
 static Expr *bitwiseXor(Parser *p) {
     Expr *expr = bitwiseAnd(p);
 
@@ -166,6 +174,7 @@ static Expr *bitwiseXor(Parser *p) {
     return expr;
 }
 
+// bitwiseAnd := equality {'&' equality}*
 static Expr *bitwiseAnd(Parser *p) {
     Expr *expr = equality(p);
 
@@ -177,6 +186,7 @@ static Expr *bitwiseAnd(Parser *p) {
     return expr;
 }
 
+// equality := relational {('==' | '!=') relational}*
 static Expr *equality(Parser *p) {
     Expr *expr = relational(p);
 
@@ -189,6 +199,7 @@ static Expr *equality(Parser *p) {
     return expr;
 }
 
+// relational := shift {('<' | '>' | '<=' | '>=') shift}*
 static Expr *relational(Parser *p) {
     Expr *expr = shift(p);
 
@@ -201,6 +212,7 @@ static Expr *relational(Parser *p) {
     return expr;
 }
 
+// shift := additive {('<<' | '>>') additive}*
 static Expr *shift(Parser *p) {
     Expr *expr = additive(p);
 
@@ -213,6 +225,7 @@ static Expr *shift(Parser *p) {
     return expr;
 }
 
+// additive := multiplicative {('+' | '-') multiplicative}*
 static Expr *additive(Parser *p) {
     Expr *expr = multiplicative(p);
 
@@ -225,6 +238,7 @@ static Expr *additive(Parser *p) {
     return expr;
 }
 
+// multiplicative := unary {('*' | '/' | '%') unary}*
 static Expr *multiplicative(Parser *p) {
     Expr *expr = unary(p);
 
@@ -237,8 +251,10 @@ static Expr *multiplicative(Parser *p) {
     return expr;
 }
 
-// expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, expr, rhs));
+// unary := ('&' | '*' | '+' | '-' | '~' | '!' | '++' | '--') unary
+//        | postfix
 static Expr *unary(Parser *p) {
+    // Desugar ++x into x = x + 1 and --x into x = x - 1
     if (match(p, 2, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
         TokenType op = previous(p).type == TOK_PLUS_PLUS ? TOK_PLUS : TOK_MINUS;
         Expr *inner = unary(p);
@@ -261,6 +277,11 @@ static Expr *unary(Parser *p) {
     return postfix(p);
 }
 
+// postfix := primary {( '[' expression ']'
+//                     | '(' assignment {',' assignment}* ')'
+//                     | '.' identifier
+//                     | '->' identifier
+//                     | '++' | '--' )}*
 static Expr *postfix(Parser *p) {
     Expr *expr = primary(p);
 
@@ -294,6 +315,7 @@ static Expr *postfix(Parser *p) {
     return expr;
 }
 
+// primary := INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | STRING_LITERAL | IDENTIFIER | '(' expression ')'
 static Expr *primary(Parser *p) {
     if (match(p, 5, TOK_INTEGER_LITERAL, TOK_FLOAT_LITERAL, TOK_CHAR_LITERAL, TOK_STRING_LITERAL, TOK_IDENTIFIER)) {
         Token prev = previous(p);
@@ -312,33 +334,60 @@ static Expr *primary(Parser *p) {
  *****************************************************************************/
 
 static Stmt *statement(Parser *p);
-static Stmt *declaration(Parser *p, TokenType type);
+static Stmt *variable(Parser *p);
 
 //*****************************************************************************
 
 static Stmt *statement(Parser *p) {
-    if (match(p, 12, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32, TOK_F64, TOK_BOOL,
-              TOK_VOID)) {
-        return declaration(p, previous(p).type);
+    TokenType next = peek(p).type;
+    if (next == TOK_CONST || next == TOK_STATIC || next == TOK_EXTERN || next == TOK_U8 || next == TOK_U16 ||
+        next == TOK_U32 || next == TOK_U64 || next == TOK_I8 || next == TOK_I16 || next == TOK_I32 || next == TOK_I64 ||
+        next == TOK_F32 || next == TOK_F64 || next == TOK_BOOL || next == TOK_VOID || next == TOK_IDENTIFIER) {
+        return variable(p);
     }
-
     parseError(p, "Expected statement");
 }
 
-static Stmt *declaration(Parser *p, TokenType type) {
-    expect(p, TOK_IDENTIFIER, "Expected identifier in declaration");
+// variable := ('extern' | 'static')? 'const'? type {'*' const?}* identifier {'[' expression? ]'}? ('=' expression)? ';'
+static Stmt *variable(Parser *p) {
+    StorageClass storageClass = STORAGE_NONE;
+    if (match(p, 2, TOK_EXTERN, TOK_STATIC)) {
+        storageClass = previous(p).type == TOK_EXTERN ? STORAGE_EXTERN : STORAGE_STATIC;
+    }
+
+    Bool isConst = match(p, 1, TOK_CONST);
+
+    if (!match(p, 13, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32, TOK_F64, TOK_BOOL,
+               TOK_VOID, TOK_IDENTIFIER)) {
+        parseError(p, "Expected type");
+    }
+
+    Type *type = makePrimitiveType(previous(p), isConst);
+
+    while (match(p, 1, TOK_STAR)) {
+        Bool pointerIsConst = match(p, 1, TOK_CONST);
+        type = makePointerType(type, pointerIsConst);
+    }
+
+    expect(p, TOK_IDENTIFIER, "Expected variable name");
     Token identifier = previous(p);
 
-    if (match(p, 1, TOK_EQUALS)) {
-        Expr *initializer = expression(p);
-        expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
-        return makeDeclStmt(type, identifier, initializer);
-    } else if (match(p, 1, TOK_LEFT_PAREN)) {
-        UNIMPLEMENTED("Function declarations not implemented yet");
-    } else {
-        expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
-        return makeDeclStmt(type, identifier, NULL);
+    if (match(p, 1, TOK_LEFT_BRACKET)) {
+        Expr *size = NULL;
+        if (!match(p, 1, TOK_RIGHT_BRACKET)) {
+            size = expression(p);
+            expect(p, TOK_RIGHT_BRACKET, "Expected ']' at the end of array type");
+        }
+        type = makeArrayType(type, size, FALSE);
     }
+
+    Expr *initializer = NULL;
+    if (match(p, 1, TOK_EQUALS)) {
+        initializer = expression(p);
+    }
+    expect(p, TOK_SEMICOLON, "Expected ';' at the end of variable declaration");
+
+    return makeDeclStmt(type, storageClass, identifier, initializer);
 }
 
 /****************************************************************************
