@@ -1,5 +1,5 @@
-#ifndef INCLUCE_KC_TYPE_H_
-#define INCLUCE_KC_TYPE_H_
+#ifndef INCLUDE_KC_TYPE_H_
+#define INCLUDE_KC_TYPE_H_
 
 #include "Expression.h"
 
@@ -27,4 +27,4 @@ Type *makePrimitiveType(Token primitiveType, Bool isConst);
 Type *makePointerType(Type *pointerType, Bool isConst);
 Type *makeArrayType(Type *innerType, Expr *sizeExpr, Bool isConst);
 
-#endif // INCLUCE_KC_TYPE_H_
+#endif // INCLUDE_KC_TYPE_H_

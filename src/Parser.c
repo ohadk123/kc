@@ -335,16 +335,23 @@ static Expr *primary(Parser *p) {
 
 static Stmt *statement(Parser *p);
 static Stmt *variable(Parser *p);
+static Stmt *enumStmt(Parser *p);
 
 //*****************************************************************************
 
 static Stmt *statement(Parser *p) {
+    while (match(p, 1, TOK_SEMICOLON));
+
     TokenType next = peek(p).type;
     if (next == TOK_CONST || next == TOK_STATIC || next == TOK_EXTERN || next == TOK_U8 || next == TOK_U16 ||
         next == TOK_U32 || next == TOK_U64 || next == TOK_I8 || next == TOK_I16 || next == TOK_I32 || next == TOK_I64 ||
         next == TOK_F32 || next == TOK_F64 || next == TOK_BOOL || next == TOK_VOID || next == TOK_IDENTIFIER) {
         return variable(p);
     }
+
+    if (match(p, 1, TOK_ENUM))
+        return enumStmt(p);
+
     parseError(p, "Expected statement");
 }
 
@@ -387,7 +394,24 @@ static Stmt *variable(Parser *p) {
     }
     expect(p, TOK_SEMICOLON, "Expected ';' at the end of variable declaration");
 
-    return makeDeclStmt(type, storageClass, identifier, initializer);
+    return makeVarStmt(type, storageClass, identifier, initializer);
+}
+
+static Stmt *enumStmt(Parser *p) {
+    expect(p, TOK_IDENTIFIER, "Expected enum name");
+    Token name = previous(p);
+
+    TokensList entries = {0};
+    expect(p, TOK_LEFT_BRACE, "Expected '{' in enum declaration");
+
+    do {
+        if (match(p, 1, TOK_IDENTIFIER)) {
+            appendSingle(&entries, previous(p));
+        }
+    } while (match(p, 1, TOK_COMMA));
+
+    expect(p, TOK_RIGHT_BRACE, "Expected '}' to end enum declaration");
+    return makeEnumStmt(name, entries);
 }
 
 /****************************************************************************

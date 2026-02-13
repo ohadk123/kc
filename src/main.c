@@ -15,9 +15,7 @@ int main(int argc, char *argv[]) {
     }
 
     StmtList translation_unit = parse(tokens);
-    for (usize i = 0; i < translation_unit.len; i++) {
-        printStmt(translation_unit.arr[i]);
-    }
+    printStmtList(translation_unit);
 
     freeTokensList(&tokens);
 
