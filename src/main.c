@@ -15,8 +15,7 @@ int main(int argc, char *argv[]) {
     }
 
     Expr *root = parse(tokens);
-    int result = eval(root);
-    printf("Result: %d\n", result);
+    printExpr(root);
 
     freeTokensList(&tokens);
 

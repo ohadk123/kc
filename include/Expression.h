@@ -32,6 +32,9 @@ typedef enum {
     EXPR_BINARY,
     EXPR_UNARY,
     EXPR_CONDITIONAL,
+    EXPR_INDEX,
+    EXPR_FUNC_CALL,
+    EXPR_MEMBER,
 } ExprType;
 
 typedef struct {
@@ -59,6 +62,26 @@ typedef struct {
     Expr *elseBranch;
 } ConditionalExpr;
 
+typedef struct {
+    Expr *name;
+    Expr *index;
+} IndexExpr;
+
+typedef struct {
+    LIST_FIELDS(Expr *);
+} ArgsList;
+
+typedef struct {
+    Expr *callee;
+    ArgsList args;
+} FuncCallExpr;
+
+typedef struct {
+    TokenType op;
+    Expr *object;
+    Token member;
+} MemberExpr;
+
 struct Expr {
     ExprType type;
     union {
@@ -67,6 +90,9 @@ struct Expr {
         BinaryExpr binary;
         UnaryExpr unary;
         ConditionalExpr conditional;
+        IndexExpr index;
+        FuncCallExpr funcCall;
+        MemberExpr member;
     } as;
 };
 
@@ -75,8 +101,15 @@ Expr *makeGroupingExpr(Expr *inner);
 Expr *makeBinaryExpr(TokenType op, Expr *lhs, Expr *rhs);
 Expr *makeUnaryExpr(TokenType op, Expr *inner);
 Expr *makeConditionalExpr(Expr *condition, Expr *thenBranch, Expr *elseBranch);
+Expr *makeIndexExpr(Expr *name, Expr *index);
+Expr *makeFuncCallExpr(Expr *name, ArgsList args);
+Expr *makeMemberExpr(TokenType op, Expr *object, Token ident);
 
 void freeExpr(Expr *e);
-int eval(Expr *root);
+int evalExpr(Expr *root);
+Expr *cloneExpr(Expr *src);
+void printExpr(Expr *root);
+
+extern cstr tokenTypesStrings[];
 
 #endif  // _INCLUDE_INCLUDE_EXPRESSION_H_

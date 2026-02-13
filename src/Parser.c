@@ -64,6 +64,7 @@ static Expr *shift(Parser *p);
 static Expr *additive(Parser *p);
 static Expr *multiplicative(Parser *p);
 static Expr *unary(Parser *p);
+static Expr *postfix(Parser *p);
 static Expr *primary(Parser *p);
 
 //*****************************************************************************
@@ -84,7 +85,7 @@ static Expr *comma(Parser *p) {
 #define DESUGAR_ASSIGNMENT(op)                                                                                         \
     else if (match(p, 1, op##_EQUALS)) {                                                                               \
         Expr *rhs = assignment(p);                                                                                     \
-        expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, expr, rhs));                                        \
+        expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, cloneExpr(expr), rhs));                             \
     }
 
 static Expr *assignment(Parser *p) {
@@ -236,11 +237,19 @@ static Expr *multiplicative(Parser *p) {
     return expr;
 }
 
+// expr = makeBinaryExpr(TOK_EQUALS, expr, makeBinaryExpr(op, expr, rhs));
 static Expr *unary(Parser *p) {
     if (match(p, 2, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
-        TokenType op = previous(p).type;
+        TokenType op = previous(p).type == TOK_PLUS_PLUS ? TOK_PLUS : TOK_MINUS;
         Expr *inner = unary(p);
-        return makeUnaryExpr(op, inner);
+        Token oneToken = (Token){
+            .type = TOK_INTEGER_LITERAL,
+            .as.integerLiteral = 1,
+            .col = previous(p).col,
+            .line = previous(p).line,
+        };
+        Expr *oneExpr = makePrimaryExpr(oneToken);
+        return makeBinaryExpr(TOK_EQUALS, inner, makeBinaryExpr(op, inner, oneExpr));
     }
 
     if (match(p, 6, TOK_AMPERSAND, TOK_STAR, TOK_PLUS, TOK_MINUS, TOK_TILDE, TOK_BANG)) {
@@ -249,7 +258,40 @@ static Expr *unary(Parser *p) {
         return makeUnaryExpr(op, inner);
     }
 
-    return primary(p);
+    return postfix(p);
+}
+
+static Expr *postfix(Parser *p) {
+    Expr *expr = primary(p);
+
+    while (TRUE) {
+        if (match(p, 1, TOK_LEFT_BRACKET)) {
+            Expr *index = expression(p);
+            expect(p, TOK_RIGHT_BRACKET, "Missing ']' at the end of indexing");
+            expr = makeIndexExpr(expr, index);
+        } else if (match(p, 1, TOK_LEFT_PAREN)) {
+            ArgsList args = {0};
+            if (!match(p, 1, TOK_RIGHT_PAREN)) {
+                do {
+                    Expr *arg = assignment(p);
+                    appendSingle(&args, arg);
+                } while (match(p, 1, TOK_COMMA));
+                expect(p, TOK_RIGHT_PAREN, "Missing ')' at the end of function call");
+            }
+            expr = makeFuncCallExpr(expr, args);
+        } else if (match(p, 2, TOK_DOT, TOK_MINUS_GREATER)) {
+            TokenType op = previous(p).type;
+            expect(p, TOK_IDENTIFIER, "Expected member");
+            expr = makeMemberExpr(op, expr, previous(p));
+        } else if (match(p, 2, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
+            TokenType op = previous(p).type;
+            expr = makeUnaryExpr(op, expr);
+        } else {
+            break;
+        }
+    }
+
+    return expr;
 }
 
 static Expr *primary(Parser *p) {
@@ -299,9 +341,22 @@ void freeExpr(Expr *e) {
             freeExpr(e->as.conditional.thenBranch);
             freeExpr(e->as.conditional.elseBranch);
             break;
-        default:
-            fprintf(stderr, "Unknown expression type: %d\n", e->type);
-            abort();
+        case EXPR_INDEX:
+            freeExpr(e->as.index.index);
+            freeExpr(e->as.index.name);
+            break;
+        case EXPR_FUNC_CALL:
+            freeExpr(e->as.funcCall.callee);
+            for (usize i = 0; i < e->as.funcCall.args.len; i++) {
+                freeExpr(e->as.funcCall.args.arr[i]);
+            }
+            break;
+        case EXPR_MEMBER:
+            freeExpr(e->as.member.object);
+            break;
+            // default:
+            //     fprintf(stderr, "Unknown expression type: %d\n", e->type);
+            //     abort();
     }
     free(e);
 }
