@@ -148,6 +148,8 @@ int evalExpr(Expr *root) {
 }
 
 Expr *cloneExpr(Expr *src) {
+    if (src == NULL) return NULL;
+
     switch (src->type) {
         case EXPR_LITERAL:
             return makePrimaryExpr(src->as.primary.value);
@@ -180,35 +182,16 @@ static void printIndent(int indent) {
     for (int i = 0; i < indent; i++) printf("  ");
 }
 
-static void printExprImpl(Expr *root, int indent) {
+void printExprImpl(Expr *root, usize indent) {
     printf("{\n");
     switch (root->type) {
         case EXPR_LITERAL:
             printIndent(indent + 1);
             printf("\"type\": \"literal\",\n");
             printIndent(indent + 1);
-            switch (root->as.primary.value.type) {
-                case TOK_INTEGER_LITERAL:
-                    printf("\"value\": %zu\n", root->as.primary.value.as.integerLiteral);
-                    break;
-                case TOK_FLOAT_LITERAL:
-                    printf("\"value\": %f\n", root->as.primary.value.as.floatLiteral);
-                    break;
-                case TOK_IDENTIFIER:
-                    printf("\"name\": \"%.*s\"\n", (int)root->as.primary.value.as.identifier.len,
-                           root->as.primary.value.as.identifier.data);
-                    break;
-                case TOK_STRING_LITERAL:
-                    printf("\"value\": \"%.*s\"\n", (int)root->as.primary.value.as.stringLiteral.len,
-                           root->as.primary.value.as.stringLiteral.data);
-                    break;
-                case TOK_CHAR_LITERAL:
-                    printf("\"value\": \"%c\"\n", root->as.primary.value.as.charLiteral);
-                    break;
-                default:
-                    printf("\"value\": \"<unknown>\"\n");
-                    break;
-            }
+            printf("\"token\": ");
+            printToken(root->as.primary.value);
+            printf("\n");
             break;
         case EXPR_GROUPING:
             printIndent(indent + 1);
@@ -285,8 +268,9 @@ static void printExprImpl(Expr *root, int indent) {
             printf("\"object\": ");
             printExprImpl(root->as.member.object, indent + 1);
             printIndent(indent + 1);
-            printf("\"member\": \"%.*s\"\n", (int)root->as.member.member.as.identifier.len,
-                   root->as.member.member.as.identifier.data);
+            printf("\"member\": ");
+            printToken(root->as.member.member);
+            printf("\n");
             break;
     }
     printIndent(indent);
@@ -294,5 +278,48 @@ static void printExprImpl(Expr *root, int indent) {
 }
 
 void printExpr(Expr *root) {
+    if (root == NULL) {
+        printf("null\n");
+        return;
+    }
+
     printExprImpl(root, 0);
+}
+
+void freeExpr(Expr *e) {
+    if (e == NULL) return;
+
+    switch (e->type) {
+        case EXPR_BINARY:
+            freeExpr(e->as.binary.lhs);
+            freeExpr(e->as.binary.rhs);
+            break;
+        case EXPR_UNARY:
+            freeExpr(e->as.unary.inner);
+            break;
+        case EXPR_LITERAL:
+            break;
+        case EXPR_GROUPING:
+            freeExpr(e->as.grouping.inner);
+            break;
+        case EXPR_CONDITIONAL:
+            freeExpr(e->as.conditional.condition);
+            freeExpr(e->as.conditional.thenBranch);
+            freeExpr(e->as.conditional.elseBranch);
+            break;
+        case EXPR_INDEX:
+            freeExpr(e->as.index.index);
+            freeExpr(e->as.index.name);
+            break;
+        case EXPR_FUNC_CALL:
+            freeExpr(e->as.funcCall.callee);
+            for (usize i = 0; i < e->as.funcCall.args.len; i++) {
+                freeExpr(e->as.funcCall.args.arr[i]);
+            }
+            break;
+        case EXPR_MEMBER:
+            freeExpr(e->as.member.object);
+            break;
+    }
+    free(e);
 }

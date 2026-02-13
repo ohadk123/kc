@@ -1,8 +1,8 @@
 #ifndef INCLUDE_KC_PARSER_H_
 #define INCLUDE_KC_PARSER_H_
 
-#include "Expression.h"
+#include "Statement.h"
 
-Expr *parse(TokensList tokens);
+StmtList parse(TokensList tokens);
 
 #endif // INCLUDE_KC_PARSER_H_

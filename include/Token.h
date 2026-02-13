@@ -133,5 +133,6 @@ Token makeIntegerLiteralToken(u64 value, usize line, usize col);
 Token makeFloatLiteralToken(f64 value, usize line, usize col);
 Token makeCharLiteralToken(u8 value, usize line, usize col);
 Token makeErrorToken(String errorMsg, usize line, usize col);
+void printToken(Token token);
 
 #endif  // INCLUDE_KC_TOKEN_H_

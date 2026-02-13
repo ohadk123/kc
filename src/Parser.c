@@ -46,7 +46,7 @@ static void expect(Parser *p, TokenType expected, cstr msg) {
 }
 
 /******************************************************************************
- * Parsing Functions
+ * Expression Parsing
  *****************************************************************************/
 
 static Expr *expression(Parser *p);
@@ -307,9 +307,50 @@ static Expr *primary(Parser *p) {
     parseError(p, "Expected expression");
 }
 
+/***************************************************************************
+ * Statements Parsing
+ *****************************************************************************/
+
+static Stmt *statement(Parser *p);
+static Stmt *declaration(Parser *p);
+
 //*****************************************************************************
 
-Expr *parse(TokensList tokens) {
+static Stmt *statement(Parser *p) {
+    if (match(p, 12, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32, TOK_F64, TOK_BOOL,
+              TOK_VOID)) {
+        return declaration(p);
+    }
+
+    parseError(p, "Expected statement");
+}
+
+static Stmt *declaration(Parser *p) {
+    expect(p, TOK_IDENTIFIER, "Expected identifier in declaration");
+    Token identifier = previous(p);
+
+    if (match(p, 1, TOK_EQUALS)) {
+        Expr *initializer = expression(p);
+        expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
+        return makeDeclStmt(previous(p).type, identifier, initializer);
+    } else if (match(p, 1, TOK_LEFT_PAREN)) {
+        UNIMPLEMENTED("Function declarations not implemented yet");
+    } else {
+        expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
+        return makeDeclStmt(previous(p).type, identifier, NULL);
+    }
+}
+
+/****************************************************************************
+ * Public API
+ *****************************************************************************/
+
+StmtList parse(TokensList tokens) {
+    if (tokens.len == 0) {
+        fprintf(stderr, "No tokens to parse\n");
+        return (StmtList){0};
+    }
+
     Parser parser = {
         .input = tokens,
         .fileName = {0},
@@ -317,46 +358,11 @@ Expr *parse(TokensList tokens) {
         .hasErrors = FALSE,
     };
 
-    Expr *root = expression(&parser);
-
-    return root;
-}
-
-void freeExpr(Expr *e) {
-    switch (e->type) {
-        case EXPR_BINARY:
-            freeExpr(e->as.binary.lhs);
-            freeExpr(e->as.binary.rhs);
-            break;
-        case EXPR_UNARY:
-            freeExpr(e->as.unary.inner);
-            break;
-        case EXPR_LITERAL:
-            break;
-        case EXPR_GROUPING:
-            freeExpr(e->as.grouping.inner);
-            break;
-        case EXPR_CONDITIONAL:
-            freeExpr(e->as.conditional.condition);
-            freeExpr(e->as.conditional.thenBranch);
-            freeExpr(e->as.conditional.elseBranch);
-            break;
-        case EXPR_INDEX:
-            freeExpr(e->as.index.index);
-            freeExpr(e->as.index.name);
-            break;
-        case EXPR_FUNC_CALL:
-            freeExpr(e->as.funcCall.callee);
-            for (usize i = 0; i < e->as.funcCall.args.len; i++) {
-                freeExpr(e->as.funcCall.args.arr[i]);
-            }
-            break;
-        case EXPR_MEMBER:
-            freeExpr(e->as.member.object);
-            break;
-            // default:
-            //     fprintf(stderr, "Unknown expression type: %d\n", e->type);
-            //     abort();
+    StmtList translationUnit = {0};
+    while (!isAtEnd(&parser)) {
+        Stmt *stmt = statement(&parser);
+        appendSingle(&translationUnit, stmt);
     }
-    free(e);
+
+    return translationUnit;
 }

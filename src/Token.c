@@ -146,40 +146,37 @@ Token makeErrorToken(String errorMsg, usize line, usize col) {
 static Bool isPrintableChar(u8 c) { return ' ' <= c && c <= '~'; }
 
 void printToken(Token token) {
-    printf("[%lu:%lu = %s]", token.line, token.col,
-           tokenTypesStrings[token.type]);
+    printf("{ \"type\": \"%s\", \"line\": %zu, \"col\": %zu", tokenTypesStrings[token.type], token.line, token.col);
     switch (token.type) {
         case TOK_IDENTIFIER:
-            printf(": (%.*s)\n", (int)token.as.identifier.len, token.as.identifier.data);
-            return;
+            printf(", \"name\": \"%.*s\"", (int)token.as.identifier.len, token.as.identifier.data);
+            break;
         case TOK_STRING_LITERAL:
-            printf(": (%.*s)\n", (int)token.as.stringLiteral.len, token.as.stringLiteral.data);
-            return;
+            printf(", \"value\": \"%.*s\"", (int)token.as.stringLiteral.len, token.as.stringLiteral.data);
+            break;
         case TOK_CHAR_LITERAL:
-            printf(": (0x%02x)", token.as.charLiteral);
             if (isPrintableChar(token.as.charLiteral))
-                printf(" : \'%c\'\n", token.as.charLiteral);
+                printf(", \"value\": \"%c\"", token.as.charLiteral);
             else
-                printf("\n");
+                printf(", \"value\": \"0x%02x\"", token.as.charLiteral);
             break;
         case TOK_INTEGER_LITERAL:
-            printf(": (%lu)\n", token.as.integerLiteral);
-            return;
+            printf(", \"value\": %zu", token.as.integerLiteral);
+            break;
         case TOK_FLOAT_LITERAL:
-            printf(": (%f)\n", token.as.floatLiteral);
-            return;
+            printf(", \"value\": %f", token.as.floatLiteral);
+            break;
         case TOK_UNKNOWN:
-            printf(": (0x%02x)", token.as.unknown);
             if (isPrintableChar(token.as.unknown))
-                printf(" : \'%c\'\n", token.as.unknown);
+                printf(", \"value\": \"%c\"", token.as.unknown);
             else
-                printf("\n");
+                printf(", \"value\": \"0x%02x\"", token.as.unknown);
             break;
         case TOK_ERROR:
-            printf(": (%.*s)\n", (int)token.as.error.len, token.as.error.data);
+            printf(", \"error\": \"%.*s\"", (int)token.as.error.len, token.as.error.data);
             break;
         default:
-            printf("\n");
-            return;
+            break;
     }
+    printf(" }");
 }

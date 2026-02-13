@@ -105,10 +105,11 @@ Expr *makeIndexExpr(Expr *name, Expr *index);
 Expr *makeFuncCallExpr(Expr *name, ArgsList args);
 Expr *makeMemberExpr(TokenType op, Expr *object, Token ident);
 
-void freeExpr(Expr *e);
 int evalExpr(Expr *root);
 Expr *cloneExpr(Expr *src);
+void printExprImpl(Expr *root, usize indent);
 void printExpr(Expr *root);
+void freeExpr(Expr *e);
 
 extern cstr tokenTypesStrings[];
 
