@@ -267,6 +267,8 @@ Stmt *var_stmt(Parser *p) {
     Expr *init = NULL;
     if (match(p, TOK_EQUALS)) init = expression(p);
 
+    expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
+
     return stmt_make_var(type, name, init);
 }
 
@@ -336,6 +338,7 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
 
     Expr *expr = expression(p);
+    expect(p, TOK_SEMICOLON, "Expected ';' after expression");
     return stmt_make_expr(expr);
 }
 
