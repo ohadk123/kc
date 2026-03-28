@@ -6,7 +6,7 @@ typedef struct {
     String fileName;
 } Parser;
 
-static bool is_at_end(Parser *p) { return p->index == p->input.len; }
+static bool is_at_end(Parser *p) { return p->input.arr[p->index].kind == TOK_EOF; }
 
 static Token previous(Parser *p) { return p->input.arr[p->index - 1]; }
 
