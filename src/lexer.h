@@ -3,6 +3,6 @@
 
 #include "token.h"
 
-void scan_file(TokensList *dest, const char *path);
+bool scan_file(TokensList *dest, const char *path);
 
 #endif // LEXER_H

@@ -10,7 +10,7 @@ static inline char hex_to_val(char c) {
     if ('a' <= c && c <= 'f') return c - 'a' + 0xa;
     if ('A' <= c && c <= 'F') return c - 'A' + 0xA;
 
-    assert(false && "Called hexToVal with non hex character!");
+    ERROR("[%X] is not a hex character", c);
 }
 
 static inline bool is_oct(char c) { return '0' <= c && c <= '7'; }
@@ -18,7 +18,7 @@ static inline bool is_oct(char c) { return '0' <= c && c <= '7'; }
 static inline char oct_to_val(char c) {
     if ('0' <= c && c <= '7') return c - '0';
 
-    assert(false && "Called octToVal with non octal character!");
+    ERROR("[%X] is not an oct character", c);
 }
 
 typedef struct {
@@ -28,6 +28,7 @@ typedef struct {
     size_t col;
     size_t index;
     TokensList *tokens;
+    bool hasErrors;
 } Lexer;
 
 static inline void add_tok(Lexer *l, Token token) { list_append(l->tokens, token); }
@@ -101,7 +102,7 @@ static Token make_number(Lexer *l) {
 }
 
 static uint8_t consume_escape_char(Lexer *l) {
-    assert(l->input.data[l->index - 1] == '\\' && "Called consume_escape_char without being on '\\'");
+    if (l->input.data[l->index - 1] == '\\') ERROR("Previous character is not '\\'");
     uint64_t val = 0;
 
     char c = advance(l);
@@ -133,7 +134,7 @@ static uint8_t consume_escape_char(Lexer *l) {
             break;
     }
 
-    assert(val <= UINT8_MAX);
+    if (val > UINT8_MAX) TODO("Hex escape sequence out of range");
     return (uint8_t)val;
 }
 
@@ -151,7 +152,7 @@ static Token make_string(Lexer *l) {
         if (c == '\\') c = consume_escape_char(l);
         list_append(&string, c);
     }
-    assert(false && "Unterminated String Literal");
+    TODO("Unterminated string literal");
 
 terminated:
     return tok_make_string_lit(finish_string(&string), l->line, col);
@@ -162,7 +163,7 @@ static Token make_char(Lexer *l) {
     uint8_t c = advance(l);
 
     if (c == '\\') c = consume_escape_char(l);
-    assert(peek(l) == '\'');
+    if (peek(l) != '\'') TODO("Unterminated char literal");
     advance(l); // Consume temrminating '
 
     return tok_make_char_lit(c, l->line, col);
@@ -174,14 +175,15 @@ static Token make_char(Lexer *l) {
  * Public Lexer API
  *********************************************************************************************************************/
 
-void scan_file(TokensList *dest, const char *path) {
-    assert(dest != NULL && path != NULL);
+bool scan_file(TokensList *dest, const char *path) {
+    if (dest == NULL || path == NULL) return false;
 
     Lexer l = {0};
     l.input = str_from_file(path);
     l.tokens = dest;
     l.line = 1;
     l.fileName = str_from_cstr(path);
+    l.hasErrors = false;
 
     while (!is_at_end(&l)) {
         char c = advance(&l);
@@ -391,6 +393,8 @@ void scan_file(TokensList *dest, const char *path) {
     add_simple_tok(&l, TOK_EOF);
 
     free((void *)l.input.data);
+
+    return !l.hasErrors;
 }
 
 void free_token_list(TokensList *tokens) {
