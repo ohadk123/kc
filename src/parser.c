@@ -41,7 +41,8 @@ __attribute__((__noreturn__)) static void parse_error(Parser *p, const char *msg
 }
 
 // static void parse_warning(Parser *p, const char *msg) {
-//     fprintf(stderr, "[%.*s:%zu:%zu]: Warning: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line, peek(p).col,
+//     fprintf(stderr, "[%.*s:%zu:%zu]: Warning: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line,
+//     peek(p).col,
 //             msg);
 // }
 
@@ -277,15 +278,18 @@ Stmt *for_stmt(Parser *p) {
 
     Stmt *init = NULL;
     if (!match(p, TOK_SEMICOLON)) init = statement(p);
-    expect(p, TOK_SEMICOLON, "Expected ';' after for-loop initializer");
 
     Expr *cond = NULL;
-    if (!match(p, TOK_SEMICOLON)) cond = expression(p);
-    expect(p, TOK_SEMICOLON, "Expected ';' after for-loop condition");
+    if (!match(p, TOK_SEMICOLON)) {
+        cond = expression(p);
+        expect(p, TOK_SEMICOLON, "Expected ';' after for-loop condition");
+    }
 
     Expr *inc = NULL;
-    if (!match(p, TOK_RIGHT_PAREN)) inc = expression(p);
-    expect(p, TOK_RIGHT_PAREN, "Expected ')' after for clauses");
+    if (!match(p, TOK_RIGHT_PAREN)) {
+        inc = expression(p);
+        expect(p, TOK_RIGHT_PAREN, "Expected ')' after for clauses");
+    }
 
     Stmt *body = statement(p);
 
