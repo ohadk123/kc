@@ -26,10 +26,6 @@
 
 typedef struct _Expr Expr;
 
-typedef struct {
-    LIST_FIELDS(Expr *);
-} ExprList;
-
 typedef enum {
     EXPR_PRIMARY,
     EXPR_GROUPING,
@@ -74,5 +70,12 @@ struct _Expr {
         ConditionalExpr conditional;
     } as;
 };
+
+Expr *expr_make_primary(Token val);
+Expr *expr_make_grouping(Expr *inner);
+Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs);
+Expr *expr_make_unary(TokenKind op, Expr *inner);
+Expr *expr_make_unary_post(TokenKind op, Expr *inner);
+Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch);
 
 #endif // EXPRESSION_H
