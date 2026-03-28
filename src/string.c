@@ -20,12 +20,12 @@ String str_from_file(const char *path) {
     FILE *fp;
     long start, end;
 
-    if ((fp = fopen(path, "r")) == NULL)       ERROR("Can't open file: \"%s\"", path);
-    if (fseek(fp, 0, SEEK_SET)  != 0)          ERROR("fseek failed");
-    if ((start = ftell(fp))     == -1)         ERROR("ftell failed");
-    if (fseek(fp, 0, SEEK_END)  != 0)          ERROR("fseek failed");
-    if ((end = ftell(fp))       < start)       ERROR("ftell failed");
-    if (fseek(fp, 0, SEEK_SET)  != 0)          ERROR("fseek failed");
+    if ((fp = fopen(path, "r")) == NULL) ERROR("Can't open file: \"%s\"", path);
+    if (fseek(fp, 0, SEEK_SET) != 0) ERROR("fseek failed");
+    if ((start = ftell(fp)) == -1) ERROR("ftell failed");
+    if (fseek(fp, 0, SEEK_END) != 0) ERROR("fseek failed");
+    if ((end = ftell(fp)) < start) ERROR("ftell failed");
+    if (fseek(fp, 0, SEEK_SET) != 0) ERROR("fseek failed");
 
     size_t count = end - start;
     char *data = calloc(count + 1, sizeof(char));
@@ -36,7 +36,6 @@ String str_from_file(const char *path) {
 
     return (String){data, count};
 }
-
 
 bool cmp_cstr(const String a, const char *b) {
     if (a.len != strlen(b)) return false;

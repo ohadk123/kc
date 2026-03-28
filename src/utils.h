@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define TODO(fmt, ...)                                                                \
     do {                                                                              \
