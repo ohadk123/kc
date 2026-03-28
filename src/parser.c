@@ -40,10 +40,10 @@ __attribute__((__noreturn__)) static void parse_error(Parser *p, const char *msg
     abort();
 }
 
-static void parse_warning(Parser *p, const char *msg) {
-    fprintf(stderr, "[%.*s:%zu:%zu]: Warning: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line, peek(p).col,
-            msg);
-}
+// static void parse_warning(Parser *p, const char *msg) {
+//     fprintf(stderr, "[%.*s:%zu:%zu]: Warning: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line, peek(p).col,
+//             msg);
+// }
 
 static Token expect(Parser *p, TokenKind expected, const char *msg) {
     if (match(p, expected)) return previous(p);
