@@ -53,6 +53,7 @@ static Token expect(Parser *p, TokenKind expected, const char *msg) {
 /******************************************************************************
  * Expression Parsing
  *****************************************************************************/
+
 static Expr *expression(Parser *p);
 
 // primary := INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | STRING_LITERAL | TRUE | FALSE | IDENTIFIER |
@@ -252,3 +253,7 @@ static Expr *assignment_expr(Parser *p) {
 }
 
 static Expr *expression(Parser *p) { return assignment_expr(p); }
+
+/******************************************************************************
+ * Statement Parsing
+ *****************************************************************************/

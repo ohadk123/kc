@@ -23,7 +23,7 @@ var_decl
     ;
 
 for_stmt
-    : 'for' '(' expression_opt ';' expression_opt ';' expression_opt ')' statement_block
+    : 'for' '(' statement_opt ';' expression_opt ';' expression_opt ')' statement_block
     ;
 
 while_stmt
@@ -58,6 +58,11 @@ type
     | 'f32'
     | 'f64'
     | 'bool'
+    ;
+
+statement_opt
+    : statement
+    | empty
     ;
 
 expression_opt
