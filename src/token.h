@@ -1,5 +1,5 @@
-#ifndef INCLUDE_KC_TOKEN_H_
-#define INCLUDE_KC_TOKEN_H_
+#ifndef TOKEN_H
+#define TOKEN_H
 
 #include "string.h"
 
@@ -146,4 +146,4 @@ TokenKind match_keyword_or_ident(String keyword);
 
 void print_tok(Token token);
 
-#endif // INCLUDE_KC_TOKEN_H_
+#endif // TOKEN_H
