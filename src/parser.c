@@ -350,14 +350,20 @@ Stmt *continue_stmt(Parser *p) {
     return stmt_make_continue();
 }
 
+Stmt *return_stmt(Parser *p) {
+    Expr *ret_val = expression(p);
+    return stmt_make_return(ret_val);
+}
+
 Stmt *statement(Parser *p) {
-    if (match_types(p)) return var_stmt(p);
-    if (match(p, TOK_FOR)) return for_stmt(p);
-    if (match(p, TOK_WHILE)) return while_stmt(p);
-    if (match(p, TOK_IF)) return if_stmt(p);
+    if (match_types(p))           return var_stmt(p);
+    if (match(p, TOK_FOR))        return for_stmt(p);
+    if (match(p, TOK_WHILE))      return while_stmt(p);
+    if (match(p, TOK_IF))         return if_stmt(p);
     if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
-    if (match(p, TOK_BREAK)) return break_stmt(p);
-    if (match(p, TOK_CONTINUE)) return continue_stmt(p);
+    if (match(p, TOK_BREAK))      return break_stmt(p);
+    if (match(p, TOK_CONTINUE))   return continue_stmt(p);
+    if (match(p, TOK_RETURN))     return return_stmt(p);
 
     Expr *expr = expression(p);
     expect(p, TOK_SEMICOLON, "Expected ';' after expression");

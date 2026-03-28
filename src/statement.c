@@ -163,6 +163,12 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_CONTINUE:
             printf("%*s\"kind\": \"continue\"\n", i * 2, "");
             break;
+        case STMT_RETURN:
+            printf("%*s\"kind\": \"return\",\n", i * 2, "");
+            printf("%*s\"expr\": ", i * 2, "");
+            print_expr(stmt->as.returnS.ret_val, i);
+            printf("\n");
+            break;
     }
     printf("%*s}", indent * 2, "");
 }
