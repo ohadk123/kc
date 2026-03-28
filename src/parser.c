@@ -299,7 +299,19 @@ Stmt *while_stmt(Parser *p) {
     return stmt_make_while(cond, body);
 }
 
-Stmt *if_stmt(Parser *p) {}
+Stmt *if_stmt(Parser *p) {
+    expect(p, TOK_LEFT_PAREN, "Expected '(' after if");
+
+    Expr *cond = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expected ')' after condition");
+
+    Stmt *thenBranch = statement(p);
+
+    Stmt *elseBranch = NULL;
+    if (match(p, TOK_ELSE)) elseBranch = statement(p);
+
+    return stmt_make_if(cond, thenBranch, elseBranch);
+}
 
 Stmt *block_stmt(Parser *p) {}
 
