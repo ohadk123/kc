@@ -70,7 +70,7 @@ static Expr *primary_expr(Parser *p) {
         return expr_make_primary(primary);
     } else if (match(p, TOK_LEFT_PAREN)) {
         Expr *inner = expression(p);
-        expect(p, TOK_RIGHT_PAREN, "Missing closing ')'");
+        expect(p, TOK_RIGHT_PAREN, "Expected closing ')'");
         return expr_make_grouping(inner);
     }
 
@@ -272,7 +272,7 @@ Stmt *statement(Parser *p);
 
 Stmt *var_stmt(Parser *p) {
     TokenKind type = previous(p).kind;
-    Token name = expect(p, TOK_IDENTIFIER, "Missing variable name");
+    Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
     Expr *init = NULL;
     if (match(p, TOK_EQUALS)) init = expression(p);
 
@@ -333,7 +333,7 @@ Stmt *if_stmt(Parser *p) {
     return stmt_make_if(cond, thenBranch, elseBranch);
 }
 
-Stmt *block_stmt(Parser *p) {
+StmtList stmt_list(Parser *p) {
     StmtList body = {0};
 
     while (!match(p, TOK_RIGHT_BRACE) && !is_at_end(p)) {
@@ -341,7 +341,11 @@ Stmt *block_stmt(Parser *p) {
         list_append(&body, s);
     }
 
-    return stmt_make_block(body);
+    return body;
+}
+
+Stmt *block_stmt(Parser *p) {
+    return stmt_make_block(stmt_list(p));
 }
 
 Stmt *break_stmt(Parser *p) {
@@ -374,8 +378,37 @@ Stmt *statement(Parser *p) {
     return stmt_make_expr(expr);
 }
 
+ParamsList params_list(Parser *p) {
+    ParamsList params = {0};
+    if (match(p, TOK_RIGHT_PAREN)) return params;
+
+    while (true) {
+        Param param;
+        if (!match_types(p)) parse_error(p, "Expected parameter type");
+        param.type = previous(p).kind;
+        expect(p, TOK_IDENTIFIER, "Expected parameter name");
+        param.name = previous(p);
+        list_append(&params, param);
+        if (!match(p, TOK_COMMA)) {
+            expect(p, TOK_RIGHT_PAREN, "Expected ')'");
+            break;
+        }
+    }
+
+    return params;
+}
+
 Stmt *func_decl_stmt(Parser *p) {
-    TODO("function declaration %p", (void*) p);
+    TokenKind type = previous(p).kind;
+    Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
+
+    expect(p, TOK_LEFT_PAREN, "Expectd '('");
+    ParamsList params = params_list(p);
+
+    expect(p, TOK_LEFT_BRACE, "Expected '{'");
+    StmtList body = stmt_list(p);
+
+    return stmt_make_func(type, name, params, body);
 }
 
 Stmt *top_level_decl(Parser *p) {
