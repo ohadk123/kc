@@ -258,15 +258,31 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
  * Statement Parsing
  *****************************************************************************/
 
+Stmt *var_stmt(Parser *p) {
+    TokenKind type = previous(p).kind;
+    Token name = expect(p, TOK_IDENTIFIER, "Missing variable name");
+    Expr *init = NULL;
+    if (match(p, TOK_EQUALS)) init = expression(p);
+
+    return stmt_make_var(type, name, init);
+}
+
+Stmt *for_stmt(Parser *p) {}
+
+Stmt *while_stmt(Parser *p) {}
+
+Stmt *if_stmt(Parser *p) {}
+
 Stmt *statement(Parser *p) {
     if (match(p, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_USIZE, TOK_ISIZE, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32,
               TOK_F64, TOK_BOOL)) {
-        TokenKind type = previous(p).kind;
-        Token name = expect(p, TOK_IDENTIFIER, "Missing variable name");
-        Expr *init = NULL;
-        if (match(p, TOK_EQUALS)) init = expression(p);
-
-        return stmt_make_var(type, name, init);
+        return var_stmt(p);
+    } else if (match(p, TOK_FOR)) {
+        return for_stmt(p);
+    } else if (match(p, TOK_WHILE)) {
+        return while_stmt(p);
+    } else if (match(p, TOK_IF)) {
+        return if_stmt(p);
     }
 
     Expr *expr = expression(p);
