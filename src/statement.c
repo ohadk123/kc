@@ -49,3 +49,11 @@ Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body) {
     s->as.forS.body = body;
     return s;
 }
+
+Stmt *stmt_make_break(void) {
+    return make_stmt(STMT_BREAK);
+}
+
+Stmt *stmt_make_continue(void) {
+    return make_stmt(STMT_CONTINUE);
+}

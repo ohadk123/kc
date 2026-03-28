@@ -72,4 +72,7 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body);
 
+Stmt *stmt_make_break(void);
+Stmt *stmt_make_continue(void);
+
 #endif // !STATEMENT_H

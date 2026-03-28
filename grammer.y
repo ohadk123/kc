@@ -15,6 +15,8 @@ statement
     | while_stmt
     | if_stmt
     | expr_stmt
+    | break_stmt
+    | continue_stmt
     ;
 
 var_decl
@@ -37,6 +39,14 @@ if_stmt
 
 expr_stmt
     : expression ';'
+    ;
+
+break_stmt
+    : 'break' ';'
+    ;
+
+continue_stmt
+    : 'continue' ';'
     ;
 
 statement_block

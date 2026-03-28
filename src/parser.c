@@ -332,6 +332,16 @@ Stmt *block_stmt(Parser *p) {
     return stmt_make_block(body);
 }
 
+Stmt *break_stmt(Parser *p) {
+    expect(p, TOK_SEMICOLON, "Expected ';' after break");
+    return stmt_make_break();
+}
+
+Stmt *continue_stmt(Parser *p) {
+    expect(p, TOK_SEMICOLON, "Expected ';' after break");
+    return stmt_make_continue();
+}
+
 Stmt *statement(Parser *p) {
     if (match(p, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_USIZE, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32,
               TOK_F64, TOK_BOOL))
@@ -340,6 +350,8 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_WHILE)) return while_stmt(p);
     if (match(p, TOK_IF)) return if_stmt(p);
     if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
+    if (match(p, TOK_BREAK)) return break_stmt(p);
+    if (match(p, TOK_CONTINUE)) return continue_stmt(p);
 
     Expr *expr = expression(p);
     expect(p, TOK_SEMICOLON, "Expected ';' after expression");
