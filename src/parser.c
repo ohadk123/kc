@@ -351,7 +351,7 @@ StmtList parse(TokensList input, String fileName) {
 
     StmtList ast = {0};
 
-    while (is_at_end(&p)) {
+    while (!is_at_end(&p)) {
         Stmt *s = statement(&p);
         list_append(&ast, s);
     }
