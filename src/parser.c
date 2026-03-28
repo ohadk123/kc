@@ -338,7 +338,7 @@ Stmt *break_stmt(Parser *p) {
 }
 
 Stmt *continue_stmt(Parser *p) {
-    expect(p, TOK_SEMICOLON, "Expected ';' after break");
+    expect(p, TOK_SEMICOLON, "Expected ';' after continue");
     return stmt_make_continue();
 }
 
