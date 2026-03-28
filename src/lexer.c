@@ -1,3 +1,5 @@
+// TODO: better error handling
+
 #include "lexer.h"
 #include <ctype.h>
 
