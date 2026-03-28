@@ -288,7 +288,16 @@ Stmt *for_stmt(Parser *p) {
     return stmt_make_for(init, cond, inc, body);
 }
 
-Stmt *while_stmt(Parser *p) {}
+Stmt *while_stmt(Parser *p) {
+    expect(p, TOK_LEFT_PAREN, "Exected '(' after after while");
+
+    Expr *cond = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expected ')' after while condition");
+
+    Stmt *body = statement(p);
+
+    return stmt_make_while(cond, body);
+}
 
 Stmt *if_stmt(Parser *p) {}
 
