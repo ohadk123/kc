@@ -77,8 +77,7 @@ static Expr *primary_expr(Parser *p) {
     parse_error(p, "Expected expression");
 }
 
-// postfix := primary 
-//          | postfix_expr { '++' | '--' }*
+// postfix := primary { '++' | '--' }*
 //          | postfix_expr '(' argument_list ')'
 static Expr *postfix_expr(Parser *p) {
     Expr *expr = primary_expr(p);
@@ -88,7 +87,20 @@ static Expr *postfix_expr(Parser *p) {
             TokenKind op = previous(p).kind;
             expr = expr_make_unary_post(op, expr);
         } else if (match(p, TOK_LEFT_PAREN)) {
-            TODO("function call");
+            ExprList args = {0};
+            if (!match(p, TOK_RIGHT_PAREN)) {
+                while (true) {
+                    Expr *arg = expression(p);
+                    list_append(&args, arg);
+
+                    if (!match(p, TOK_COMMA)) {
+                        expect(p, TOK_RIGHT_PAREN, "Expected ')'");
+                        break;
+                    }
+                }
+            }
+
+            expr = expr_make_func_call(expr, args);
         } else {
             break;
         }
@@ -285,7 +297,8 @@ Stmt *for_stmt(Parser *p) {
     expect(p, TOK_LEFT_PAREN, "Exected '(' after after for");
 
     Stmt *init = NULL;
-    if (match_types(p)) init = var_stmt(p);
+    if (match_types(p))
+        init = var_stmt(p);
     else if (!match(p, TOK_SEMICOLON)) {
         init = stmt_make_expr(expression(p));
         expect(p, TOK_SEMICOLON, "Expected ';' after expression");
@@ -344,9 +357,7 @@ StmtList stmt_list(Parser *p) {
     return body;
 }
 
-Stmt *block_stmt(Parser *p) {
-    return stmt_make_block(stmt_list(p));
-}
+Stmt *block_stmt(Parser *p) { return stmt_make_block(stmt_list(p)); }
 
 Stmt *break_stmt(Parser *p) {
     expect(p, TOK_SEMICOLON, "Expected ';' after break");
@@ -360,18 +371,19 @@ Stmt *continue_stmt(Parser *p) {
 
 Stmt *return_stmt(Parser *p) {
     Expr *ret_val = expression(p);
+    expect(p, TOK_SEMICOLON, "Expected ';'");
     return stmt_make_return(ret_val);
 }
 
 Stmt *statement(Parser *p) {
-    if (match_types(p))           return var_stmt(p);
-    if (match(p, TOK_FOR))        return for_stmt(p);
-    if (match(p, TOK_WHILE))      return while_stmt(p);
-    if (match(p, TOK_IF))         return if_stmt(p);
+    if (match_types(p)) return var_stmt(p);
+    if (match(p, TOK_FOR)) return for_stmt(p);
+    if (match(p, TOK_WHILE)) return while_stmt(p);
+    if (match(p, TOK_IF)) return if_stmt(p);
     if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
-    if (match(p, TOK_BREAK))      return break_stmt(p);
-    if (match(p, TOK_CONTINUE))   return continue_stmt(p);
-    if (match(p, TOK_RETURN))     return return_stmt(p);
+    if (match(p, TOK_BREAK)) return break_stmt(p);
+    if (match(p, TOK_CONTINUE)) return continue_stmt(p);
+    if (match(p, TOK_RETURN)) return return_stmt(p);
 
     Expr *expr = expression(p);
     expect(p, TOK_SEMICOLON, "Expected ';' after expression");
