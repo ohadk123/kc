@@ -48,6 +48,13 @@ Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch) {
     return e;
 }
 
+Expr *expr_make_func_call(Expr *func, ExprList args) {
+    Expr *e = make_expr(EXPR_FUNC_CALL);
+    e->as.funcCall.func = func;
+    e->as.funcCall.args = args;
+    return e;
+}
+
 static const char *op_str(TokenKind op) {
     switch (op) {
         case TOK_PLUS:                   return "+";
@@ -154,6 +161,22 @@ void print_expr(Expr *expr, int indent) {
             print_expr(expr->as.conditional.elseBranch, i);
             printf("\n");
             break;
+        case EXPR_FUNC_CALL: {
+            FuncCallExpr *fc = &expr->as.funcCall;
+            printf("%*s\"kind\": \"func_call\",\n", i * 2, "");
+            printf("%*s\"func\": ", i * 2, "");
+            print_expr(fc->func, i);
+            printf(",\n");
+            printf("%*s\"args\": [", i * 2, "");
+            for (size_t j = 0; j < fc->args.len; j++) {
+                printf("\n%*s", (i + 1) * 2, "");
+                print_expr(fc->args.arr[j], i + 1);
+                if (j + 1 < fc->args.len) printf(",");
+            }
+            if (fc->args.len > 0) printf("\n%*s", i * 2, "");
+            printf("]\n");
+            break;
+        }
     }
     printf("%*s}", indent * 2, "");
 }

@@ -25,6 +25,9 @@
 #include "token.h"
 
 typedef struct _Expr Expr;
+typedef struct {
+    LIST_FIELDS(Expr *);
+} ExprList;
 
 typedef enum {
     EXPR_PRIMARY,
@@ -33,6 +36,7 @@ typedef enum {
     EXPR_UNARY,
     EXPR_UNARY_POST,
     EXPR_CONDITIONAL,
+    EXPR_FUNC_CALL,
 } ExprKind;
 
 typedef struct {
@@ -60,6 +64,11 @@ typedef struct {
     Expr *elseBranch;
 } ConditionalExpr;
 
+typedef struct {
+    Expr *func;
+    ExprList args;
+} FuncCallExpr;
+
 struct _Expr {
     ExprKind kind;
     union {
@@ -68,6 +77,7 @@ struct _Expr {
         BinaryExpr binary;
         UnaryExpr unary;
         ConditionalExpr conditional;
+        FuncCallExpr funcCall;
     } as;
 };
 
@@ -77,6 +87,7 @@ Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs);
 Expr *expr_make_unary(TokenKind op, Expr *inner);
 Expr *expr_make_unary_post(TokenKind op, Expr *inner);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch);
+Expr *expr_make_func_call(Expr *func, ExprList args);
 
 void print_expr(Expr *expr, int indent);
 
