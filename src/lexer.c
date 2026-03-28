@@ -102,7 +102,8 @@ static Token make_number(Lexer *l) {
 }
 
 static uint8_t consume_escape_char(Lexer *l) {
-    if (l->input.data[l->index - 1] == '\\') ERROR("Previous character is not '\\'");
+    uint8_t prev = l->input.data[l->index - 1];
+    if (prev != '\\') ERROR("Previous character is not '\\' (%X)", prev);
     uint64_t val = 0;
 
     char c = advance(l);
