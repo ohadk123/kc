@@ -1,57 +1,24 @@
 %token IDENT INTEGER FLOAT CHAR STRING
 
-%start statement_list
+%start translation_unit
 %%
 
-statement_list
-    : statement_list statement
-    | statement
+translation_unit
+    : top_level_decl
+    | translation_unit top_level_decl
     ;
 
-statement
-    : statement_block
-    | var_decl
-    | for_stmt
-    | while_stmt
-    | if_stmt
-    | expr_stmt
-    | break_stmt
-    | continue_stmt
+top_level_decl
+    : function_decl
     ;
 
-var_decl
-    : type IDENT ';'
-    | type IDENT '=' expression ';'
+function_decl
+    : type_void IDENT '(' parameter_list_opt ')' statement_block
     ;
 
-for_stmt
-    : 'for' '(' statement_opt ';' expression_opt ';' expression_opt ')' statement_block
-    ;
-
-while_stmt
-    : 'while' '(' expression ')' statement_block
-    ;
-
-if_stmt
-    : 'if' '(' expression ')' statement_block
-    | 'if' '(' expression ')' statement_block 'else' statement_block
-    ;
-
-expr_stmt
-    : expression ';'
-    ;
-
-break_stmt
-    : 'break' ';'
-    ;
-
-continue_stmt
-    : 'continue' ';'
-    ;
-
-statement_block
-    : '{' statement_list '}'
-    | statement
+type_void
+    : type
+    | 'void'
     ;
 
 type
@@ -68,6 +35,71 @@ type
     | 'f32'
     | 'f64'
     | 'bool'
+    ;
+
+parameter_list_opt
+    : parameter_list
+    | empty
+    ;
+
+parameter_list
+    : type IDENT
+    | parameter_list ',' type IDENT
+    ;
+
+statement_block
+    : '{' statement_list '}'
+    ;
+
+statement_list
+    : statement_list statement
+    | statement
+    ;
+
+statement
+    : statement_block
+    | var_decl
+    | for_stmt
+    | while_stmt
+    | if_stmt
+    | expr_stmt
+    | break_stmt
+    | continue_stmt
+    | return_stmt
+    ;
+
+var_decl
+    : type IDENT ';'
+    | type IDENT '=' expression ';'
+    ;
+
+for_stmt
+    : 'for' '(' statement_opt ';' expression_opt ';' expression_opt ')' statement
+    ;
+
+while_stmt
+    : 'while' '(' expression ')' statement
+    ;
+
+if_stmt
+    : 'if' '(' expression ')' statement
+    | 'if' '(' expression ')' statement'else' statement
+    ;
+
+expr_stmt
+    : expression ';'
+    ;
+
+break_stmt
+    : 'break' ';'
+    ;
+
+continue_stmt
+    : 'continue' ';'
+    ;
+
+return_stmt
+    : 'return' expression_opt ';'
     ;
 
 statement_opt
@@ -152,6 +184,17 @@ unary_expr
 postfix_expr
     : primary_expr
     | postfix_expr postfix_op
+    | postfix_expr '(' argument_list_opt ')'
+    ;
+
+argument_list_opt
+    : argument_list
+    | empty
+    ;
+
+argument_list
+    : assignment_expr
+    | argument_list ',' assignment_expr
     ;
 
 primary_expr
