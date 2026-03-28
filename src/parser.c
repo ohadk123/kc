@@ -313,7 +313,16 @@ Stmt *if_stmt(Parser *p) {
     return stmt_make_if(cond, thenBranch, elseBranch);
 }
 
-Stmt *block_stmt(Parser *p) {}
+Stmt *block_stmt(Parser *p) {
+    StmtList body = {0};
+
+    while (!match(p, TOK_RIGHT_BRACE) && !is_at_end(p)) {
+        Stmt *s = statement(p);
+        list_append(&body, s);
+    }
+
+    return stmt_make_block(body);
+}
 
 Stmt *statement(Parser *p) {
     if (match(p, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_USIZE, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32,
