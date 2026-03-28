@@ -78,6 +78,12 @@ static const char *type_str(TokenKind type) {
     }
 }
 
+Stmt *stmt_make_return(Expr *ret_val) {
+    Stmt *s = make_stmt(STMT_RETURN);
+    s->as.returnS.ret_val = ret_val;
+    return s;
+}
+
 void print_stmt(Stmt *stmt, int indent) {
     if (!stmt) {
         printf("null");

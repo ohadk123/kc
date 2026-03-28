@@ -15,6 +15,7 @@ typedef enum {
     STMT_WHILE,
     STMT_IF,
     STMT_FOR,
+    STMT_RETURN,
 
     // struct-less statements
     STMT_BREAK,
@@ -53,6 +54,10 @@ typedef struct {
     Stmt *body;
 } ForStmt;
 
+typedef struct {
+    Expr *ret_val;
+} ReturnStmt;
+
 struct _Stmt {
     StmtKind kind;
     union {
@@ -62,6 +67,7 @@ struct _Stmt {
         WhileStmt whileS;
         IfStmt ifS;
         ForStmt forS;
+        ReturnStmt returnS;
     } as;
 };
 
@@ -71,6 +77,7 @@ Stmt *stmt_make_block(StmtList block);
 Stmt *stmt_make_while(Expr *cond, Stmt *body);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body);
+Stmt *stmt_make_return(Expr *ret_val);
 
 Stmt *stmt_make_break(void);
 Stmt *stmt_make_continue(void);
