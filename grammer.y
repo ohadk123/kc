@@ -13,12 +13,7 @@ top_level_decl
     ;
 
 function_decl
-    : type_void IDENT '(' parameter_list_opt ')' statement_block
-    ;
-
-type_void
-    : type
-    | 'void'
+    : type IDENT '(' parameter_list_opt ')' statement_block
     ;
 
 type
@@ -35,6 +30,7 @@ type
     | 'f32'
     | 'f64'
     | 'bool'
+    | 'void'
     ;
 
 parameter_list_opt
