@@ -261,7 +261,7 @@ bool scan_file(TokensList *dest, const char *path) {
             // TOK_SLASH_EQUALS,
             case '/':
                 if (match(&l, '/'))
-                    while (!is_at_end(&l) || peek(&l) != '\n') advance(&l);
+                    while (!is_at_end(&l) && peek(&l) != '\n') advance(&l);
                 else if (match(&l, '='))
                     ADD_SIMPLE(TOK_SLASH_EQUALS);
                 else
