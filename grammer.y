@@ -113,7 +113,7 @@ bitwise_xor_expr
     : bitwise_and_expr
     | bitwise_and_expr '^' bitwise_xor_expr
     ;
-    
+
 bitwise_and_expr
     : equality_expr
     | equality_expr '&' bitwise_and_expr
@@ -160,6 +160,8 @@ primary_expr
     | FLOAT
     | CHAR
     | STRING
+    | 'TRUE'
+    | 'FALSE'
     | '(' expression ')'
     ;
 
