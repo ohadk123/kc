@@ -281,7 +281,11 @@ Stmt *for_stmt(Parser *p) {
     expect(p, TOK_LEFT_PAREN, "Exected '(' after after for");
 
     Stmt *init = NULL;
-    if (!match(p, TOK_SEMICOLON)) init = statement(p);
+    if (match_types(p)) init = var_stmt(p);
+    else if (!match(p, TOK_SEMICOLON)) {
+        init = stmt_make_expr(expression(p));
+        expect(p, TOK_SEMICOLON, "Expected ';' after expression");
+    }
 
     Expr *cond = NULL;
     if (!match(p, TOK_SEMICOLON)) {

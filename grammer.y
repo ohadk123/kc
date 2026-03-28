@@ -74,7 +74,8 @@ var_decl
     ;
 
 for_stmt
-    : 'for' '(' statement_opt ';' expression_opt ';' expression_opt ')' statement
+    : 'for' '(' expression_opt ';' expression_opt ';' expression_opt ')' statement
+    | 'for' '(' type IDENT '=' expression ';' expression_opt ';' expression_opt ')' statement
     ;
 
 while_stmt
