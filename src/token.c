@@ -175,5 +175,5 @@ void print_tok(Token token) {
             break;
         default: break;
     }
-    printf(" }");
+    printf(" }\n");
 }
