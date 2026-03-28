@@ -24,8 +24,8 @@ static bool match_arr(Parser *p, size_t count, const TokenKind *tokens) {
 
 #define match(p, ...) match_arr(p, sizeof((TokenKind[]){__VA_ARGS__}) / sizeof(TokenKind), (TokenKind[]){__VA_ARGS__})
 
-TokenKind types[] = {TOK_U8,  TOK_U16, TOK_U32,   TOK_U64, TOK_USIZE, TOK_I8,  TOK_I16,
-                     TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32, TOK_F64,   TOK_BOOL};
+TokenKind types[] = {TOK_U8,  TOK_U16, TOK_U32,   TOK_U64, TOK_USIZE, TOK_I8,   TOK_I16,
+                     TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32, TOK_F64,   TOK_BOOL, TOK_VOID};
 #define match_types(p) match_arr((p), sizeof(types) / sizeof(*types), types)
 
 inline static Token peek(Parser *p) {
