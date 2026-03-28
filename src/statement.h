@@ -16,6 +16,7 @@ typedef enum {
     STMT_IF,
     STMT_FOR,
     STMT_RETURN,
+    STMT_FUNC,
 
     // struct-less statements
     STMT_BREAK,
@@ -58,6 +59,22 @@ typedef struct {
     Expr *ret_val;
 } ReturnStmt;
 
+typedef struct {
+    TokenKind type;
+    Token name;
+} Param;
+
+typedef struct {
+    LIST_FIELDS(Param);
+} ParamsList;
+
+typedef struct {
+    TokenKind retType;
+    Token name;
+    ParamsList params;
+    StmtList block;
+} FuncStmt;
+
 struct _Stmt {
     StmtKind kind;
     union {
@@ -68,6 +85,7 @@ struct _Stmt {
         IfStmt ifS;
         ForStmt forS;
         ReturnStmt returnS;
+        FuncStmt func;
     } as;
 };
 
@@ -78,6 +96,7 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body);
 Stmt *stmt_make_return(Expr *ret_val);
+Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block);
 
 Stmt *stmt_make_break(void);
 Stmt *stmt_make_continue(void);

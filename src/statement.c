@@ -84,6 +84,15 @@ Stmt *stmt_make_return(Expr *ret_val) {
     return s;
 }
 
+Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block) {
+    Stmt *s = make_stmt(STMT_FUNC);
+    s->as.func.retType = retType;
+    s->as.func.name = name;
+    s->as.func.params = params;
+    s->as.func.block = block;
+    return s;
+}
+
 void print_stmt(Stmt *stmt, int indent) {
     if (!stmt) {
         printf("null");
@@ -169,6 +178,30 @@ void print_stmt(Stmt *stmt, int indent) {
             print_expr(stmt->as.returnS.ret_val, i);
             printf("\n");
             break;
+        case STMT_FUNC: {
+            FuncStmt *fn = &stmt->as.func;
+            printf("%*s\"kind\": \"func\",\n", i * 2, "");
+            printf("%*s\"ret\": \"%s\",\n", i * 2, "", type_str(fn->retType));
+            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", (int)fn->name.as.identifier.len, fn->name.as.identifier.data);
+            printf("%*s\"params\": [", i * 2, "");
+            for (size_t j = 0; j < fn->params.len; j++) {
+                Param *par = &fn->params.arr[j];
+                printf("\n%*s{ \"type\": \"%s\", \"name\": \"%.*s\" }", (i + 1) * 2, "",
+                       type_str(par->type), (int)par->name.as.identifier.len, par->name.as.identifier.data);
+                if (j + 1 < fn->params.len) printf(",");
+            }
+            if (fn->params.len > 0) printf("\n%*s", i * 2, "");
+            printf("],\n");
+            printf("%*s\"body\": [\n", i * 2, "");
+            for (size_t j = 0; j < fn->block.len; j++) {
+                printf("%*s", (i + 1) * 2, "");
+                print_stmt(fn->block.arr[j], i + 1);
+                if (j + 1 < fn->block.len) printf(",");
+                printf("\n");
+            }
+            printf("%*s]\n", i * 2, "");
+            break;
+        }
     }
     printf("%*s}", indent * 2, "");
 }
