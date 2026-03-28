@@ -257,6 +257,7 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 /******************************************************************************
  * Statement Parsing
  *****************************************************************************/
+Stmt *statement(Parser *p);
 
 Stmt *var_stmt(Parser *p) {
     TokenKind type = previous(p).kind;
@@ -267,11 +268,31 @@ Stmt *var_stmt(Parser *p) {
     return stmt_make_var(type, name, init);
 }
 
-Stmt *for_stmt(Parser *p) {}
+Stmt *for_stmt(Parser *p) {
+    expect(p, TOK_LEFT_PAREN, "Exected '(' after after for");
+
+    Stmt *init = NULL;
+    if (!match(p, TOK_SEMICOLON)) init = statement(p);
+    expect(p, TOK_SEMICOLON, "Expected ';' after for-loop initializer");
+
+    Expr *cond = NULL;
+    if (!match(p, TOK_SEMICOLON)) cond = expression(p);
+    expect(p, TOK_SEMICOLON, "Expected ';' after for-loop condition");
+
+    Expr *inc = NULL;
+    if (!match(p, TOK_RIGHT_PAREN)) inc = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expected ')' after for clauses");
+
+    Stmt *body = statement(p);
+
+    return stmt_make_for(init, cond, inc, body);
+}
 
 Stmt *while_stmt(Parser *p) {}
 
 Stmt *if_stmt(Parser *p) {}
+
+Stmt *block_stmt(Parser *p) {}
 
 Stmt *statement(Parser *p) {
     if (match(p, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_USIZE, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32,
@@ -280,6 +301,7 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_FOR)) return for_stmt(p);
     if (match(p, TOK_WHILE)) return while_stmt(p);
     if (match(p, TOK_IF)) return if_stmt(p);
+    if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
 
     Expr *expr = expression(p);
     return stmt_make_expr(expr);
