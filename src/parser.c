@@ -374,6 +374,27 @@ Stmt *statement(Parser *p) {
     return stmt_make_expr(expr);
 }
 
+Stmt *func_decl_stmt(Parser *p) {
+    TODO("function declaration %p", (void*) p);
+}
+
+Stmt *top_level_decl(Parser *p) {
+    if (match_types(p)) return func_decl_stmt(p);
+
+    parse_error(p, "Unkown top level declaration");
+}
+
+StmtList translation_unit(Parser *p) {
+    StmtList ast = {0};
+
+    while (!is_at_end(p)) {
+        Stmt *s = top_level_decl(p);
+        list_append(&ast, s);
+    }
+
+    return ast;
+}
+
 StmtList parse(TokensList input, String fileName) {
     Parser p = (Parser){
         .input = input,
@@ -381,12 +402,5 @@ StmtList parse(TokensList input, String fileName) {
         .fileName = fileName,
     };
 
-    StmtList ast = {0};
-
-    while (!is_at_end(&p)) {
-        Stmt *s = statement(&p);
-        list_append(&ast, s);
-    }
-
-    return ast;
+    return translation_unit(&p);
 }
