@@ -10,12 +10,12 @@ OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 all:
 	compiledb make compile
 
-compile: build $(BUILD_DIR)/main
+compile: build $(BUILD_DIR)/kc
 
 build:
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/main: $(OBJS)
+$(BUILD_DIR)/kc: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
