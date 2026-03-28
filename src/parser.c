@@ -80,6 +80,8 @@ static Expr *postfix_expr(Parser *p) {
         if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
             TokenKind op = previous(p).kind;
             expr = expr_make_unary_post(op, expr);
+        } else {
+            break;
         }
     }
 
