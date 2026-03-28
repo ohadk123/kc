@@ -1,4 +1,4 @@
-#include "expression.h"
+#include "statement.h"
 
 typedef struct {
     TokensList input;
@@ -257,3 +257,35 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 /******************************************************************************
  * Statement Parsing
  *****************************************************************************/
+
+Stmt *statement(Parser *p) {
+    if (match(p, TOK_U8, TOK_U16, TOK_U32, TOK_U64, TOK_USIZE, TOK_ISIZE, TOK_I8, TOK_I16, TOK_I32, TOK_I64, TOK_F32,
+              TOK_F64, TOK_BOOL)) {
+        TokenKind type = previous(p).kind;
+        Token name = expect(p, TOK_IDENTIFIER, "Missing variable name");
+        Expr *init = NULL;
+        if (match(p, TOK_EQUALS)) init = expression(p);
+
+        return stmt_make_var(type, name, init);
+    }
+
+    Expr *expr = expression(p);
+    return stmt_make_expr(expr);
+}
+
+StmtList parse(TokensList input, String fileName) {
+    Parser p = (Parser){
+        .input = input,
+        .index = 0,
+        .fileName = fileName,
+    };
+
+    StmtList ast = {0};
+
+    while (is_at_end(&p)) {
+        Stmt *s = statement(&p);
+        list_append(&ast, s);
+    }
+
+    return ast;
+}

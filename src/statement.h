@@ -5,7 +5,7 @@
 
 typedef struct _Stmt Stmt;
 typedef struct {
-    LIST_FIELDS(Stmt);
+    LIST_FIELDS(Stmt *);
 } StmtList;
 
 typedef enum {
