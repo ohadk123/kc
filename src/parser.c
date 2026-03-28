@@ -370,8 +370,11 @@ Stmt *continue_stmt(Parser *p) {
 }
 
 Stmt *return_stmt(Parser *p) {
-    Expr *ret_val = expression(p);
-    expect(p, TOK_SEMICOLON, "Expected ';'");
+    Expr *ret_val = NULL;
+    if (!match(p, TOK_SEMICOLON)) {
+        ret_val = expression(p);
+        expect(p, TOK_SEMICOLON, "Expected ';'");
+    }
     return stmt_make_return(ret_val);
 }
 
