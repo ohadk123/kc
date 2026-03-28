@@ -17,7 +17,10 @@ int main(int argc, char *argv[]) {
     }
 
     StmtList ast = parse(tokens, str_from_cstr(argv[1]));
-    printf("ast := %zu\n", ast.len);
+    for (size_t i = 0; i < ast.len; i++) {
+        print_stmt(ast.arr[i], 0);
+        printf("\n");
+    }
 
     printf("compiling done!\n");
 }

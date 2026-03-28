@@ -47,3 +47,113 @@ Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch) {
     e->as.conditional.elseBranch = elseBranch;
     return e;
 }
+
+static const char *op_str(TokenKind op) {
+    switch (op) {
+        case TOK_PLUS:                   return "+";
+        case TOK_MINUS:                  return "-";
+        case TOK_STAR:                   return "*";
+        case TOK_SLASH:                  return "/";
+        case TOK_PERCENT:                return "%";
+        case TOK_AMPERSAND:              return "&";
+        case TOK_PIPE:                   return "|";
+        case TOK_CARET:                  return "^";
+        case TOK_TILDE:                  return "~";
+        case TOK_LESS_LESS:              return "<<";
+        case TOK_GREATER_GREATER:        return ">>";
+        case TOK_EQUALS_EQUALS:          return "==";
+        case TOK_BANG_EQUALS:            return "!=";
+        case TOK_LESS:                   return "<";
+        case TOK_LESS_EQUALS:            return "<=";
+        case TOK_GREATER:                return ">";
+        case TOK_GREATER_EQUALS:         return ">=";
+        case TOK_AMPERSAND_AMPERSAND:    return "&&";
+        case TOK_PIPE_PIPE:              return "||";
+        case TOK_BANG:                   return "!";
+        case TOK_PLUS_PLUS:              return "++";
+        case TOK_MINUS_MINUS:            return "--";
+        case TOK_EQUALS:                 return "=";
+        case TOK_PLUS_EQUALS:            return "+=";
+        case TOK_MINUS_EQUALS:           return "-=";
+        case TOK_STAR_EQUALS:            return "*=";
+        case TOK_SLASH_EQUALS:           return "/=";
+        case TOK_PERCENT_EQUALS:         return "%=";
+        case TOK_AMPERSAND_EQUALS:       return "&=";
+        case TOK_PIPE_EQUALS:            return "|=";
+        case TOK_CARET_EQUALS:           return "^=";
+        case TOK_LESS_LESS_EQUALS:       return "<<=";
+        case TOK_GREATER_GREATER_EQUALS: return ">>=";
+        default:                         return "?";
+    }
+}
+
+void print_expr(Expr *expr, int indent) {
+    if (!expr) {
+        printf("null");
+        return;
+    }
+    printf("{\n");
+    int i = indent + 1;
+    switch (expr->kind) {
+        case EXPR_PRIMARY: {
+            Token v = expr->as.primary.value;
+            printf("%*s\"kind\": \"primary\",\n", i * 2, "");
+            printf("%*s\"value\": ", i * 2, "");
+            switch (v.kind) {
+                case TOK_INTEGER_LITERAL: printf("%zu", v.as.integerLiteral); break;
+                case TOK_FLOAT_LITERAL:   printf("%g", v.as.floatLiteral); break;
+                case TOK_STRING_LITERAL:  printf("\"%.*s\"", (int)v.as.stringLiteral.len, v.as.stringLiteral.data); break;
+                case TOK_CHAR_LITERAL:    printf("'%c'", v.as.charLiteral); break;
+                case TOK_IDENTIFIER:      printf("\"%.*s\"", (int)v.as.identifier.len, v.as.identifier.data); break;
+                case TOK_TRUE:            printf("true"); break;
+                case TOK_FALSE:           printf("false"); break;
+                default:                  printf("\"?\""); break;
+            }
+            printf("\n");
+            break;
+        }
+        case EXPR_GROUPING:
+            printf("%*s\"kind\": \"grouping\",\n", i * 2, "");
+            printf("%*s\"inner\": ", i * 2, "");
+            print_expr(expr->as.grouping.inner, i);
+            printf("\n");
+            break;
+        case EXPR_BINARY:
+            printf("%*s\"kind\": \"binary\",\n", i * 2, "");
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.binary.op));
+            printf("%*s\"lhs\": ", i * 2, "");
+            print_expr(expr->as.binary.lhs, i);
+            printf(",\n");
+            printf("%*s\"rhs\": ", i * 2, "");
+            print_expr(expr->as.binary.rhs, i);
+            printf("\n");
+            break;
+        case EXPR_UNARY:
+            printf("%*s\"kind\": \"unary\",\n", i * 2, "");
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.unary.op));
+            printf("%*s\"inner\": ", i * 2, "");
+            print_expr(expr->as.unary.inner, i);
+            printf("\n");
+            break;
+        case EXPR_UNARY_POST:
+            printf("%*s\"kind\": \"unary_post\",\n", i * 2, "");
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.unary.op));
+            printf("%*s\"inner\": ", i * 2, "");
+            print_expr(expr->as.unary.inner, i);
+            printf("\n");
+            break;
+        case EXPR_CONDITIONAL:
+            printf("%*s\"kind\": \"conditional\",\n", i * 2, "");
+            printf("%*s\"cond\": ", i * 2, "");
+            print_expr(expr->as.conditional.condition, i);
+            printf(",\n");
+            printf("%*s\"then\": ", i * 2, "");
+            print_expr(expr->as.conditional.thenBranch, i);
+            printf(",\n");
+            printf("%*s\"else\": ", i * 2, "");
+            print_expr(expr->as.conditional.elseBranch, i);
+            printf("\n");
+            break;
+    }
+    printf("%*s}", indent * 2, "");
+}

@@ -75,4 +75,6 @@ Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body);
 Stmt *stmt_make_break(void);
 Stmt *stmt_make_continue(void);
 
+void print_stmt(Stmt *stmt, int indent);
+
 #endif // !STATEMENT_H

@@ -78,4 +78,6 @@ Expr *expr_make_unary(TokenKind op, Expr *inner);
 Expr *expr_make_unary_post(TokenKind op, Expr *inner);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch);
 
+void print_expr(Expr *expr, int indent);
+
 #endif // EXPRESSION_H
