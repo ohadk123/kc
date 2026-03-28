@@ -77,7 +77,9 @@ static Expr *primary_expr(Parser *p) {
     parse_error(p, "Expected expression");
 }
 
-// postfix := primary { '++' | '--' }*
+// postfix := primary 
+//          | postfix_expr { '++' | '--' }*
+//          | postfix_expr '(' argument_list ')'
 static Expr *postfix_expr(Parser *p) {
     Expr *expr = primary_expr(p);
 
@@ -85,6 +87,8 @@ static Expr *postfix_expr(Parser *p) {
         if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
             TokenKind op = previous(p).kind;
             expr = expr_make_unary_post(op, expr);
+        } else if (match(p, TOK_LEFT_PAREN)) {
+            TODO("function call");
         } else {
             break;
         }
