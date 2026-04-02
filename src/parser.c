@@ -5,7 +5,7 @@ typedef struct {
     size_t index;
 } Parser;
 
-#define parser_error(p, fmt, ...) compile_error(p->unit->fileName, previous((p)).loc, fmt, ##__VA_ARGS__)
+#define parser_error(p, fmt, ...) compile_error(p->unit->fileName, peek((p)).loc, fmt, ##__VA_ARGS__)
 
 static bool is_at_end(Parser *p) { return p->unit->tokens.arr[p->index].kind == TOK_EOF; }
 
@@ -30,7 +30,6 @@ TokenKind types[] = {TOK_U8,  TOK_U16, TOK_U32,   TOK_U64, TOK_USIZE, TOK_I8,   
 #define match_types(p) match_arr((p), sizeof(types) / sizeof(*types), types)
 
 inline static Token peek(Parser *p) {
-    if (is_at_end(p)) return (Token){0};
     return p->unit->tokens.arr[p->index];
 }
 
