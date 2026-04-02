@@ -42,6 +42,12 @@ bool cmp_cstr(const String a, const char *b) {
     return strncmp(a.data, b, a.len) == 0;
 }
 
+bool cmp_str(const String a, const String b) {
+    if (a.len != b.len) return false;
+
+    return strncmp(a.data, b.data, a.len) == 0;
+}
+
 String finish_string(const StringBuilder *sb) {
     char *data = calloc(sb->len + 1, sizeof(char));
     strncpy(data, sb->arr, sb->len);

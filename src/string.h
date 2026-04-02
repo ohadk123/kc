@@ -13,6 +13,7 @@ String str_from_slice(const String src, size_t start, size_t end);
 String str_from_file(const char *path);
 
 bool cmp_cstr(const String a, const char *b);
+bool cmp_str(const String a, const String b);
 
 typedef struct {
     LIST_FIELDS(char);
