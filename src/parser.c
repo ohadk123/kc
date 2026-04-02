@@ -5,6 +5,8 @@ typedef struct {
     size_t index;
 } Parser;
 
+#define parser_error(p, fmt, ...) compile_error(p->unit->fileName, previous((p)).loc, fmt, ##__VA_ARGS__)
+
 static bool is_at_end(Parser *p) { return p->unit->tokens.arr[p->index].kind == TOK_EOF; }
 
 static Token previous(Parser *p) { return p->unit->tokens.arr[p->index - 1]; }
@@ -37,21 +39,9 @@ inline static Token peek_ahead(Parser *p, size_t offset) {
     return p->unit->tokens.arr[p->index + offset];
 }
 
-__attribute__((__noreturn__)) static void parse_error(Parser *p, const char *msg) {
-    fprintf(stderr, "[%.*s:%zu:%zu]: Error: %s\n", (int)p->unit->fileName.len, p->unit->fileName.data, peek(p).line, peek(p).col,
-            msg);
-    abort();
-}
-
-// static void parse_warning(Parser *p, const char *msg) {
-//     fprintf(stderr, "[%.*s:%zu:%zu]: Warning: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line,
-//     peek(p).col,
-//             msg);
-// }
-
 static Token expect(Parser *p, TokenKind expected, const char *msg) {
     if (match(p, expected)) return previous(p);
-    parse_error(p, msg);
+    parser_error(p, msg);
 }
 
 /******************************************************************************
@@ -73,7 +63,7 @@ static Expr *primary_expr(Parser *p) {
         return expr_make_grouping(inner);
     }
 
-    parse_error(p, "Expected expression");
+    parser_error(p, "Expected expression");
 }
 
 // postfix := primary { '++' | '--' }*
@@ -289,17 +279,18 @@ Stmt *var_stmt(Parser *p) {
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
-    return stmt_make_var(type, name, init);
+    return stmt_make_var(type, name, init, name.loc);
 }
 
 Stmt *for_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     expect(p, TOK_LEFT_PAREN, "Exected '(' after after for");
 
     Stmt *init = NULL;
     if (match_types(p))
         init = var_stmt(p);
     else if (!match(p, TOK_SEMICOLON)) {
-        init = stmt_make_expr(expression(p));
+        init = stmt_make_expr(expression(p), previous(p).loc);
         expect(p, TOK_SEMICOLON, "Expected ';' after expression");
     }
 
@@ -317,10 +308,11 @@ Stmt *for_stmt(Parser *p) {
 
     Stmt *body = statement(p);
 
-    return stmt_make_for(init, cond, inc, body);
+    return stmt_make_for(init, cond, inc, body, loc);
 }
 
 Stmt *while_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     expect(p, TOK_LEFT_PAREN, "Exected '(' after after while");
 
     Expr *cond = expression(p);
@@ -328,10 +320,11 @@ Stmt *while_stmt(Parser *p) {
 
     Stmt *body = statement(p);
 
-    return stmt_make_while(cond, body);
+    return stmt_make_while(cond, body, loc);
 }
 
 Stmt *if_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     expect(p, TOK_LEFT_PAREN, "Expected '(' after if");
 
     Expr *cond = expression(p);
@@ -342,7 +335,7 @@ Stmt *if_stmt(Parser *p) {
     Stmt *elseBranch = NULL;
     if (match(p, TOK_ELSE)) elseBranch = statement(p);
 
-    return stmt_make_if(cond, thenBranch, elseBranch);
+    return stmt_make_if(cond, thenBranch, elseBranch, loc);
 }
 
 StmtList stmt_list(Parser *p) {
@@ -356,25 +349,28 @@ StmtList stmt_list(Parser *p) {
     return body;
 }
 
-Stmt *block_stmt(Parser *p) { return stmt_make_block(stmt_list(p)); }
+Stmt *block_stmt(Parser *p) { Location loc = previous(p).loc; return stmt_make_block(stmt_list(p), loc); }
 
 Stmt *break_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     expect(p, TOK_SEMICOLON, "Expected ';' after break");
-    return stmt_make_break();
+    return stmt_make_break(loc);
 }
 
 Stmt *continue_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     expect(p, TOK_SEMICOLON, "Expected ';' after continue");
-    return stmt_make_continue();
+    return stmt_make_continue(loc);
 }
 
 Stmt *return_stmt(Parser *p) {
+    Location loc = previous(p).loc;
     Expr *ret_val = NULL;
     if (!match(p, TOK_SEMICOLON)) {
         ret_val = expression(p);
         expect(p, TOK_SEMICOLON, "Expected ';'");
     }
-    return stmt_make_return(ret_val);
+    return stmt_make_return(ret_val, loc);
 }
 
 Stmt *statement(Parser *p) {
@@ -387,9 +383,10 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_CONTINUE)) return continue_stmt(p);
     if (match(p, TOK_RETURN)) return return_stmt(p);
 
+    Location loc = peek(p).loc;
     Expr *expr = expression(p);
     expect(p, TOK_SEMICOLON, "Expected ';' after expression");
-    return stmt_make_expr(expr);
+    return stmt_make_expr(expr, loc);
 }
 
 ParamsList params_list(Parser *p) {
@@ -398,7 +395,7 @@ ParamsList params_list(Parser *p) {
 
     while (true) {
         Param param;
-        if (!match_types(p)) parse_error(p, "Expected parameter type");
+        if (!match_types(p)) parser_error(p, "Expected parameter type");
         param.type = previous(p).kind;
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         param.name = previous(p);
@@ -422,13 +419,13 @@ Stmt *func_decl_stmt(Parser *p) {
     expect(p, TOK_LEFT_BRACE, "Expected '{'");
     StmtList body = stmt_list(p);
 
-    return stmt_make_func(type, name, params, body);
+    return stmt_make_func(type, name, params, body, name.loc);
 }
 
 Stmt *top_level_decl(Parser *p) {
     if (match_types(p)) return func_decl_stmt(p);
 
-    parse_error(p, "Unkown top level declaration");
+    parser_error(p, "Unkown top level declaration");
 }
 
 void translation_unit(Parser *p) {

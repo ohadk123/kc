@@ -117,7 +117,13 @@ typedef enum { TOKEN_LIST } TokenKind;
 #undef X
 
 typedef struct {
+    size_t line;
+    size_t col;
+} Location;
+
+typedef struct {
     TokenKind kind;
+    Location loc;
     union {
         String identifier;
         String stringLiteral;
@@ -126,8 +132,6 @@ typedef struct {
         double floatLiteral;
         char unknown;
     } as;
-    size_t line;
-    size_t col;
 } Token;
 
 typedef struct {

@@ -89,8 +89,8 @@ TokenKind match_keyword_or_ident(String keyword) {
 Token tok_make_simple(TokenKind type, size_t line, size_t col) {
     return (Token){
         .kind = type,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -98,8 +98,8 @@ Token tok_make_unknown(char c, size_t line, size_t col) {
     return (Token){
         .kind = TOK_UNKNOWN,
         .as.unknown = c,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -107,8 +107,8 @@ Token tok_make_ident(String ident, size_t line, size_t col) {
     return (Token){
         .kind = TOK_IDENTIFIER,
         .as.identifier = ident,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -116,8 +116,8 @@ Token tok_make_string_lit(String strLit, size_t line, size_t col) {
     return (Token){
         .kind = TOK_STRING_LITERAL,
         .as.stringLiteral = strLit,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -125,8 +125,8 @@ Token tok_make_int_lit(uint64_t value, size_t line, size_t col) {
     return (Token){
         .kind = TOK_INTEGER_LITERAL,
         .as.integerLiteral = value,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -134,8 +134,8 @@ Token tok_make_float_lit(double value, size_t line, size_t col) {
     return (Token){
         .kind = TOK_FLOAT_LITERAL,
         .as.floatLiteral = value,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
@@ -143,15 +143,15 @@ Token tok_make_char_lit(uint8_t value, size_t line, size_t col) {
     return (Token){
         .kind = TOK_CHAR_LITERAL,
         .as.charLiteral = value,
-        .line = line,
-        .col = col,
+        .loc.line = line,
+        .loc.col = col,
     };
 }
 
 static bool is_printable_char(char c) { return ' ' <= c && c <= '~'; }
 
 void print_tok(Token token) {
-    printf("{ [%zu:%zu] \"type\": \"%s\"", token.line, token.col, tokenTypesStrings[token.kind]);
+    printf("{ [%zu:%zu] \"type\": \"%s\"", token.loc.line, token.loc.col, tokenTypesStrings[token.kind]);
     switch (token.kind) {
         case TOK_IDENTIFIER:
             printf(", \"name\": \"%.*s\"", (int)token.as.identifier.len, token.as.identifier.data);

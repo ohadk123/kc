@@ -13,6 +13,6 @@ typedef struct {
     HashMap globalSymbolTable;
 } TranslationUnit;
 
-__attribute__((__noreturn__)) void compile_error(String fileName, Token place, const char *fmt, ...);
+__attribute__((__noreturn__)) void compile_error(String fileName, Location place, const char *fmt, ...);
 
 #endif // COMPILER_H

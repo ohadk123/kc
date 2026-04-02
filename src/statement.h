@@ -77,6 +77,7 @@ typedef struct {
 
 struct _Stmt {
     StmtKind kind;
+    Location loc;
     union {
         VarStmt var;
         ExprStmt expr;
@@ -89,18 +90,19 @@ struct _Stmt {
     } as;
 };
 
-Stmt *stmt_make_var(TokenKind type, Token name, Expr *initalizer);
-Stmt *stmt_make_expr(Expr *inner);
-Stmt *stmt_make_block(StmtList block);
-Stmt *stmt_make_while(Expr *cond, Stmt *body);
-Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch);
-Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body);
-Stmt *stmt_make_return(Expr *ret_val);
-Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block);
+Stmt *stmt_make_var(TokenKind type, Token name, Expr *initalizer, Location loc);
+Stmt *stmt_make_expr(Expr *inner, Location loc);
+Stmt *stmt_make_block(StmtList block, Location loc);
+Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
+Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
+Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
+Stmt *stmt_make_return(Expr *ret_val, Location loc);
+Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block, Location loc);
 
-Stmt *stmt_make_break(void);
-Stmt *stmt_make_continue(void);
+Stmt *stmt_make_break(Location loc);
+Stmt *stmt_make_continue(Location loc);
 
 void print_stmt(Stmt *stmt, int indent);
+Token get_top_level_name(Stmt *s);
 
 #endif // !STATEMENT_H
