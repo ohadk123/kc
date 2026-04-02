@@ -1,10 +1,5 @@
 #include "hashmap.h"
 
-struct _HM_Entry {
-    String key;
-    Val val;
-};
-
 #define MIN_CAP 8
 #define EMPTY_ENTRY(e) (e).key.data == NULL
 

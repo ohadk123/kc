@@ -4,7 +4,13 @@
 #include "string.h"
 #include <stddef.h>
 
-typedef struct _HM_Entry HM_Entry;
+typedef void * Val;
+
+typedef struct {
+    String key;
+    Val val;
+} HM_Entry;
+
 typedef struct {
     HM_Entry *data;
     size_t count;
