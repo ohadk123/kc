@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "parser.h"
+#include "sema.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -7,20 +8,28 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    TokensList tokens = {0};
-    if (!scan_file(&tokens, argv[1])) {
+    TranslationUnit unit = (TranslationUnit){
+        .fileName = str_from_cstr(argv[1]),
+        .input = str_from_file(argv[1]),
+        .tokens = {0},
+        .ast = {0},
+    };
+
+    if (!scan_file(&unit)) {
         printf("LEXER ERROR");
     }
 
-    for (size_t i = 0; i < tokens.len; i++) {
-        print_tok(tokens.arr[i]);
+    for (size_t i = 0; i < unit.tokens.len; i++) {
+        print_tok(unit.tokens.arr[i]);
     }
 
-    StmtList ast = parse(tokens, str_from_cstr(argv[1]));
-    for (size_t i = 0; i < ast.len; i++) {
-        print_stmt(ast.arr[i], 0);
+    parse(&unit);
+    for (size_t i = 0; i < unit.ast.len; i++) {
+        print_stmt(unit.ast.arr[i], 1);
         printf("\n");
     }
+
+    fill_global_symbol_table(&unit);
 
     printf("compiling done!\n");
 }

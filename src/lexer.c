@@ -22,16 +22,14 @@ static inline char oct_to_val(char c) {
 }
 
 typedef struct {
-    String input;
-    String fileName;
+    TranslationUnit *unit;
     size_t line;
     size_t col;
     size_t index;
-    TokensList *tokens;
     bool hasErrors;
 } Lexer;
 
-static inline void add_tok(Lexer *l, Token token) { list_append(l->tokens, token); }
+static inline void add_tok(Lexer *l, Token token) { list_append(&l->unit->tokens, token); }
 
 static void add_simple_tok(Lexer *l, TokenKind type) {
     Token t = tok_make_simple(type, l->line, l->col);
@@ -39,19 +37,19 @@ static void add_simple_tok(Lexer *l, TokenKind type) {
 }
 
 // Check if we've reached the end of the input
-static bool is_at_end(Lexer *l) { return l->index == l->input.len; }
+static bool is_at_end(Lexer *l) { return l->index == l->unit->input.len; }
 
 // Advance the lexer and return the current character
 static char advance(Lexer *l) {
     if (is_at_end(l)) return 0;
     l->col++;
-    return l->input.data[l->index++];
+    return l->unit->input.data[l->index++];
 }
 
 // Check if the next character matches the expected character and advance if it does
 static bool match(Lexer *l, char next) {
     if (is_at_end(l)) return false;
-    if (l->input.data[l->index] != next) return false;
+    if (l->unit->input.data[l->index] != next) return false;
 
     l->index++;
     l->col++;
@@ -61,7 +59,7 @@ static bool match(Lexer *l, char next) {
 // Peek at the current character without advancing
 static char peek(Lexer *l) {
     if (is_at_end(l)) return 0;
-    return l->input.data[l->index];
+    return l->unit->input.data[l->index];
 }
 
 static Token make_ident_keyword(Lexer *l) {
@@ -71,26 +69,26 @@ static Token make_ident_keyword(Lexer *l) {
     while (isalnum(peek(l)) || peek(l) == '_') advance(l);
     size_t end = l->index;
 
-    String identString = (String){l->input.data + start, end - start};
+    String identString = (String){l->unit->input.data + start, end - start};
 
     TokenKind tokenKind = match_keyword_or_ident(identString);
-    if (tokenKind == TOK_IDENTIFIER) return tok_make_ident(str_from_slice(l->input, start, end), l->line, col);
+    if (tokenKind == TOK_IDENTIFIER) return tok_make_ident(str_from_slice(l->unit->input, start, end), l->line, col);
 
     return tok_make_simple(tokenKind, l->line, col);
 }
 
 static Token make_number(Lexer *l) {
-    bool isFloat = l->input.data[l->index - 1] == '.';
+    bool isFloat = l->unit->input.data[l->index - 1] == '.';
     size_t start = l->index - 1;
     size_t col = l->col;
 
     while (isdigit(peek(l)) || (peek(l) == '.' && !isFloat)) {
         advance(l);
-        if (l->input.data[l->index - 1] == '.') isFloat = true;
+        if (l->unit->input.data[l->index - 1] == '.') isFloat = true;
     }
     size_t end = l->index;
 
-    String number = str_from_slice(l->input, start, end);
+    String number = str_from_slice(l->unit->input, start, end);
 
     if (isFloat) {
         double fval = atof(number.data);
@@ -102,7 +100,7 @@ static Token make_number(Lexer *l) {
 }
 
 static uint8_t consume_escape_char(Lexer *l) {
-    uint8_t prev = l->input.data[l->index - 1];
+    uint8_t prev = l->unit->input.data[l->index - 1];
     if (prev != '\\') ERROR("Previous character is not '\\' (%X)", prev);
     uint64_t val = 0;
 
@@ -176,15 +174,16 @@ static Token make_char(Lexer *l) {
  * Public Lexer API
  *********************************************************************************************************************/
 
-bool scan_file(TokensList *dest, const char *path) {
-    if (dest == NULL || path == NULL) return false;
+bool scan_file(TranslationUnit *unit) {
+    if (!unit) return false;
 
-    Lexer l = {0};
-    l.input = str_from_file(path);
-    l.tokens = dest;
-    l.line = 1;
-    l.fileName = str_from_cstr(path);
-    l.hasErrors = false;
+    Lexer l = (Lexer) {
+        .unit = unit,
+        .index = 0,
+        .line = 1,
+        .col = 0,
+        .hasErrors = false,
+    };
 
     while (!is_at_end(&l)) {
         char c = advance(&l);
@@ -387,13 +386,13 @@ bool scan_file(TokensList *dest, const char *path) {
             // TOK_AT
             case '@': ADD_SIMPLE(TOK_AT); break;
 
-            default:  list_append(l.tokens, tok_make_unknown(c, l.line, l.col)); break;
+            default:  list_append(&l.unit->tokens, tok_make_unknown(c, l.line, l.col)); break;
         }
     }
 
     add_simple_tok(&l, TOK_EOF);
 
-    free((void *)l.input.data);
+    free((void *)l.unit->input.data);
 
     return !l.hasErrors;
 }

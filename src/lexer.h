@@ -1,8 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "token.h"
+#include "compiler.h"
 
-bool scan_file(TokensList *dest, const char *path);
+bool scan_file(TranslationUnit *unit);
 
 #endif // LEXER_H

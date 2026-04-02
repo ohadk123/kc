@@ -1,20 +1,19 @@
 #include "parser.h"
 
 typedef struct {
-    TokensList input;
+    TranslationUnit *unit;
     size_t index;
-    String fileName;
 } Parser;
 
-static bool is_at_end(Parser *p) { return p->input.arr[p->index].kind == TOK_EOF; }
+static bool is_at_end(Parser *p) { return p->unit->tokens.arr[p->index].kind == TOK_EOF; }
 
-static Token previous(Parser *p) { return p->input.arr[p->index - 1]; }
+static Token previous(Parser *p) { return p->unit->tokens.arr[p->index - 1]; }
 
 static bool match_arr(Parser *p, size_t count, const TokenKind *tokens) {
     if (is_at_end(p)) return false;
 
     for (size_t i = 0; i < count; i++) {
-        if (p->input.arr[p->index].kind == tokens[i]) {
+        if (p->unit->tokens.arr[p->index].kind == tokens[i]) {
             p->index++;
             return true;
         }
@@ -30,16 +29,16 @@ TokenKind types[] = {TOK_U8,  TOK_U16, TOK_U32,   TOK_U64, TOK_USIZE, TOK_I8,   
 
 inline static Token peek(Parser *p) {
     if (is_at_end(p)) return (Token){0};
-    return p->input.arr[p->index];
+    return p->unit->tokens.arr[p->index];
 }
 
 inline static Token peek_ahead(Parser *p, size_t offset) {
-    if (p->index + offset >= p->input.len) return (Token){0};
-    return p->input.arr[p->index + offset];
+    if (p->index + offset >= p->unit->tokens.len) return (Token){0};
+    return p->unit->tokens.arr[p->index + offset];
 }
 
 __attribute__((__noreturn__)) static void parse_error(Parser *p, const char *msg) {
-    fprintf(stderr, "[%.*s:%zu:%zu]: Error: %s\n", (int)p->fileName.len, p->fileName.data, peek(p).line, peek(p).col,
+    fprintf(stderr, "[%.*s:%zu:%zu]: Error: %s\n", (int)p->unit->fileName.len, p->unit->fileName.data, peek(p).line, peek(p).col,
             msg);
     abort();
 }
@@ -432,23 +431,18 @@ Stmt *top_level_decl(Parser *p) {
     parse_error(p, "Unkown top level declaration");
 }
 
-StmtList translation_unit(Parser *p) {
-    StmtList ast = {0};
-
+void translation_unit(Parser *p) {
     while (!is_at_end(p)) {
         Stmt *s = top_level_decl(p);
-        list_append(&ast, s);
+        list_append(&p->unit->ast, s);
     }
-
-    return ast;
 }
 
-StmtList parse(TokensList input, String fileName) {
+void parse(TranslationUnit *unit) {
     Parser p = (Parser){
-        .input = input,
+        .unit = unit,
         .index = 0,
-        .fileName = fileName,
     };
 
-    return translation_unit(&p);
+    translation_unit(&p);
 }

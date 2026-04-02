@@ -1,8 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "statement.h"
+#include "compiler.h"
 
-StmtList parse(TokensList input, String fileName);
+void parse(TranslationUnit *unit);
 
 #endif // !PARSER_H
