@@ -1,17 +1,17 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "hashmap.h"
+#include "sema.h"
 #include "statement.h"
 #include "token.h"
 
-typedef struct {
+struct _TranslationUnit {
     String fileName;
     String input;
     TokensList tokens;
     StmtList ast;
-    HashMap globalSymbolTable;
-} TranslationUnit;
+    Scope globalSymbolTable;
+};
 
 __attribute__((__noreturn__)) void compile_error(String fileName, Location place, const char *fmt, ...);
 
