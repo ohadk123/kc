@@ -29,9 +29,7 @@ TokenKind types[] = {TOK_U8,  TOK_U16, TOK_U32,   TOK_U64, TOK_USIZE, TOK_I8,   
                      TOK_I32, TOK_I64, TOK_ISIZE, TOK_F32, TOK_F64,   TOK_BOOL, TOK_VOID};
 #define match_types(p) match_arr((p), sizeof(types) / sizeof(*types), types)
 
-inline static Token peek(Parser *p) {
-    return p->unit->tokens.arr[p->index];
-}
+inline static Token peek(Parser *p) { return p->unit->tokens.arr[p->index]; }
 
 inline static Token peek_ahead(Parser *p, size_t offset) {
     if (p->index + offset >= p->unit->tokens.len) return (Token){0};
@@ -348,7 +346,10 @@ StmtList stmt_list(Parser *p) {
     return body;
 }
 
-Stmt *block_stmt(Parser *p) { Location loc = previous(p).loc; return stmt_make_block(stmt_list(p), loc); }
+Stmt *block_stmt(Parser *p) {
+    Location loc = previous(p).loc;
+    return stmt_make_block(stmt_list(p), loc);
+}
 
 Stmt *break_stmt(Parser *p) {
     Location loc = previous(p).loc;
@@ -388,16 +389,16 @@ Stmt *statement(Parser *p) {
     return stmt_make_expr(expr, loc);
 }
 
-ParamsList params_list(Parser *p) {
-    ParamsList params = {0};
+StmtList params_list(Parser *p) {
+    StmtList params = {0};
     if (match(p, TOK_RIGHT_PAREN)) return params;
 
     while (true) {
-        Param param;
         if (!match_types(p)) parser_error(p, "Expected parameter type");
-        param.type = previous(p).kind;
+        TokenKind type = previous(p).kind;
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
-        param.name = previous(p);
+        Token name = previous(p);
+        Stmt *param = stmt_make_var(type, name, NULL, name.loc);
         list_append(&params, param);
         if (!match(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
@@ -413,7 +414,7 @@ Stmt *func_decl_stmt(Parser *p) {
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
     expect(p, TOK_LEFT_PAREN, "Expectd '('");
-    ParamsList params = params_list(p);
+    StmtList params = params_list(p);
 
     expect(p, TOK_LEFT_BRACE, "Expected '{'");
     StmtList body = stmt_list(p);

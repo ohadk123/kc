@@ -60,18 +60,9 @@ typedef struct {
 } ReturnStmt;
 
 typedef struct {
-    TokenKind type;
-    Token name;
-} Param;
-
-typedef struct {
-    LIST_FIELDS(Param);
-} ParamsList;
-
-typedef struct {
     TokenKind retType;
     Token name;
-    ParamsList params;
+    StmtList params;
     StmtList block;
 } FuncStmt;
 
@@ -97,7 +88,7 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block, Location loc);
+Stmt *stmt_make_func(TokenKind retType, Token name, StmtList params, StmtList block, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

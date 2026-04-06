@@ -85,7 +85,7 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(TokenKind retType, Token name, ParamsList params, StmtList block, Location loc) {
+Stmt *stmt_make_func(TokenKind retType, Token name, StmtList params, StmtList block, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.retType = retType;
     s->as.func.name = name;
@@ -186,7 +186,7 @@ void print_stmt(Stmt *stmt, int indent) {
             printf("%*s\"name\": \"%.*s\",\n", i * 2, "", (int)fn->name.as.identifier.len, fn->name.as.identifier.data);
             printf("%*s\"params\": [", i * 2, "");
             for (size_t j = 0; j < fn->params.len; j++) {
-                Param *par = &fn->params.arr[j];
+                VarStmt *par = &fn->params.arr[j]->as.var;
                 printf("\n%*s{ \"type\": \"%s\", \"name\": \"%.*s\" }", (i + 1) * 2, "",
                        type_str(par->type), (int)par->name.as.identifier.len, par->name.as.identifier.data);
                 if (j + 1 < fn->params.len) printf(",");
