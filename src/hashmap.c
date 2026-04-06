@@ -52,6 +52,7 @@ static bool force_insert(HashMap *hm, String key, Val val) {
 }
 
 bool hm_insert(HashMap *hm, String key, Val val) {
+    assert (val); // Don't allow NULL values
     assert(hm);
 
     if (hm->count * 4 >= hm->cap * 3) {
@@ -69,6 +70,11 @@ bool hm_insert(HashMap *hm, String key, Val val) {
         *hm = newMap;
     }
     return force_insert(hm, key, val);
+}
+
+Val hm_get_or_insert(HashMap *hm, String key, Val val) {
+    if (hm_insert(hm, key, val)) return NULL;
+    return hm_find_val(hm, key);
 }
 
 // --- test harness ---

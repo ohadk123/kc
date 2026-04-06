@@ -4,7 +4,7 @@
 #include "string.h"
 #include <stddef.h>
 
-typedef void * Val;
+typedef void *Val;
 
 typedef struct {
     String key;
@@ -17,9 +17,13 @@ typedef struct {
     size_t cap;
 } HashMap;
 
-typedef void *Val;
-
+// returns false if key already in hm, true if inserted correctly
 bool hm_insert(HashMap *hm, String key, Val val);
+
+// returns the val stored by key, NULL if key not in hm
 Val hm_find_val(HashMap *hm, String key);
+
+// returns val pointed to by key, NULL if key not in hm
+Val hm_get_or_insert(HashMap *hm, String key, Val val);
 
 #endif // !HASHMAP_H
