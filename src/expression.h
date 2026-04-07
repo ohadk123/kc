@@ -34,6 +34,7 @@ typedef enum {
     EXPR_GROUPING,
     EXPR_BINARY,
     EXPR_UNARY,
+    EXPR_ASSIGN,
     EXPR_UNARY_POST,
     EXPR_CONDITIONAL,
     EXPR_FUNC_CALL,
@@ -59,6 +60,12 @@ typedef struct {
 } UnaryExpr;
 
 typedef struct {
+    TokenKind op;
+    Expr *lhs;
+    Expr *rhs;
+} AssignExpr;
+
+typedef struct {
     Expr *condition;
     Expr *thenBranch;
     Expr *elseBranch;
@@ -76,6 +83,7 @@ struct _Expr {
         GroupingExpr grouping;
         BinaryExpr binary;
         UnaryExpr unary;
+        AssignExpr assignment;
         ConditionalExpr conditional;
         FuncCallExpr funcCall;
     } as;
@@ -86,6 +94,7 @@ Expr *expr_make_grouping(Expr *inner);
 Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs);
 Expr *expr_make_unary(TokenKind op, Expr *inner);
 Expr *expr_make_unary_post(TokenKind op, Expr *inner);
+Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch);
 Expr *expr_make_func_call(Expr *func, ExprList args);
 

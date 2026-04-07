@@ -40,6 +40,14 @@ Expr *expr_make_unary_post(TokenKind op, Expr *inner) {
     return e;
 }
 
+Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs) {
+    Expr *e = make_expr(EXPR_ASSIGN);
+    e->as.binary.op = op;
+    e->as.binary.lhs = lhs;
+    e->as.binary.rhs = rhs;
+    return e;
+}
+
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch) {
     Expr *e = make_expr(EXPR_CONDITIONAL);
     e->as.conditional.condition = cond;

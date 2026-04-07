@@ -255,7 +255,7 @@ static Expr *assignment_expr(Parser *p) {
               TOK_GREATER_GREATER_EQUALS)) {
         TokenKind op = previous(p).kind;
         Expr *rhs = assignment_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_assign(op, expr, rhs);
     }
 
     return expr;
