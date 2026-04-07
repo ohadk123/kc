@@ -3,6 +3,8 @@
 
 #include "utils.h"
 
+#define strf(str) (int) (str).len, (str).data
+
 typedef struct {
     const char *data; // Null terminated string
     size_t len;
@@ -20,5 +22,6 @@ typedef struct {
 } StringBuilder;
 
 String finish_string(const StringBuilder *sb);
+String str_printf(const char *fmt, ...);
 
 #endif // STRING_H

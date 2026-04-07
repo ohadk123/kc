@@ -1,4 +1,5 @@
 #include "string.h"
+#include <stdarg.h>
 
 String str_from_cstr(const char *cstr) {
     size_t len = strlen(cstr);
@@ -52,4 +53,17 @@ String finish_string(const StringBuilder *sb) {
     char *data = calloc(sb->len + 1, sizeof(char));
     strncpy(data, sb->arr, sb->len);
     return (String){data, sb->len};
+}
+
+String str_printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(NULL, 0, fmt, args);
+    char *buf = calloc(len + 1, sizeof(char));
+    vsnprintf(buf, len, fmt, args);
+    va_end(args);
+    return (String){
+        .data = buf,
+        .len = len,
+    };
 }
