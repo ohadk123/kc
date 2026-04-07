@@ -2,6 +2,12 @@
 #define CODEGEN_H_
 
 #include "sema.h"
-void gen_func(TranslationUnit *context, FuncStmt *func);
+#include "compiler.h"
+
+typedef struct {
+    TranslationUnit unit;
+    Scope currScope;
+    FILE *output;
+} Generator;
 
 #endif // CODEGEN_H_
