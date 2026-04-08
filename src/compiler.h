@@ -5,12 +5,21 @@
 #include "statement.h"
 #include "token.h"
 
+typedef struct _Scope Scope;
+struct _Scope {
+    HashMap symbols;
+    Scope *above;
+
+    TokenKind retType;
+    bool inLoop;
+};
+
 typedef struct {
     String fileName;
     String input;
     TokensList tokens;
     StmtList ast;
-    HashMap globalSymbols;
+    Scope globalSymbols;
 } TranslationUnit;
 
 __attribute__((__noreturn__)) void compile_error(String fileName, Location place, const char *fmt, ...);
