@@ -1,63 +1,64 @@
 #include "expression.h"
 
-static Expr *make_expr(ExprKind kind) {
+static Expr *make_expr(ExprKind kind, Location loc) {
     Expr *e = malloc(sizeof(Expr));
     e->kind = kind;
+    e->loc = loc;
     return e;
 }
 
-Expr *expr_make_primary(Token val) {
-    Expr *e = make_expr(EXPR_PRIMARY);
+Expr *expr_make_primary(Token val, Location loc) {
+    Expr *e = make_expr(EXPR_PRIMARY, loc);
     e->as.primary.value = val;
     return e;
 }
 
-Expr *expr_make_grouping(Expr *inner) {
-    Expr *e = make_expr(EXPR_GROUPING);
+Expr *expr_make_grouping(Expr *inner, Location loc) {
+    Expr *e = make_expr(EXPR_GROUPING, loc);
     e->as.grouping.inner = inner;
     return e;
 }
 
-Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs) {
-    Expr *e = make_expr(EXPR_BINARY);
+Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs, Location loc) {
+    Expr *e = make_expr(EXPR_BINARY, loc);
     e->as.binary.op = op;
     e->as.binary.lhs = lhs;
     e->as.binary.rhs = rhs;
     return e;
 }
 
-Expr *expr_make_unary(TokenKind op, Expr *inner) {
-    Expr *e = make_expr(EXPR_UNARY);
+Expr *expr_make_unary(TokenKind op, Expr *inner, Location loc) {
+    Expr *e = make_expr(EXPR_UNARY, loc);
     e->as.unary.op = op;
     e->as.unary.inner = inner;
     return e;
 }
 
-Expr *expr_make_unary_post(TokenKind op, Expr *inner) {
-    Expr *e = make_expr(EXPR_UNARY_POST);
+Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc) {
+    Expr *e = make_expr(EXPR_UNARY_POST, loc);
     e->as.unary.op = op;
     e->as.unary.inner = inner;
     return e;
 }
 
-Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs) {
-    Expr *e = make_expr(EXPR_ASSIGN);
+Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc) {
+    Expr *e = make_expr(EXPR_ASSIGN, loc);
     e->as.binary.op = op;
     e->as.binary.lhs = lhs;
     e->as.binary.rhs = rhs;
     return e;
 }
 
-Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch) {
-    Expr *e = make_expr(EXPR_CONDITIONAL);
+Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc) {
+    Expr *e = make_expr(EXPR_CONDITIONAL, loc);
     e->as.conditional.condition = cond;
     e->as.conditional.thenBranch = thenBranch;
     e->as.conditional.elseBranch = elseBranch;
     return e;
 }
 
-Expr *expr_make_func_call(Expr *func, ExprList args) {
-    Expr *e = make_expr(EXPR_FUNC_CALL);
+Expr *expr_make_func_call(Expr *func, ExprList args, Location loc) {
+    Expr *e = make_expr(EXPR_FUNC_CALL, loc);
     e->as.funcCall.func = func;
     e->as.funcCall.args = args;
     return e;

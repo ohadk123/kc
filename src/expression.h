@@ -78,6 +78,7 @@ typedef struct {
 
 struct _Expr {
     ExprKind kind;
+    Location loc;
     union {
         PrimaryExpr primary;
         GroupingExpr grouping;
@@ -89,14 +90,14 @@ struct _Expr {
     } as;
 };
 
-Expr *expr_make_primary(Token val);
-Expr *expr_make_grouping(Expr *inner);
-Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs);
-Expr *expr_make_unary(TokenKind op, Expr *inner);
-Expr *expr_make_unary_post(TokenKind op, Expr *inner);
-Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs);
-Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch);
-Expr *expr_make_func_call(Expr *func, ExprList args);
+Expr *expr_make_primary(Token val, Location loc);
+Expr *expr_make_grouping(Expr *inner, Location loc);
+Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs, Location loc);
+Expr *expr_make_unary(TokenKind op, Expr *inner, Location loc);
+Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc);
+Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc);
+Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc);
+Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);
 
 void print_expr(Expr *expr, int indent);
 
