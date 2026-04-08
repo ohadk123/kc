@@ -44,7 +44,7 @@ String gen_primary(Generator *g, Expr *e) {
     String value = {0};
 
     switch (primary.kind) {
-        case TOK_IDENTIFIER:      value = str_printf("%%%.*s", strf(primary.as.identifier)); break;
+        case TOK_IDENTIFIER:      return str_printf("%%%.*s", strf(primary.as.identifier)); break;
         case TOK_CHAR_LITERAL:    value = str_printf("%u", primary.as.charLiteral); break;
         case TOK_INTEGER_LITERAL: value = str_printf("%lu", primary.as.integerLiteral); break;
         case TOK_FLOAT_LITERAL:   value = str_printf("d_%f", primary.as.floatLiteral); break;
