@@ -79,6 +79,7 @@ typedef struct {
 struct _Expr {
     ExprKind kind;
     Location loc;
+    TokenKind type;
     union {
         PrimaryExpr primary;
         GroupingExpr grouping;
