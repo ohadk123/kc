@@ -3,6 +3,6 @@
 
 #include "compiler.h"
 
-void fill_global_symbol_table(TranslationUnit *unit);
+void semantic_analysis(TranslationUnit *unit);
 
 #endif // !SEMA_H

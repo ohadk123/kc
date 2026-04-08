@@ -18,19 +18,19 @@ int main(int argc, char *argv[]) {
         printf("LEXER ERROR");
     }
 
-    // for (size_t i = 0; i < unit.tokens.len; i++) {
-    //     print_tok(unit.tokens.arr[i]);
-    // }
+    for (size_t i = 0; i < unit.tokens.len; i++) {
+        print_tok(unit.tokens.arr[i]);
+    }
 
     parse(&unit);
-    // for (size_t i = 0; i < unit.ast.len; i++) {
-    //     print_stmt(unit.ast.arr[i], 1);
-    //     printf("\n");
-    // }
+    for (size_t i = 0; i < unit.ast.len; i++) {
+        print_stmt(unit.ast.arr[i], 1);
+        printf("\n");
+    }
 
-    fill_global_symbol_table(&unit);
+    semantic_analysis(&unit);
 
-    codegen(&unit, stdout);
+    // codegen(&unit, stdout);
 
     // printf("compiling done!\n");
 }
