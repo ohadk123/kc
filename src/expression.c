@@ -150,6 +150,16 @@ void print_expr(Expr *expr, int indent) {
             print_expr(expr->as.unary.inner, i);
             printf("\n");
             break;
+        case EXPR_ASSIGN:
+            printf("%*s\"kind\": \"assignment\",\n", i * 2, "");
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.assignment.op));
+            printf("%*s\"lhs\": ", i * 2, "");
+            print_expr(expr->as.assignment.lhs, i);
+            printf(",\n");
+            printf("%*s\"rhs\": ", i * 2, "");
+            print_expr(expr->as.assignment.rhs, i);
+            printf("\n");
+            break;
         case EXPR_UNARY_POST:
             printf("%*s\"kind\": \"unary_post\",\n", i * 2, "");
             printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.unary.op));
