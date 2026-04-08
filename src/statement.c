@@ -81,7 +81,7 @@ static const char *type_str(TokenKind type) {
 
 Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     Stmt *s = make_stmt(STMT_RETURN, loc);
-    s->as.returnS.ret_val = ret_val;
+    s->as.returnS.retVal = ret_val;
     return s;
 }
 
@@ -176,7 +176,7 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_RETURN:
             printf("%*s\"kind\": \"return\",\n", i * 2, "");
             printf("%*s\"expr\": ", i * 2, "");
-            print_expr(stmt->as.returnS.ret_val, i);
+            print_expr(stmt->as.returnS.retVal, i);
             printf("\n");
             break;
         case STMT_FUNC: {

@@ -56,7 +56,7 @@ typedef struct {
 } ForStmt;
 
 typedef struct {
-    Expr *ret_val;
+    Expr *retVal;
 } ReturnStmt;
 
 typedef struct {
