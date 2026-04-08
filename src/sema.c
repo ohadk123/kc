@@ -55,6 +55,12 @@ static bool isPrimitive(TokenKind kind) {
     }
 }
 
+static bool isCompatible(TokenKind a, TokenKind b) {
+    if (a == b) return true;
+    if (isPrimitive(a) && isPrimitive(b)) return true;
+    return false;
+}
+
 typedef struct {
     TranslationUnit *unit;
     Scope *curr;
@@ -74,9 +80,9 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
                 case TOK_STRING_LITERAL:  TODO("Evaluate string type");
                 case TOK_TRUE:            type = TOK_BOOL; break;
                 case TOK_FALSE:           type = TOK_BOOL; break;
-                case TOK_CHAR_LITERAL:    type = TOK_U8; break;
-                case TOK_INTEGER_LITERAL: type = TOK_U64; break;
-                case TOK_FLOAT_LITERAL:   type = TOK_F64; break;
+                case TOK_CHAR_LITERAL:    type = TOK_CHAR_LITERAL; break;
+                case TOK_INTEGER_LITERAL: type = TOK_INTEGER_LITERAL; break;
+                case TOK_FLOAT_LITERAL:   type = TOK_FLOAT_LITERAL; break;
                 default:                  compile_error(a->unit->fileName, e->loc, "Not a type kind (%d)", e->as.primary.value.kind);
             }
             break;
@@ -84,7 +90,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
         case EXPR_BINARY:
             type = check_expr(a, e->as.binary.lhs);
             rhs = check_expr(a, e->as.binary.rhs);
-            if (!isPrimitive(type) && !isPrimitive(rhs) && type != rhs)
+            if (!isCompatible(type, rhs))
                 compile_error(a->unit->fileName, e->loc, "mismatch between types %s and %s", tokenTypesStrings[type],
                               tokenTypesStrings[rhs]);
 
@@ -118,7 +124,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
         case EXPR_ASSIGN:
             type = check_expr(a, e->as.assignment.lhs);
             rhs = check_expr(a, e->as.assignment.rhs);
-            if (!isPrimitive(type) && !isPrimitive(rhs) && type != rhs)
+            if (!isCompatible(type, rhs))
                 compile_error(a->unit->fileName, e->loc, "cannot assign to %s from type %s", tokenTypesStrings[type],
                               tokenTypesStrings[rhs]);
             break;
@@ -129,7 +135,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
 
             type = check_expr(a, e->as.conditional.thenBranch);
             TokenKind elseType = check_expr(a, e->as.conditional.elseBranch);
-            if (!isPrimitive(type) && !isPrimitive(elseType) && type != elseType)
+            if (!isCompatible(type, elseType))
                 compile_error(a->unit->fileName, e->loc, "mismatch between branches types %s and %s",
                               tokenTypesStrings[type], tokenTypesStrings[elseType]);
             break;
@@ -153,7 +159,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
                 TokenKind argType = check_expr(a, fce.args.arr[i]);
                 TokenKind paramType = fs.params.arr[i]->as.var.type;
 
-                if (!isPrimitive(argType) && !isPrimitive(paramType) && argType != paramType)
+                if (!isCompatible(argType, paramType))
                     compile_error(a->unit->fileName, fce.args.arr[i]->loc,
                                   "incompatiable types, passing %s as parameter of type %s", tokenTypesStrings[argType],
                                   tokenTypesStrings[paramType]);
@@ -178,7 +184,7 @@ static void check_var(Analyzer *a, Stmt *s) {
         TokenKind initType = check_expr(a, s->as.var.init);
         TokenKind varType = s->as.var.type;
 
-        if (!isPrimitive(initType) && !isPrimitive(varType) && initType != varType)
+        if (!isCompatible(initType, varType))
             compile_error(a->unit->fileName, s->loc, "cannot assign type %s to variable of type %s",
                           tokenTypesStrings[initType], tokenTypesStrings[varType]);
     }
@@ -236,7 +242,7 @@ static void check_return(Analyzer *a, Stmt *s) {
 
     if (s->as.returnS.retVal) {
         TokenKind retValType = check_expr(a, s->as.returnS.retVal);
-        if (!isPrimitive(retScope->retType) && !isPrimitive(retValType) && retScope->retType != retValType)
+        if (!isCompatible(retValType, retScope->retType))
             compile_error(a->unit->fileName, s->loc, "cannot return %s from function returning %s",
                           tokenTypesStrings[retValType], tokenTypesStrings[retScope->retType]);
     } else if (retScope->retType != TOK_VOID)
