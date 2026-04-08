@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define X(type) [type] = #type,
-static const char *tokenTypesStrings[] = {TOKEN_LIST};
+const char *tokenTypesStrings[] = {TOKEN_LIST};
 #undef X
 
 TokenKind match_keyword_or_ident(String keyword) {
