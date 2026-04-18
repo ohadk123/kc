@@ -6,7 +6,7 @@ typedef struct {
     TranslationUnit *unit;
 } Generator;
 
-int gfprintf(Generator *g, const char *fmt, ...) {
+static int gfprintf(Generator *g, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int ret = vfprintf(g->outf, fmt, args);
@@ -14,12 +14,12 @@ int gfprintf(Generator *g, const char *fmt, ...) {
     return ret;
 }
 
-String qbe_id(Location loc) {
+static String qbe_id(Location loc) {
     static size_t id = 0;
     return str_printf("%%_ktemp_%zu_%zu_%zu", id++, loc.line, loc.col);
 }
 
-const char *ktype_to_qbe_ext(TokenKind type) {
+static const char *ktype_to_qbe_ext(TokenKind type) {
     switch (type) {
         case TOK_VOID:  return "";
         case TOK_U8:
@@ -39,7 +39,7 @@ const char *ktype_to_qbe_ext(TokenKind type) {
     }
 }
 
-String gen_primary(Generator *g, Expr *e) {
+static String gen_primary(Generator *g, Expr *e) {
     Token primary = e->as.primary.value;
     String value = {0};
 
@@ -58,7 +58,7 @@ String gen_primary(Generator *g, Expr *e) {
     return temp;
 }
 
-String gen_expr(Generator *g, Expr *e) {
+static String gen_expr(Generator *g, Expr *e) {
     switch (e->kind) {
         case EXPR_PRIMARY:     return gen_primary(g, e); break;
         case EXPR_GROUPING:
@@ -72,9 +72,9 @@ String gen_expr(Generator *g, Expr *e) {
     UNREACHABLE("Error on expr kind (%d)", e->kind);
 }
 
-void gen_stmt(Generator *g, Stmt *s);
+static void gen_stmt(Generator *g, Stmt *s);
 
-void gen_func(Generator *g, Stmt *s) {
+static void gen_func(Generator *g, Stmt *s) {
     FuncStmt func = s->as.func;
     gfprintf(g, "function %s $%.*s(", ktype_to_qbe_ext(func.retType), strf(func.name.as.identifier));
 
@@ -87,14 +87,14 @@ void gen_func(Generator *g, Stmt *s) {
     gfprintf(g, "}\n");
 }
 
-void gen_return(Generator *g, Stmt *s) {
+static void gen_return(Generator *g, Stmt *s) {
     ReturnStmt ret = s->as.returnS;
 
     String retVal = gen_expr(g, ret.retVal);
     gfprintf(g, "ret %.*s\n", strf(retVal));
 }
 
-void gen_stmt(Generator *g, Stmt *s) {
+static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
         case STMT_BLOCK:
             for (size_t i = 0; i < s->as.block.block.len; i++) gen_stmt(g, s->as.block.block.arr[i]);
