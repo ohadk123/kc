@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
     semantic_analysis(&unit);
 
-    // codegen(&unit, stdout);
+    codegen(&unit, stdout);
 
     // printf("compiling done!\n");
 }

@@ -90,7 +90,7 @@ void gen_func(Generator *g, Stmt *s) {
 void gen_return(Generator *g, Stmt *s) {
     ReturnStmt ret = s->as.returnS;
 
-    String retVal = gen_expr(g, ret.ret_val);
+    String retVal = gen_expr(g, ret.retVal);
     gfprintf(g, "ret %.*s\n", strf(retVal));
 }
 

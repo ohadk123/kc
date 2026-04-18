@@ -29,6 +29,7 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
 
 static TokenKind get_type(Scope *scope, String ident) {
     Stmt *s = find_symbol(scope, ident);
+    if (!s) return 0;
     switch (s->kind) {
         case STMT_VAR:  return s->as.var.type;
         case STMT_FUNC: return s->as.func.retType;
@@ -36,8 +37,10 @@ static TokenKind get_type(Scope *scope, String ident) {
     }
 }
 
-static bool isPrimitive(TokenKind kind) {
+static bool is_primitive(TokenKind kind) {
     switch (kind) {
+        case TOK_INTEGER_LITERAL:
+        case TOK_FLOAT_LITERAL:
         case TOK_BOOL:
         case TOK_U8:
         case TOK_U16:
@@ -55,9 +58,9 @@ static bool isPrimitive(TokenKind kind) {
     }
 }
 
-static bool isCompatible(TokenKind a, TokenKind b) {
+static bool is_compatible(TokenKind a, TokenKind b) {
     if (a == b) return true;
-    if (isPrimitive(a) && isPrimitive(b)) return true;
+    if (is_primitive(a) && is_primitive(b)) return true;
     return false;
 }
 
@@ -90,7 +93,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
         case EXPR_BINARY:
             type = check_expr(a, e->as.binary.lhs);
             rhs = check_expr(a, e->as.binary.rhs);
-            if (!isCompatible(type, rhs))
+            if (!is_compatible(type, rhs))
                 compile_error(a->unit->fileName, e->loc, "mismatch between types %s and %s", tokenTypesStrings[type],
                               tokenTypesStrings[rhs]);
 
@@ -124,7 +127,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
         case EXPR_ASSIGN:
             type = check_expr(a, e->as.assignment.lhs);
             rhs = check_expr(a, e->as.assignment.rhs);
-            if (!isCompatible(type, rhs))
+            if (!is_compatible(type, rhs))
                 compile_error(a->unit->fileName, e->loc, "cannot assign to %s from type %s", tokenTypesStrings[type],
                               tokenTypesStrings[rhs]);
             break;
@@ -135,7 +138,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
 
             type = check_expr(a, e->as.conditional.thenBranch);
             TokenKind elseType = check_expr(a, e->as.conditional.elseBranch);
-            if (!isCompatible(type, elseType))
+            if (!is_compatible(type, elseType))
                 compile_error(a->unit->fileName, e->loc, "mismatch between branches types %s and %s",
                               tokenTypesStrings[type], tokenTypesStrings[elseType]);
             break;
@@ -159,7 +162,7 @@ static TokenKind check_expr(Analyzer *a, Expr *e) {
                 TokenKind argType = check_expr(a, fce.args.arr[i]);
                 TokenKind paramType = fs.params.arr[i]->as.var.type;
 
-                if (!isCompatible(argType, paramType))
+                if (!is_compatible(argType, paramType))
                     compile_error(a->unit->fileName, fce.args.arr[i]->loc,
                                   "incompatiable types, passing %s as parameter of type %s", tokenTypesStrings[argType],
                                   tokenTypesStrings[paramType]);
@@ -184,7 +187,7 @@ static void check_var(Analyzer *a, Stmt *s) {
         TokenKind initType = check_expr(a, s->as.var.init);
         TokenKind varType = s->as.var.type;
 
-        if (!isCompatible(initType, varType))
+        if (!is_compatible(initType, varType))
             compile_error(a->unit->fileName, s->loc, "cannot assign type %s to variable of type %s",
                           tokenTypesStrings[initType], tokenTypesStrings[varType]);
     }
@@ -242,7 +245,7 @@ static void check_return(Analyzer *a, Stmt *s) {
 
     if (s->as.returnS.retVal) {
         TokenKind retValType = check_expr(a, s->as.returnS.retVal);
-        if (!isCompatible(retValType, retScope->retType))
+        if (!is_compatible(retValType, retScope->retType))
             compile_error(a->unit->fileName, s->loc, "cannot return %s from function returning %s",
                           tokenTypesStrings[retValType], tokenTypesStrings[retScope->retType]);
     } else if (retScope->retType != TOK_VOID)
