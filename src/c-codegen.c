@@ -140,6 +140,24 @@ static String gen_func_call(Generator *g, Expr *e) {
     return finish_string(&call);
 }
 
+static String gen_conditional(Generator *g, Expr *e) {
+    ConditionalExpr cond = e->as.conditional;
+
+    String condName = gen_expr(g, cond.condition);
+    String resultName = temp_id(e->loc);
+
+    gfprintf(g, "%s %.*s;\n", ktype_to_c(e->type), strf(resultName));
+    gfprintf(g, "if (%.*s) {\n", strf(condName));
+    String trueVal = gen_expr(g, cond.thenBranch);
+    gfprintf(g, "%.*s = %.*s;\n", strf(resultName), strf(trueVal));
+    gfprintf(g, "} else {\n");
+    String falseVal = gen_expr(g, cond.elseBranch);
+    gfprintf(g, "%.*s = %.*s;\n", strf(resultName), strf(falseVal));
+    gfprintf(g, "}\n");
+
+    return resultName;
+}
+
 static String gen_expr(Generator *g, Expr *e) {
     // minor opt for identifiers
     if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER) return e->as.primary.value.as.identifier;
@@ -153,7 +171,7 @@ static String gen_expr(Generator *g, Expr *e) {
                                // TODO: works because the inner structs are identical
         case EXPR_ASSIGN:      inner = gen_binary(g, e);       break;
         case EXPR_UNARY_POST:  inner = gen_unary_post(g, e);   break;
-        case EXPR_CONDITIONAL: TODO("conditional expression"); break;
+        case EXPR_CONDITIONAL: return gen_conditional(g, e);
         case EXPR_FUNC_CALL:   inner = gen_func_call(g, e);    break;
     }
 
