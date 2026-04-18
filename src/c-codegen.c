@@ -86,7 +86,6 @@ static String gen_primary(Expr *e) {
     Token prim = e->as.primary.value;
 
     switch (prim.kind) {
-        case TOK_IDENTIFIER:      return str_printf("%.*s", strf(prim.as.identifier));
         case TOK_CHAR_LITERAL:    return str_printf("%u", prim.as.charLiteral);
         case TOK_INTEGER_LITERAL: return str_printf("%lu", prim.as.integerLiteral);
         case TOK_FLOAT_LITERAL:   return str_printf("%f", prim.as.floatLiteral);
@@ -120,6 +119,9 @@ static String gen_unary(Generator *g, Expr *e) {
 }
 
 static String gen_expr(Generator *g, Expr *e) {
+    // minor opt for identifiers
+    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER) return e->as.primary.value.as.identifier;
+
     String inner;
     switch (e->kind) {
         case EXPR_PRIMARY:     inner = gen_primary(e); break;
