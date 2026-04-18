@@ -159,7 +159,7 @@ static TokenKind check_assign(Analyzer *a, Expr *e) {
 
     // assignee must be a variable identifier
     Expr *assginee = e->as.assignment.lhs;
-    if ((assginee->kind != EXPR_PRIMARY && assginee->as.primary.value.kind != TOK_IDENTIFIER)
+    if (assginee->kind != EXPR_PRIMARY || assginee->as.primary.value.kind != TOK_IDENTIFIER
          || expect_symbol(a, assginee->as.primary.value)->kind != STMT_VAR)
         compile_error(a->unit->fileName, e->loc, "expression is not assignable");
 
@@ -235,10 +235,10 @@ static void check_var(Analyzer *a, Stmt *s) {
     }
 
     if (s->as.var.init) {
-        // TokenKind initType = check_expr(a, s->as.var.init);
-        // TokenKind varType = s->as.var.type;
-
-        // TODO: type checking
+        TokenKind initType = check_expr(a, s->as.var.init);
+        if (type_priorities[initType] > type_priorities[s->as.var.type])
+            compile_error(a->unit->fileName, s->loc, "cannot initialize variable of type '%s' with value of type '%s'",
+                          tokenTypesStrings[s->as.var.type], tokenTypesStrings[initType]);
     }
 
     hm_insert(&a->curr->symbols, s->as.var.name.as.identifier, s);
