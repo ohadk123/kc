@@ -167,6 +167,16 @@ static void gen_return(Generator *g, Stmt *s) {
     gfprintf(g, "return %.*s;\n", strf(retVal));
 }
 
+static void gen_var(Generator *g, Stmt *s) {
+    VarStmt var = s->as.var;
+
+    String initVal = str_from_cstr("0");
+    if (var.init)
+        initVal = gen_expr(g, var.init);
+
+    gfprintf(g, "%s %.*s = %.*s;\n", ktype_to_c(var.type), strf(var.name.as.identifier), strf(initVal));
+}
+
 static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
         case STMT_BLOCK:
@@ -174,8 +184,8 @@ static void gen_stmt(Generator *g, Stmt *s) {
             break;
         case STMT_FUNC:     gen_func(g, s); break;
         case STMT_RETURN:   gen_return(g, s); break;
-        case STMT_VAR:
-        case STMT_EXPR:
+        case STMT_VAR:      gen_var(g, s); break;
+        case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
         case STMT_WHILE:
         case STMT_IF:
         case STMT_FOR:
