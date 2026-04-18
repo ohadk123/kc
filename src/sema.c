@@ -10,7 +10,7 @@ void fill_global_symbol_table(TranslationUnit *unit) {
 
         if (!hm_insert(&unit->globalSymbols.symbols, key, s)) {
             Stmt *first = hm_find_val(&unit->globalSymbols.symbols, key);
-            compile_error(unit->fileName, s->loc, "symbol \"%.*s\" already delcared before at [%.*s:%zu:%zu]",
+            compile_error(unit->fileName, s->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
                           (int)key.len, key.data, (int)unit->fileName.len, unit->fileName.data, first->loc.line,
                           first->loc.col);
         }
@@ -27,7 +27,7 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
     return 0;
 }
 
-static TokenKind get_type(Scope *scope, String ident) {
+static TokenKind get_ident_type(Scope *scope, String ident) {
     Stmt *s = find_symbol(scope, ident);
     if (!s) return 0;
     switch (s->kind) {
@@ -53,15 +53,36 @@ static bool is_primitive(TokenKind kind) {
         case TOK_I64:
         case TOK_ISIZE:
         case TOK_F32:
-        case TOK_F64:   return true;
-        default:        return false;
+        case TOK_F64:             return true;
+        default:                  return false;
     }
 }
 
-static bool is_compatible(TokenKind a, TokenKind b) {
-    if (a == b) return true;
-    if (is_primitive(a) && is_primitive(b)) return true;
-    return false;
+static int type_priorities[] = {
+    [TOK_INTEGER_LITERAL] = 0,
+    [TOK_FLOAT_LITERAL] = 1,
+    [TOK_BOOL] = 2,
+    [TOK_I8] = 3,
+    [TOK_U8] = 4,
+    [TOK_I16] = 5,
+    [TOK_U16] = 6,
+    [TOK_I32] = 7,
+    [TOK_U32] = 8,
+    [TOK_ISIZE] = 9,
+    [TOK_USIZE] = 10,
+    [TOK_I64] = 11,
+    [TOK_U64] = 12,
+    [TOK_F32] = 13,
+    [TOK_F64] = 14,
+};
+
+static TokenKind choose_primitive(TokenKind a, TokenKind b) {
+    assert(is_primitive(a) && is_primitive(b) && "Both args must be primitives");
+    int pa = type_priorities[a];
+    int pb = type_priorities[b];
+
+    if (pa > pb) return a;
+    return b;
 }
 
 typedef struct {
@@ -69,105 +90,135 @@ typedef struct {
     Scope *curr;
 } Analyzer;
 
+static Stmt *expect_symbol(Analyzer *a, Token ident) {
+    assert(ident.kind == TOK_IDENTIFIER);
+    String symbolName = ident.as.identifier;
+    Stmt *s = find_symbol(a->curr, symbolName);
+    if (s) return s;
+
+    compile_error(a->unit->fileName, ident.loc, "identifier '%.*s' is undeclared", strf(symbolName));
+}
+
+static TokenKind check_expr(Analyzer *a, Expr *e);
+
+static TokenKind check_primary(Analyzer *a, Expr *e) {
+    PrimaryExpr prime = e->as.primary;
+
+    switch (prime.value.kind) {
+        case TOK_IDENTIFIER: {
+            assert(prime.value.kind == TOK_IDENTIFIER);
+            TokenKind type = get_ident_type(a->curr, prime.value.as.identifier);
+            if (!type)
+                compile_error(a->unit->fileName, e->loc, "unkown symbol '%.*s'", strf(prime.value.as.identifier));
+            return type;
+        }
+        case TOK_STRING_LITERAL:  TODO("Evaluate string type");
+        case TOK_TRUE:            return TOK_BOOL;
+        case TOK_FALSE:           return TOK_BOOL;
+        case TOK_CHAR_LITERAL:    return TOK_CHAR_LITERAL;
+        case TOK_INTEGER_LITERAL: return TOK_INTEGER_LITERAL;
+        case TOK_FLOAT_LITERAL:   return TOK_FLOAT_LITERAL;
+        default:                  compile_error(a->unit->fileName, e->loc, "Not a type kind (%d)", prime.value.kind);
+    }
+}
+
+static TokenKind check_binary(Analyzer *a, Expr *e) {
+    BinaryExpr bin = e->as.binary;
+
+    TokenKind lhs = check_expr(a, bin.lhs);
+    TokenKind rhs = check_expr(a, bin.rhs);
+    TokenKind type = choose_primitive(lhs, rhs);
+
+    switch (bin.op) {
+        case TOK_EQUALS_EQUALS:
+        case TOK_BANG_EQUALS:
+        case TOK_LESS:
+        case TOK_LESS_EQUALS:
+        case TOK_GREATER:
+        case TOK_GREATER_EQUALS:
+        case TOK_AMPERSAND_AMPERSAND:
+        case TOK_PIPE_PIPE:
+            type = TOK_BOOL;
+        default: break;
+    }
+
+    return type;
+}
+
+static TokenKind check_unary(Analyzer *a, Expr *e) {
+    UnaryExpr unary = e->as.unary;
+
+    TokenKind type = check_expr(a, unary.inner);
+    if (unary.op == TOK_BANG && type != TOK_BOOL) compile_error(a->unit->fileName, e->loc, "cannot negate non-bool value");
+    if (unary.op == TOK_STAR || unary.op == TOK_AMPERSAND) TODO("Pointers");
+    return type;
+}
+
+static TokenKind check_assign(Analyzer *a, Expr *e) {
+    AssignExpr ass = e->as.assignment;
+
+    // assignee must be a variable identifier
+    Expr *assginee = e->as.assignment.lhs;
+    if ((assginee->kind != EXPR_PRIMARY && assginee->as.primary.value.kind != TOK_IDENTIFIER)
+         || expect_symbol(a, assginee->as.primary.value)->kind != STMT_VAR)
+        compile_error(a->unit->fileName, e->loc, "expression is not assignable");
+
+    TokenKind lhs = check_expr(a, ass.lhs);
+    TokenKind rhs = check_expr(a, ass.rhs);
+    return choose_primitive(lhs, rhs); // TODO: type checking
+}
+
+static TokenKind check_conditional(Analyzer *a, Expr *e) {
+    ConditionalExpr cond = e->as.conditional;
+
+    if (check_expr(a, cond.condition) != TOK_BOOL)
+        compile_error(a->unit->fileName, e->loc, "ternary expression condition is not boolean");
+
+    TokenKind thenBranch = check_expr(a, cond.thenBranch);
+    TokenKind elseType   = check_expr(a, cond.elseBranch);
+    return choose_primitive(thenBranch, elseType); // TODO: type checking
+}
+
+static TokenKind check_func_call(Analyzer *a, Expr *e) {
+    FuncCallExpr funcCall = e->as.funcCall;
+
+    // TODO: function pointers
+    assert(funcCall.func->kind == EXPR_PRIMARY);
+    Stmt *funcStmt = expect_symbol(a, funcCall.func->as.primary.value);
+    if (funcStmt->kind != STMT_FUNC)
+        compile_error(a->unit->fileName, funcStmt->loc, "object is not callable");
+
+    FuncStmt funcDecl = funcStmt->as.func;
+    if (funcDecl.params.len > funcCall.args.len)
+        compile_error(a->unit->fileName, e->loc, "too few arguments to function call, expected %zu, got %zu",
+                      funcDecl.params.len, funcCall.args.len);
+    else if (funcDecl.params.len < funcCall.args.len)
+        compile_error(a->unit->fileName, e->loc, "too many arguments to function call, expected %zu, got %zu",
+                      funcDecl.params.len, funcCall.args.len);
+
+    for (size_t i = 0; i < funcDecl.params.len; i++) {
+        TokenKind argType = check_expr(a, funcCall.args.arr[i]);
+        TokenKind paramType = funcDecl.params.arr[i]->as.var.type;
+        if (type_priorities[argType] > type_priorities[paramType])
+            compile_error(a->unit->fileName, e->loc, "cannot pass param of type '%s' with arg of type '%s'",
+                    tokenTypesStrings[paramType], tokenTypesStrings[argType]);
+    }
+
+    return funcDecl.retType;
+}
+
 static TokenKind check_expr(Analyzer *a, Expr *e) {
-    TokenKind type = 0, rhs;
+    TokenKind type = 0;
+
     switch (e->kind) {
-        case EXPR_PRIMARY:
-            switch (e->as.primary.value.kind) {
-                case TOK_IDENTIFIER:
-                    type = get_type(a->curr, e->as.primary.value.as.identifier);
-                    if (!type)
-                        compile_error(a->unit->fileName, e->loc, "unkown symbol %.*s",
-                                      strf(e->as.primary.value.as.identifier));
-                    break;
-                case TOK_STRING_LITERAL:  TODO("Evaluate string type");
-                case TOK_TRUE:            type = TOK_BOOL; break;
-                case TOK_FALSE:           type = TOK_BOOL; break;
-                case TOK_CHAR_LITERAL:    type = TOK_CHAR_LITERAL; break;
-                case TOK_INTEGER_LITERAL: type = TOK_INTEGER_LITERAL; break;
-                case TOK_FLOAT_LITERAL:   type = TOK_FLOAT_LITERAL; break;
-                default:                  compile_error(a->unit->fileName, e->loc, "Not a type kind (%d)", e->as.primary.value.kind);
-            }
-            break;
-        case EXPR_GROUPING: type = check_expr(a, e->as.grouping.inner); break;
-        case EXPR_BINARY:
-            type = check_expr(a, e->as.binary.lhs);
-            rhs = check_expr(a, e->as.binary.rhs);
-            if (!is_compatible(type, rhs))
-                compile_error(a->unit->fileName, e->loc, "mismatch between types %s and %s", tokenTypesStrings[type],
-                              tokenTypesStrings[rhs]);
-
-            switch (e->as.binary.op) {
-                case TOK_EQUALS_EQUALS:
-                case TOK_BANG_EQUALS:
-                case TOK_LESS:
-                case TOK_LESS_EQUALS:
-                case TOK_GREATER:
-                case TOK_GREATER_EQUALS:
-                case TOK_AMPERSAND_AMPERSAND:
-                case TOK_PIPE_PIPE:           type = TOK_BOOL; break;
-                default:                      break;
-            }
-            break;
-        case EXPR_UNARY:
-            type = check_expr(a, e->as.unary.inner);
-            switch (e->as.unary.op) {
-                case TOK_PLUS_PLUS:   break;
-                case TOK_MINUS_MINUS: break;
-                case TOK_AMPERSAND:   TODO("Pointers");
-                case TOK_STAR:        TODO("Pointers");
-                case TOK_PLUS:        break;
-                case TOK_MINUS:       break;
-                case TOK_TILDE:       break;
-                case TOK_BANG:        type = TOK_BOOL; break;
-                default:              UNREACHABLE("not a unary op (%d)", e->as.unary.op);
-            }
-            break;
-
-        case EXPR_ASSIGN:
-            type = check_expr(a, e->as.assignment.lhs);
-            rhs = check_expr(a, e->as.assignment.rhs);
-            if (!is_compatible(type, rhs))
-                compile_error(a->unit->fileName, e->loc, "cannot assign to %s from type %s", tokenTypesStrings[type],
-                              tokenTypesStrings[rhs]);
-            break;
-        case EXPR_UNARY_POST: type = check_expr(a, e->as.unary.inner); break;
-        case EXPR_CONDITIONAL:
-            if (check_expr(a, e->as.conditional.condition) != TOK_BOOL)
-                compile_error(a->unit->fileName, e->loc, "ternary expression condition is not boolean");
-
-            type = check_expr(a, e->as.conditional.thenBranch);
-            TokenKind elseType = check_expr(a, e->as.conditional.elseBranch);
-            if (!is_compatible(type, elseType))
-                compile_error(a->unit->fileName, e->loc, "mismatch between branches types %s and %s",
-                              tokenTypesStrings[type], tokenTypesStrings[elseType]);
-            break;
-        case EXPR_FUNC_CALL:
-            type = check_expr(a, e->as.funcCall.func);
-            // TODO: function pointers
-            assert(e->as.funcCall.func->kind == EXPR_PRIMARY);
-            Stmt *func = find_symbol(a->curr, e->as.funcCall.func->as.primary.value.as.identifier);
-            assert(func->kind == STMT_FUNC);
-            FuncStmt fs = func->as.func;
-            FuncCallExpr fce = e->as.funcCall;
-
-            if (fs.params.len > fce.args.len)
-                compile_error(a->unit->fileName, e->loc, "too few arguments to function call, expected %zu, got %zu",
-                              fs.params.len, fce.args.len);
-            else if (fs.params.len < fce.args.len)
-                compile_error(a->unit->fileName, e->loc, "too many arguments to function call, expected %zu, got %zu",
-                              fs.params.len, fce.args.len);
-
-            for (size_t i = 0; i < fs.params.len; i++) {
-                TokenKind argType = check_expr(a, fce.args.arr[i]);
-                TokenKind paramType = fs.params.arr[i]->as.var.type;
-
-                if (!is_compatible(argType, paramType))
-                    compile_error(a->unit->fileName, fce.args.arr[i]->loc,
-                                  "incompatiable types, passing %s as parameter of type %s", tokenTypesStrings[argType],
-                                  tokenTypesStrings[paramType]);
-            }
-            break;
+        case EXPR_PRIMARY:     type = check_primary(a, e);                 break;
+        case EXPR_GROUPING:    type = check_expr(a, e->as.grouping.inner); break;
+        case EXPR_BINARY:      type = check_binary(a, e);                  break;
+        case EXPR_UNARY:       type = check_unary(a, e);                   break;
+        case EXPR_ASSIGN:      type = check_assign(a, e);                  break;
+        case EXPR_UNARY_POST:  type = check_expr(a, e->as.unary.inner);    break;
+        case EXPR_CONDITIONAL: type = check_conditional(a, e);             break;
+        case EXPR_FUNC_CALL:   type = check_func_call(a, e);               break;
     }
 
     e->type = type;
@@ -179,17 +230,15 @@ static void check_stmt(Analyzer *a, Stmt *s);
 static void check_var(Analyzer *a, Stmt *s) {
     Stmt *symbol = find_symbol(a->curr, s->as.var.name.as.identifier);
     if (symbol) {
-        compile_error(a->unit->fileName, s->loc, "symbol \"%.*s\" already delcared before at [%.*s:%zu:%zu]",
+        compile_error(a->unit->fileName, s->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
                       strf(s->as.var.name.as.identifier), a->unit->fileName, s->loc.line, s->loc.col);
     }
 
     if (s->as.var.init) {
-        TokenKind initType = check_expr(a, s->as.var.init);
-        TokenKind varType = s->as.var.type;
+        // TokenKind initType = check_expr(a, s->as.var.init);
+        // TokenKind varType = s->as.var.type;
 
-        if (!is_compatible(initType, varType))
-            compile_error(a->unit->fileName, s->loc, "cannot assign type %s to variable of type %s",
-                          tokenTypesStrings[initType], tokenTypesStrings[varType]);
+        // TODO: type checking
     }
 
     hm_insert(&a->curr->symbols, s->as.var.name.as.identifier, s);
@@ -245,8 +294,8 @@ static void check_return(Analyzer *a, Stmt *s) {
 
     if (s->as.returnS.retVal) {
         TokenKind retValType = check_expr(a, s->as.returnS.retVal);
-        if (!is_compatible(retValType, retScope->retType))
-            compile_error(a->unit->fileName, s->loc, "cannot return %s from function returning %s",
+        if (type_priorities[retValType] > type_priorities[retScope->retType])
+            compile_error(a->unit->fileName, s->loc, "cannot return '%s' from function returning '%s'",
                           tokenTypesStrings[retValType], tokenTypesStrings[retScope->retType]);
     } else if (retScope->retType != TOK_VOID)
         compile_error(a->unit->fileName, s->loc, "missing return type");
@@ -268,13 +317,13 @@ static void check_func(Analyzer *a, Stmt *s) {
 static void check_break(Analyzer *a, Stmt *s) {
     Scope *loopScope = a->curr;
     while (loopScope && !loopScope->inLoop) loopScope = loopScope->above;
-    if (!loopScope) compile_error(a->unit->fileName, s->loc, "\"break\" statement not in loop");
+    if (!loopScope) compile_error(a->unit->fileName, s->loc, "'break' statement not in loop");
 }
 
 static void check_continue(Analyzer *a, Stmt *s) {
     Scope *loopScope = a->curr;
     while (loopScope && !loopScope->inLoop) loopScope = loopScope->above;
-    if (!loopScope) compile_error(a->unit->fileName, s->loc, "\"continue\" statement not in loop");
+    if (!loopScope) compile_error(a->unit->fileName, s->loc, "'continue' statement not in loop");
 }
 
 static void check_stmt(Analyzer *a, Stmt *s) {
