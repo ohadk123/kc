@@ -71,6 +71,7 @@ typedef struct {
     FILE *outf;
     TranslationUnit *unit;
     String incLabel;
+    String endLabel;
 } Generator;
 
 static int gfprintf(Generator *g, const char *fmt, ...) {
@@ -248,32 +249,53 @@ static void gen_if(Generator *g, Stmt *s) {
 static void gen_for(Generator *g, Stmt *s) {
     ForStmt forS = s->as.forS;
 
-    gen_stmt(g, forS.initializer);
+    if (forS.initializer)
+        gen_stmt(g, forS.initializer);
+
     String loopLabel = temp_id(s->loc);
     String incLabel = temp_id(s->loc);
     g->incLabel = incLabel;
     String endLabel = temp_id(s->loc);
+    g->endLabel = endLabel;
 
     gfprintf(g, "{\n");
     gfprintf(g, "%.*s:\n", strf(loopLabel));
-    String condName = gen_expr(g, forS.condition);
-    gfprintf(g, "if (!(%.*s)) goto %.*s;\n", strf(condName), strf(endLabel));
+
+    if (forS.condition) {
+        String condName = gen_expr(g, forS.condition);
+        gfprintf(g, "if (!(%.*s)) goto %.*s;\n", strf(condName), strf(endLabel));
+    }
+
     gen_stmt(g, forS.body);
     gfprintf(g, "%.*s:\n", strf(incLabel));
-    gen_expr(g, forS.increment);
+
+    if (forS.increment)
+        gen_expr(g, forS.increment);
+
     gfprintf(g, "goto %.*s;\n", strf(loopLabel));
     gfprintf(g, "%.*s:\n", strf(endLabel));
     gfprintf(g, "}\n");
+
+    g->incLabel.len = 0;
+    g->endLabel.len = 0;
+}
+
+static void gen_break(Generator *g) {
+    // inside while
+    if (g->endLabel.len == 0)
+        gfprintf(g, "break;\n");
+    // inside for
+    else
+        gfprintf(g, "goto %.*s;\n", strf(g->endLabel));
 }
 
 static void gen_continue(Generator *g) {
     // inside while
-    if (g->incLabel.len == 0) {
+    if (g->incLabel.len == 0)
         gfprintf(g, "continue;\n");
-    }
-
     // inside for
-    gfprintf(g, "goto %.*s;\n", strf(g->incLabel));
+    else
+        gfprintf(g, "goto %.*s;\n", strf(g->incLabel));
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
@@ -288,7 +310,7 @@ static void gen_stmt(Generator *g, Stmt *s) {
         case STMT_WHILE:    gen_while(g, s);              break;
         case STMT_IF:       gen_if(g, s);                 break;
         case STMT_FOR:      gen_for(g, s);                break;
-        case STMT_BREAK:    gfprintf(g, "break;\n");      break;
+        case STMT_BREAK:    gen_break(g);                 break;
         case STMT_CONTINUE: gen_continue(g);              break;
     }
 }
