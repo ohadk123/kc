@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "type.h"
 
 typedef struct {
     TranslationUnit *unit;
@@ -273,10 +274,13 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 /******************************************************************************
  * Statement Parsing
  *****************************************************************************/
+
 Stmt *statement(Parser *p);
+Type *parse_type(Parser *p);
 
 Stmt *var_stmt(Parser *p) {
-    TokenKind type = previous(p).kind;
+    Type *type = parse_type(p);
+
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
     Expr *init = NULL;
     if (match(p, TOK_EQUALS)) init = expression(p);
@@ -402,7 +406,7 @@ StmtList params_list(Parser *p) {
 
     while (true) {
         if (!match_types(p)) parser_error(p, "Expected parameter type");
-        TokenKind type = previous(p).kind;
+        Type *type = parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token name = previous(p);
         Stmt *param = stmt_make_var(type, name, NULL, name.loc);
@@ -416,8 +420,32 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-Stmt *func_decl_stmt(Parser *p) {
-    TokenKind type = previous(p).kind;
+Type *parse_type(Parser *p) {
+    if (!match_types(p))
+        compile_error(p->unit->fileName, peek(p).loc, "Expected type");
+
+    Type *baseType = type_make_primitive(TokenToPrimitive[previous(p).kind]);
+
+    while (!match(p, TOK_IDENTIFIER)) {
+        if (match(p, TOK_STAR)) {
+            baseType = type_make_pointer(baseType);
+        } else if (match(p, TOK_LEFT_BRACKET)) {
+            Expr *len = expression(p);
+            expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
+            baseType = type_make_array(baseType, len);
+        } else if (match(p, TOK_LEFT_PAREN)) {
+            StmtList params = params_list(p);
+            baseType = type_make_func(baseType, params);
+        } else {
+            parser_error(p, "Expected '*', '[', or '(' after type");
+        }
+    }
+
+    return baseType;
+}
+
+Stmt *func_def_stmt(Parser *p) {
+    Type *type = parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
     expect(p, TOK_LEFT_PAREN, "Expectd '('");
@@ -430,7 +458,7 @@ Stmt *func_decl_stmt(Parser *p) {
 }
 
 Stmt *top_level_decl(Parser *p) {
-    if (match_types(p)) return func_decl_stmt(p);
+    if (match_types(p)) return func_def_stmt(p);
 
     parser_error(p, "Unkown top level declaration");
 }

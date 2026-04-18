@@ -59,24 +59,8 @@ Stmt *stmt_make_continue(Location loc) {
     return make_stmt(STMT_CONTINUE, loc);
 }
 
-static const char *type_str(TokenKind type) {
-    switch (type) {
-        case TOK_VOID:  return "void";
-        case TOK_U8:    return "u8";
-        case TOK_U16:   return "u16";
-        case TOK_U32:   return "u32";
-        case TOK_U64:   return "u64";
-        case TOK_USIZE: return "usize";
-        case TOK_I8:    return "i8";
-        case TOK_I16:   return "i16";
-        case TOK_I32:   return "i32";
-        case TOK_I64:   return "i64";
-        case TOK_ISIZE: return "isize";
-        case TOK_F32:   return "f32";
-        case TOK_F64:   return "f64";
-        case TOK_BOOL:  return "bool";
-        default:        return "?";
-    }
+static const char *type_str(Type *type) {
+    TODO("Type stringification %p", (void *) type);
 }
 
 Stmt *stmt_make_return(Expr *ret_val, Location loc) {
@@ -85,7 +69,7 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(TokenKind retType, Token name, StmtList params, StmtList block, Location loc) {
+Stmt *stmt_make_func(Type *retType, Token name, StmtList params, StmtList block, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.retType = retType;
     s->as.func.name = name;

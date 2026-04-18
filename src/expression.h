@@ -24,6 +24,8 @@
 
 #include "token.h"
 
+typedef struct _Type Type;
+
 typedef struct _Expr Expr;
 typedef struct {
     LIST_FIELDS(Expr *);
@@ -79,7 +81,7 @@ typedef struct {
 struct _Expr {
     ExprKind kind;
     Location loc;
-    TokenKind type;
+    Type *type;
     union {
         PrimaryExpr primary;
         GroupingExpr grouping;
