@@ -116,6 +116,12 @@ static String gen_unary(Generator *g, Expr *e) {
     return str_printf("%s %.*s", op_str(un.op), strf(inner));
 }
 
+static String gen_unary_post(Generator *g, Expr *e) {
+    UnaryExpr un = e->as.unary;
+    String inner = gen_expr(g, un.inner);
+    return str_printf("%.*s %s", strf(inner), op_str(un.op));
+}
+
 static String gen_func_call(Generator *g, Expr *e) {
     FuncCallExpr func = e->as.funcCall;
 
@@ -146,7 +152,7 @@ static String gen_expr(Generator *g, Expr *e) {
         case EXPR_UNARY:       inner = gen_unary(g, e);        break;
                                // TODO: works because the inner structs are identical
         case EXPR_ASSIGN:      inner = gen_binary(g, e);       break;
-        case EXPR_UNARY_POST:  TODO("unary post expression");  break;
+        case EXPR_UNARY_POST:  inner = gen_unary_post(g, e);   break;
         case EXPR_CONDITIONAL: TODO("conditional expression"); break;
         case EXPR_FUNC_CALL:   inner = gen_func_call(g, e);    break;
     }
