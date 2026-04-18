@@ -1,4 +1,4 @@
-#include "codegen.h"
+#include "c-codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
@@ -18,19 +18,19 @@ int main(int argc, char *argv[]) {
         printf("LEXER ERROR");
     }
 
-    for (size_t i = 0; i < unit.tokens.len; i++) {
-        print_tok(unit.tokens.arr[i]);
-    }
+    // for (size_t i = 0; i < unit.tokens.len; i++) {
+    //     print_tok(unit.tokens.arr[i]);
+    // }
 
     parse(&unit);
-    for (size_t i = 0; i < unit.ast.len; i++) {
-        print_stmt(unit.ast.arr[i], 1);
-        printf("\n");
-    }
+    // for (size_t i = 0; i < unit.ast.len; i++) {
+    //     print_stmt(unit.ast.arr[i], 1);
+    //     printf("\n");
+    // }
 
     semantic_analysis(&unit);
 
-    codegen(&unit, stdout);
+    c_codegen(&unit, stdout);
 
     // printf("compiling done!\n");
 }
