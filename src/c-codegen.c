@@ -82,23 +82,24 @@ static int gfprintf(Generator *g, const char *fmt, ...) {
 
 static String gen_expr(Generator *g, Expr *e);
 
-static String gen_primary(Generator *g, Expr *e) {
-    Token primary = e->as.primary.value;
-    String value = {0};
+static String gen_primary(Expr *e) {
+    Token prim = e->as.primary.value;
 
-    switch (primary.kind) {
-        case TOK_IDENTIFIER:      return str_printf("%.*s", strf(primary.as.identifier));
-        case TOK_CHAR_LITERAL:    value = str_printf("%u", primary.as.charLiteral); break;
-        case TOK_INTEGER_LITERAL: value = str_printf("%lu", primary.as.integerLiteral); break;
-        case TOK_FLOAT_LITERAL:   value = str_printf("%f", primary.as.floatLiteral); break;
-        case TOK_TRUE:            value = str_from_cstr("1"); break;
-        case TOK_FALSE:           value = str_from_cstr("0"); break;
-        case TOK_STRING_LITERAL:  value = str_printf("\"%.*s\"", strf(primary.as.stringLiteral)); break;
-        default:                  UNREACHABLE("Not a primary kind (%d)", primary.kind);
+    switch (prim.kind) {
+        case TOK_IDENTIFIER:      return str_printf("%.*s", strf(prim.as.identifier));
+        case TOK_CHAR_LITERAL:    return str_printf("%u", prim.as.charLiteral);
+        case TOK_INTEGER_LITERAL: return str_printf("%lu", prim.as.integerLiteral);
+        case TOK_FLOAT_LITERAL:   return str_printf("%f", prim.as.floatLiteral);
+        case TOK_TRUE:            return str_printf("1");
+        case TOK_FALSE:           return str_printf("0");
+        case TOK_STRING_LITERAL:  return str_printf("\"%.*s\"", strf(prim.as.stringLiteral));
+        default:                  UNREACHABLE("Not a primary kind (%d)", prim.kind);
     }
-    String temp = temp_id(e->loc);
-    gfprintf(g, "%s %.*s = %.*s;\n", ktype_to_c(e->type), strf(temp), strf(value));
-    return temp;
+}
+
+static String gen_grouping(Generator *g, Expr *e) {
+    GroupingExpr group = e->as.grouping;
+    return str_printf("(%.*s)", gen_expr(g, group.inner));
 }
 
 static String gen_binary(Generator *g, Expr *e) {
@@ -107,23 +108,33 @@ static String gen_binary(Generator *g, Expr *e) {
     String lhs = gen_expr(g, bin.lhs);
     String rhs = gen_expr(g, bin.rhs);
 
-    String temp = temp_id(e->loc);
-    gfprintf(g, "%s %.*s = %.*s %s %.*s;\n", ktype_to_c(e->type), strf(temp), strf(lhs), op_str(bin.op), strf(rhs));
-    return temp;
+    return str_printf("%.*s %s %.*s", strf(lhs), op_str(bin.op), strf(rhs));
+}
+
+static String gen_unary(Generator *g, Expr *e) {
+    UnaryExpr un = e->as.unary;
+
+    String inner = gen_expr(g, un.inner);
+
+    return str_printf("%s %.*s", op_str(un.op), strf(inner));
 }
 
 static String gen_expr(Generator *g, Expr *e) {
+    String inner;
     switch (e->kind) {
-        case EXPR_PRIMARY:     return gen_primary(g, e);
-        case EXPR_GROUPING:    return str_printf("(%.*s)", strf(gen_expr(g, e->as.grouping.inner)));
-        case EXPR_BINARY:      return gen_binary(g, e);
-        case EXPR_UNARY:
+        case EXPR_PRIMARY:     inner = gen_primary(e); break;
+        case EXPR_GROUPING:    inner = gen_grouping(g, e); break;
+        case EXPR_BINARY:      inner = gen_binary(g, e); break;
+        case EXPR_UNARY:       inner = gen_unary(g, e); break;
         case EXPR_ASSIGN:
         case EXPR_UNARY_POST:
         case EXPR_CONDITIONAL:
         case EXPR_FUNC_CALL:   TODO("Generate expression of kind (%d)", e->kind);
     }
-    UNREACHABLE("Error on expr kind (%d)", e->kind);
+
+    String temp = temp_id(e->loc);
+    gfprintf(g, "%s %.*s = %.*s;\n", ktype_to_c(e->type), strf(temp), strf(inner));
+    return temp;
 }
 
 static void gen_stmt(Generator *g, Stmt *s);
