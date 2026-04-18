@@ -70,6 +70,7 @@ static const char *op_str(TokenKind op) {
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
+    String incLabel;
 } Generator;
 
 static int gfprintf(Generator *g, const char *fmt, ...) {
@@ -222,11 +223,57 @@ static void gen_while(Generator *g, Stmt *s) {
     WhileStmt whileS = s->as.whileS;
 
     gfprintf(g, "while (1) {\n");
-    String condName = gen_expr(g, whileS.cond);
+    String condName = gen_expr(g, whileS.condition);
     gfprintf(g, "if (!(%.*s)) break;\n", strf(condName));
 
     gen_stmt(g, whileS.body);
     gfprintf(g, "}\n");
+}
+
+static void gen_if(Generator *g, Stmt *s) {
+    IfStmt ifS = s->as.ifS;
+
+    String condName = gen_expr(g, ifS.condition);
+    gfprintf(g, "if (%.*s) {\n", strf(condName));
+    gen_stmt(g, ifS.thenBranch);
+    gfprintf(g, "}\n");
+
+    if (ifS.elseBranch) {
+        gfprintf(g, "else {\n");
+        gen_stmt(g, ifS.elseBranch);
+        gfprintf(g, "}\n");
+    }
+}
+
+static void gen_for(Generator *g, Stmt *s) {
+    ForStmt forS = s->as.forS;
+
+    gen_stmt(g, forS.initializer);
+    String loopLabel = temp_id(s->loc);
+    String incLabel = temp_id(s->loc);
+    g->incLabel = incLabel;
+    String endLabel = temp_id(s->loc);
+
+    gfprintf(g, "{\n");
+    gfprintf(g, "%.*s:\n", strf(loopLabel));
+    String condName = gen_expr(g, forS.condition);
+    gfprintf(g, "if (!(%.*s)) goto %.*s;\n", strf(condName), strf(endLabel));
+    gen_stmt(g, forS.body);
+    gfprintf(g, "%.*s:\n", strf(incLabel));
+    gen_expr(g, forS.increment);
+    gfprintf(g, "goto %.*s;\n", strf(loopLabel));
+    gfprintf(g, "%.*s:\n", strf(endLabel));
+    gfprintf(g, "}\n");
+}
+
+static void gen_continue(Generator *g) {
+    // inside while
+    if (g->incLabel.len == 0) {
+        gfprintf(g, "continue;\n");
+    }
+
+    // inside for
+    gfprintf(g, "goto %.*s;\n", strf(g->incLabel));
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
@@ -234,15 +281,15 @@ static void gen_stmt(Generator *g, Stmt *s) {
         case STMT_BLOCK:
             for (size_t i = 0; i < s->as.block.block.len; i++) gen_stmt(g, s->as.block.block.arr[i]);
             break;
-        case STMT_FUNC:     gen_func(g, s); break;
-        case STMT_RETURN:   gen_return(g, s); break;
-        case STMT_VAR:      gen_var(g, s); break;
+        case STMT_FUNC:     gen_func(g, s);               break;
+        case STMT_RETURN:   gen_return(g, s);             break;
+        case STMT_VAR:      gen_var(g, s);                break;
         case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
-        case STMT_WHILE:    gen_while(g, s); break;
-        case STMT_IF:       TODO("if statement gen"); break;
-        case STMT_FOR:      TODO("for statement gen"); break;
-        case STMT_BREAK:    gfprintf(g, "break;\n"); break;
-        case STMT_CONTINUE: gfprintf(g, "continue;\n"); break;
+        case STMT_WHILE:    gen_while(g, s);              break;
+        case STMT_IF:       gen_if(g, s);                 break;
+        case STMT_FOR:      gen_for(g, s);                break;
+        case STMT_BREAK:    gfprintf(g, "break;\n");      break;
+        case STMT_CONTINUE: gen_continue(g);              break;
     }
 }
 
@@ -250,6 +297,7 @@ void c_codegen(TranslationUnit *unit, FILE *outf) {
     Generator g = (Generator){
         .outf = outf,
         .unit = unit,
+        .incLabel = {0},
     };
 
     for (size_t i = 0; i < unit->ast.len; i++) {
