@@ -98,7 +98,7 @@ static String gen_primary(Expr *e) {
 
 static String gen_grouping(Generator *g, Expr *e) {
     GroupingExpr group = e->as.grouping;
-    return str_printf("(%.*s)", gen_expr(g, group.inner));
+    return str_printf("%.*s", gen_expr(g, group.inner));
 }
 
 static String gen_binary(Generator *g, Expr *e) {
@@ -112,10 +112,26 @@ static String gen_binary(Generator *g, Expr *e) {
 
 static String gen_unary(Generator *g, Expr *e) {
     UnaryExpr un = e->as.unary;
-
     String inner = gen_expr(g, un.inner);
-
     return str_printf("%s %.*s", op_str(un.op), strf(inner));
+}
+
+static String gen_func_call(Generator *g, Expr *e) {
+    FuncCallExpr func = e->as.funcCall;
+
+    StringBuilder call = {0};
+    String funcName = gen_expr(g, func.func);
+    sb_appendf(&call, "%.*s(", strf(funcName));
+
+    int argsLen = func.args.len;
+    for (int i = 0; i < argsLen; i++) {
+        String argName = gen_expr(g, func.args.arr[i]);
+        sb_appendf(&call, "%.*s", strf(argName));
+        if (i < argsLen - 1) sb_appendf(&call, ", ");
+    }
+    sb_appendf(&call, ")");
+
+    return finish_string(&call);
 }
 
 static String gen_expr(Generator *g, Expr *e) {
@@ -124,14 +140,15 @@ static String gen_expr(Generator *g, Expr *e) {
 
     String inner;
     switch (e->kind) {
-        case EXPR_PRIMARY:     inner = gen_primary(e); break;
-        case EXPR_GROUPING:    inner = gen_grouping(g, e); break;
-        case EXPR_BINARY:      inner = gen_binary(g, e); break;
-        case EXPR_UNARY:       inner = gen_unary(g, e); break;
-        case EXPR_ASSIGN:
-        case EXPR_UNARY_POST:
-        case EXPR_CONDITIONAL:
-        case EXPR_FUNC_CALL:   TODO("Generate expression of kind (%d)", e->kind);
+        case EXPR_PRIMARY:     inner = gen_primary(e);         break;
+        case EXPR_GROUPING:    inner = gen_grouping(g, e);     break;
+        case EXPR_BINARY:      inner = gen_binary(g, e);       break;
+        case EXPR_UNARY:       inner = gen_unary(g, e);        break;
+                               // TODO: works because the inner structs are identical
+        case EXPR_ASSIGN:      inner = gen_binary(g, e);       break;
+        case EXPR_UNARY_POST:  TODO("unary post expression");  break;
+        case EXPR_CONDITIONAL: TODO("conditional expression"); break;
+        case EXPR_FUNC_CALL:   inner = gen_func_call(g, e);    break;
     }
 
     String temp = temp_id(e->loc);
