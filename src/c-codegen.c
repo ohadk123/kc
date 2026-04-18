@@ -184,7 +184,7 @@ static String gen_expr(Generator *g, Expr *e) {
 
 static void gen_stmt(Generator *g, Stmt *s);
 
-static void gen_func(Generator *g, Stmt *s) {
+static void gen_func_def(Generator *g, Stmt *s) {
     FuncStmt func = s->as.func;
     gfprintf(g, "%s %.*s(", ktype_to_c(func.retType), strf(func.name.as.identifier));
 
@@ -227,8 +227,16 @@ static void gen_while(Generator *g, Stmt *s) {
     String condName = gen_expr(g, whileS.condition);
     gfprintf(g, "if (!(%.*s)) break;\n", strf(condName));
 
+    size_t oldIncLen = g->incLabel.len;
+    g->incLabel.len = 0;
+    size_t oldEndLen = g->endLabel.len;
+    g->endLabel.len = 0;
+
     gen_stmt(g, whileS.body);
     gfprintf(g, "}\n");
+
+    g->incLabel.len = oldIncLen;
+    g->endLabel.len = oldEndLen;
 }
 
 static void gen_if(Generator *g, Stmt *s) {
@@ -303,7 +311,7 @@ static void gen_stmt(Generator *g, Stmt *s) {
         case STMT_BLOCK:
             for (size_t i = 0; i < s->as.block.block.len; i++) gen_stmt(g, s->as.block.block.arr[i]);
             break;
-        case STMT_FUNC:     gen_func(g, s);               break;
+        case STMT_FUNC:     gen_func_def(g, s);               break;
         case STMT_RETURN:   gen_return(g, s);             break;
         case STMT_VAR:      gen_var(g, s);                break;
         case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
@@ -315,12 +323,36 @@ static void gen_stmt(Generator *g, Stmt *s) {
     }
 }
 
+static void gen_func_decl(Generator *g, Stmt *s) {
+    FuncStmt func = s->as.func;
+    gfprintf(g, "%s %.*s(", ktype_to_c(func.retType), strf(func.name.as.identifier));
+
+    for (size_t i = 0; i < func.params.len; i++) {
+        VarStmt param = func.params.arr[i]->as.var;
+        gfprintf(g, "%s %.*s", ktype_to_c(param.type), strf(param.name.as.identifier));
+        if (i < func.params.len - 1) gfprintf(g, ", ");
+    }
+    gfprintf(g, ");\n");
+}
+
+static void gen_top_level(Generator *g, Stmt *s) {
+    switch (s->kind) {
+        case STMT_FUNC: gen_func_decl(g, s); break;
+        default: UNREACHABLE("Only functions can be top level statements");
+    }
+}
+
 void c_codegen(TranslationUnit *unit, FILE *outf) {
     Generator g = (Generator){
         .outf = outf,
         .unit = unit,
         .incLabel = {0},
+        .endLabel = {0},
     };
+
+    for (size_t i = 0; i < unit->ast.len; i++) {
+        gen_top_level(&g, unit->ast.arr[i]);
+    }
 
     for (size_t i = 0; i < unit->ast.len; i++) {
         gen_stmt(&g, unit->ast.arr[i]);
