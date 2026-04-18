@@ -257,16 +257,20 @@ static void gen_if(Generator *g, Stmt *s) {
 static void gen_for(Generator *g, Stmt *s) {
     ForStmt forS = s->as.forS;
 
-    if (forS.initializer)
-        gen_stmt(g, forS.initializer);
 
     String loopLabel = temp_id(s->loc);
+    String oldIncLabel = g->incLabel;
     String incLabel = temp_id(s->loc);
     g->incLabel = incLabel;
+    String oldEndLabel = g->endLabel;
     String endLabel = temp_id(s->loc);
     g->endLabel = endLabel;
 
     gfprintf(g, "{\n");
+
+    if (forS.initializer)
+        gen_stmt(g, forS.initializer);
+
     gfprintf(g, "%.*s:\n", strf(loopLabel));
 
     if (forS.condition) {
@@ -284,8 +288,8 @@ static void gen_for(Generator *g, Stmt *s) {
     gfprintf(g, "%.*s:\n", strf(endLabel));
     gfprintf(g, "}\n");
 
-    g->incLabel.len = 0;
-    g->endLabel.len = 0;
+    g->incLabel = oldIncLabel;
+    g->endLabel = oldEndLabel;
 }
 
 static void gen_break(Generator *g) {
