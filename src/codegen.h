@@ -1,13 +1,8 @@
-#ifndef CODEGEN_H_
-#define CODEGEN_H_
+#ifndef CODEGEN_H
+#define CODEGEN_H
 
-#include "sema.h"
 #include "compiler.h"
 
-typedef struct {
-    TranslationUnit unit;
-    Scope currScope;
-    FILE *output;
-} Generator;
+void codegen(TranslationUnit *unit, FILE *outf);
 
-#endif // CODEGEN_H_
+#endif // CODEGEN_H

@@ -1,13 +1,13 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <execinfo.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <string.h>
+#include <execinfo.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define TODO(fmt, ...)                                                                \
     do {                                                                              \
@@ -56,6 +56,17 @@
             (l)->arr = realloc((l)->arr, (l)->cap * sizeof(*(l)->arr)); \
         }                                                               \
         (l)->arr[(l)->len++] = e;                                       \
+    } while (0)
+
+#define list_append_many(l, arr, arrLen)                                \
+    do {                                                                \
+        while ((l)->len + (arrLen) >= (l)->cap) {                       \
+            (l)->cap = (l)->cap < MIN_CAP ? MIN_CAP : (l)->cap * 2;     \
+            (l)->arr = realloc((l)->arr, (l)->cap * sizeof(*(l)->arr)); \
+        }                                                               \
+        for (size_t __i = 0; __i < (arrLen); __i++) {                   \
+            (l)->arr[(l)->len++] = (arr)[__i];                          \
+        }                                                               \
     } while (0)
 
 #endif // UTILS_H

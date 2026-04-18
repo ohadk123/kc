@@ -3,6 +3,8 @@
 
 #include "expression.h"
 
+typedef struct _Type Type;
+
 typedef struct _Stmt Stmt;
 typedef struct {
     LIST_FIELDS(Stmt *);
@@ -24,7 +26,7 @@ typedef enum {
 } StmtKind;
 
 typedef struct {
-    TokenKind type;
+    Type *type;
     Token name;
     Expr *init;
 } VarStmt;
@@ -38,12 +40,12 @@ typedef struct {
 } BlockStmt;
 
 typedef struct {
-    Expr *cond;
+    Expr *condition;
     Stmt *body;
 } WhileStmt;
 
 typedef struct {
-    Expr *cond;
+    Expr *condition;
     Stmt *thenBranch;
     Stmt *elseBranch;
 } IfStmt;
@@ -56,11 +58,11 @@ typedef struct {
 } ForStmt;
 
 typedef struct {
-    Expr *ret_val;
+    Expr *retVal;
 } ReturnStmt;
 
 typedef struct {
-    TokenKind retType;
+    Type *retType;
     Token name;
     StmtList params;
     StmtList block;
@@ -81,14 +83,14 @@ struct _Stmt {
     } as;
 };
 
-Stmt *stmt_make_var(TokenKind type, Token name, Expr *initalizer, Location loc);
+Stmt *stmt_make_var(Type *type, Token name, Expr *initalizer, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(TokenKind retType, Token name, StmtList params, StmtList block, Location loc);
+Stmt *stmt_make_func(Type *retType, Token name, StmtList params, StmtList block, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

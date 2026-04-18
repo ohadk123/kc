@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "type.h"
 
 typedef struct {
     TranslationUnit *unit;
@@ -53,11 +54,12 @@ static Expr *primary_expr(Parser *p) {
     if (match(p, TOK_INTEGER_LITERAL, TOK_FLOAT_LITERAL, TOK_CHAR_LITERAL, TOK_STRING_LITERAL, TOK_TRUE, TOK_FALSE,
               TOK_IDENTIFIER)) {
         Token primary = previous(p);
-        return expr_make_primary(primary);
+        return expr_make_primary(primary, primary.loc);
     } else if (match(p, TOK_LEFT_PAREN)) {
+        Location leftParenLoc = previous(p).loc;
         Expr *inner = expression(p);
         expect(p, TOK_RIGHT_PAREN, "Expected closing ')'");
-        return expr_make_grouping(inner);
+        return expr_make_grouping(inner, leftParenLoc);
     }
 
     parser_error(p, "Expected expression");
@@ -70,8 +72,8 @@ static Expr *postfix_expr(Parser *p) {
 
     while (true) {
         if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
-            TokenKind op = previous(p).kind;
-            expr = expr_make_unary_post(op, expr);
+            Token op = previous(p);
+            expr = expr_make_unary_post(op.kind, expr, op.loc);
         } else if (match(p, TOK_LEFT_PAREN)) {
             ExprList args = {0};
             if (!match(p, TOK_RIGHT_PAREN)) {
@@ -86,7 +88,7 @@ static Expr *postfix_expr(Parser *p) {
                 }
             }
 
-            expr = expr_make_func_call(expr, args);
+            expr = expr_make_func_call(expr, args, expr->loc);
         } else {
             break;
         }
@@ -99,9 +101,9 @@ static Expr *postfix_expr(Parser *p) {
 //        | postfix
 static Expr *unary_expr(Parser *p) {
     if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS, TOK_AMPERSAND, TOK_STAR, TOK_PLUS, TOK_MINUS, TOK_TILDE, TOK_BANG)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *inner = unary_expr(p);
-        return expr_make_unary(op, inner);
+        return expr_make_unary(op.kind, inner, op.loc);
     }
 
     return postfix_expr(p);
@@ -112,9 +114,9 @@ static Expr *multiplicative_expr(Parser *p) {
     Expr *expr = unary_expr(p);
 
     while (match(p, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = unary_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -125,9 +127,9 @@ static Expr *additive_expr(Parser *p) {
     Expr *expr = multiplicative_expr(p);
 
     while (match(p, TOK_PLUS, TOK_MINUS)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = multiplicative_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -138,9 +140,9 @@ static Expr *shift_expr(Parser *p) {
     Expr *expr = additive_expr(p);
 
     while (match(p, TOK_LESS_LESS, TOK_GREATER_GREATER)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = additive_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -151,9 +153,9 @@ static Expr *relational_expr(Parser *p) {
     Expr *expr = shift_expr(p);
 
     while (match(p, TOK_LESS, TOK_GREATER, TOK_LESS_EQUALS, TOK_GREATER_EQUALS)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = shift_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -164,9 +166,9 @@ static Expr *equality_expr(Parser *p) {
     Expr *expr = relational_expr(p);
 
     while (match(p, TOK_EQUALS_EQUALS, TOK_BANG_EQUALS)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = relational_expr(p);
-        expr = expr_make_binary(op, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -177,8 +179,9 @@ static Expr *bitwise_and_expr(Parser *p) {
     Expr *expr = equality_expr(p);
 
     while (match(p, TOK_AMPERSAND)) {
+        Token op = previous(p);
         Expr *rhs = equality_expr(p);
-        expr = expr_make_binary(TOK_AMPERSAND, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -189,8 +192,9 @@ static Expr *bitwise_xor_expr(Parser *p) {
     Expr *expr = bitwise_and_expr(p);
 
     while (match(p, TOK_CARET)) {
+        Token op = previous(p);
         Expr *rhs = bitwise_and_expr(p);
-        expr = expr_make_binary(TOK_CARET, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -201,8 +205,9 @@ static Expr *bitwise_or_expr(Parser *p) {
     Expr *expr = bitwise_xor_expr(p);
 
     while (match(p, TOK_PIPE)) {
+        Token op = previous(p);
         Expr *rhs = bitwise_xor_expr(p);
-        expr = expr_make_binary(TOK_PIPE, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -213,8 +218,9 @@ static Expr *logical_and_expr(Parser *p) {
     Expr *expr = bitwise_or_expr(p);
 
     while (match(p, TOK_AMPERSAND_AMPERSAND)) {
+        Token op = previous(p);
         Expr *rhs = bitwise_or_expr(p);
-        expr = expr_make_binary(TOK_AMPERSAND_AMPERSAND, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -225,8 +231,9 @@ static Expr *logical_or_expr(Parser *p) {
     Expr *expr = logical_and_expr(p);
 
     while (match(p, TOK_PIPE_PIPE)) {
+        Token op = previous(p);
         Expr *rhs = logical_and_expr(p);
-        expr = expr_make_binary(TOK_PIPE_PIPE, expr, rhs);
+        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -237,10 +244,11 @@ static Expr *conditional_expr(Parser *p) {
     Expr *expr = logical_or_expr(p);
 
     if (match(p, TOK_QUESTION_MARK)) {
+        Location qmarkLoc = previous(p).loc;
         Expr *trueBranch = expression(p);
         expect(p, TOK_COLON, "Expected \':\'");
         Expr *falseBranch = conditional_expr(p);
-        expr = expr_make_conditional(expr, trueBranch, falseBranch);
+        expr = expr_make_conditional(expr, trueBranch, falseBranch, qmarkLoc);
     }
 
     return expr;
@@ -253,9 +261,9 @@ static Expr *assignment_expr(Parser *p) {
     if (match(p, TOK_EQUALS, TOK_PLUS_EQUALS, TOK_MINUS_EQUALS, TOK_STAR_EQUALS, TOK_SLASH_EQUALS, TOK_PERCENT_EQUALS,
               TOK_AMPERSAND_EQUALS, TOK_CARET_EQUALS, TOK_PIPE_EQUALS, TOK_LESS_LESS_EQUALS,
               TOK_GREATER_GREATER_EQUALS)) {
-        TokenKind op = previous(p).kind;
+        Token op = previous(p);
         Expr *rhs = assignment_expr(p);
-        expr = expr_make_assign(op, expr, rhs);
+        expr = expr_make_assign(op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -266,10 +274,13 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 /******************************************************************************
  * Statement Parsing
  *****************************************************************************/
+
 Stmt *statement(Parser *p);
+Type *parse_type(Parser *p);
 
 Stmt *var_stmt(Parser *p) {
-    TokenKind type = previous(p).kind;
+    Type *type = parse_type(p);
+
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
     Expr *init = NULL;
     if (match(p, TOK_EQUALS)) init = expression(p);
@@ -395,7 +406,7 @@ StmtList params_list(Parser *p) {
 
     while (true) {
         if (!match_types(p)) parser_error(p, "Expected parameter type");
-        TokenKind type = previous(p).kind;
+        Type *type = parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token name = previous(p);
         Stmt *param = stmt_make_var(type, name, NULL, name.loc);
@@ -409,8 +420,32 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-Stmt *func_decl_stmt(Parser *p) {
-    TokenKind type = previous(p).kind;
+Type *parse_type(Parser *p) {
+    if (!match_types(p))
+        compile_error(p->unit->fileName, peek(p).loc, "Expected type");
+
+    Type *baseType = type_make_primitive(TokenToPrimitive[previous(p).kind]);
+
+    while (!match(p, TOK_IDENTIFIER)) {
+        if (match(p, TOK_STAR)) {
+            baseType = type_make_pointer(baseType);
+        } else if (match(p, TOK_LEFT_BRACKET)) {
+            Expr *len = expression(p);
+            expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
+            baseType = type_make_array(baseType, len);
+        } else if (match(p, TOK_LEFT_PAREN)) {
+            StmtList params = params_list(p);
+            baseType = type_make_func(baseType, params);
+        } else {
+            parser_error(p, "Expected '*', '[', or '(' after type");
+        }
+    }
+
+    return baseType;
+}
+
+Stmt *func_def_stmt(Parser *p) {
+    Type *type = parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
     expect(p, TOK_LEFT_PAREN, "Expectd '('");
@@ -423,7 +458,7 @@ Stmt *func_decl_stmt(Parser *p) {
 }
 
 Stmt *top_level_decl(Parser *p) {
-    if (match_types(p)) return func_decl_stmt(p);
+    if (match_types(p)) return func_def_stmt(p);
 
     parser_error(p, "Unkown top level declaration");
 }

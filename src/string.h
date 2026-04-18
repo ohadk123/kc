@@ -24,4 +24,6 @@ typedef struct {
 String finish_string(const StringBuilder *sb);
 String str_printf(const char *fmt, ...);
 
+void sb_appendf(StringBuilder *sb, const char *fmt, ...);
+
 #endif // STRING_H

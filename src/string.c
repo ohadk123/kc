@@ -56,14 +56,31 @@ String finish_string(const StringBuilder *sb) {
 }
 
 String str_printf(const char *fmt, ...) {
-    va_list args;
+    va_list args, args_copy;
     va_start(args, fmt);
+    va_copy(args_copy, args);
     int len = vsnprintf(NULL, 0, fmt, args);
-    char *buf = calloc(len + 1, sizeof(char));
-    vsnprintf(buf, len, fmt, args);
     va_end(args);
+    char *buf = calloc(len + 1, sizeof(char));
+    vsnprintf(buf, len + 1, fmt, args_copy);
+    va_end(args_copy);
     return (String){
         .data = buf,
         .len = len,
     };
+}
+
+void sb_appendf(StringBuilder *sb, const char *fmt, ...) {
+    va_list args, args_copy;
+    va_start(args, fmt);
+    va_copy(args_copy, args);
+    int len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    while (sb->len + len >= sb->cap) {
+        sb->cap = sb->cap < MIN_CAP ? MIN_CAP : sb->cap * 2;
+        sb->arr = realloc(sb->arr, sb->cap * sizeof(char));
+    }
+    vsnprintf(sb->arr + sb->len, len + 1, fmt, args_copy);
+    va_end(args_copy);
+    sb->len += len;
 }

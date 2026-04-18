@@ -1,4 +1,4 @@
-#include "codegen.h"
+#include "c-codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
@@ -28,12 +28,9 @@ int main(int argc, char *argv[]) {
     //     printf("\n");
     // }
 
-    fill_global_symbol_table(&unit);
+    semantic_analysis(&unit);
 
-    for (size_t i = 0; i < unit.ast.len; i++) {
-        FuncStmt *func = &unit.ast.arr[i]->as.func;
-        gen_func(&unit, func);
-    }
+    c_codegen(&unit, stdout);
 
     // printf("compiling done!\n");
 }

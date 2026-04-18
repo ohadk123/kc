@@ -138,6 +138,8 @@ typedef struct {
     LIST_FIELDS(Token);
 } TokensList;
 
+extern const char *tokenTypesStrings[];
+
 Token tok_make_simple(TokenKind type, size_t line, size_t col);
 Token tok_make_unknown(char c, size_t line, size_t col);
 Token tok_make_ident(String ident, size_t line, size_t col);
