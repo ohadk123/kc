@@ -258,7 +258,7 @@ static void check_block(Analyzer *a, Stmt *s) {
 }
 
 static void check_while(Analyzer *a, Stmt *s) {
-    if (check_expr(a, s->as.whileS.cond) != TOK_BOOL)
+    if (check_expr(a, s->as.whileS.condition) != TOK_BOOL)
         compile_error(a->unit->fileName, s->loc, "while condition is not a boolean expression");
     a->curr->inLoop = true;
     check_stmt(a, s->as.whileS.body);
@@ -266,7 +266,7 @@ static void check_while(Analyzer *a, Stmt *s) {
 }
 
 static void check_if(Analyzer *a, Stmt *s) {
-    if (check_expr(a, s->as.ifS.cond) != TOK_BOOL)
+    if (check_expr(a, s->as.ifS.condition) != TOK_BOOL)
         compile_error(a->unit->fileName, s->loc, "if condition is not a boolean expression");
     check_stmt(a, s->as.ifS.thenBranch);
     if (s->as.ifS.elseBranch) check_stmt(a, s->as.ifS.elseBranch);

@@ -29,14 +29,14 @@ Stmt *stmt_make_block(StmtList block, Location loc) {
 
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc) {
     Stmt *s = make_stmt(STMT_WHILE, loc);
-    s->as.whileS.cond = cond;
+    s->as.whileS.condition = cond;
     s->as.whileS.body = body;
     return s;
 }
 
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc) {
     Stmt *s = make_stmt(STMT_IF, loc);
-    s->as.ifS.cond = cond;
+    s->as.ifS.condition = cond;
     s->as.ifS.thenBranch = thenBranch;
     s->as.ifS.elseBranch = elseBranch;
     return s;
@@ -132,7 +132,7 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_WHILE:
             printf("%*s\"kind\": \"while\",\n", i * 2, "");
             printf("%*s\"cond\": ", i * 2, "");
-            print_expr(stmt->as.whileS.cond, i);
+            print_expr(stmt->as.whileS.condition, i);
             printf(",\n");
             printf("%*s\"body\": ", i * 2, "");
             print_stmt(stmt->as.whileS.body, i);
@@ -141,7 +141,7 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_IF:
             printf("%*s\"kind\": \"if\",\n", i * 2, "");
             printf("%*s\"cond\": ", i * 2, "");
-            print_expr(stmt->as.ifS.cond, i);
+            print_expr(stmt->as.ifS.condition, i);
             printf(",\n");
             printf("%*s\"then\": ", i * 2, "");
             print_stmt(stmt->as.ifS.thenBranch, i);

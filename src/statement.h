@@ -38,12 +38,12 @@ typedef struct {
 } BlockStmt;
 
 typedef struct {
-    Expr *cond;
+    Expr *condition;
     Stmt *body;
 } WhileStmt;
 
 typedef struct {
-    Expr *cond;
+    Expr *condition;
     Stmt *thenBranch;
     Stmt *elseBranch;
 } IfStmt;
