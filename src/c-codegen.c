@@ -28,6 +28,45 @@ static String temp_id(Location loc) {
     return str_printf("_ktemp_%zu_%zu_%zu", id++, loc.line, loc.col);
 }
 
+static const char *op_str(TokenKind op) {
+    switch (op) {
+        case TOK_EQUALS: return "=";
+        case TOK_PLUS: return "+";
+        case TOK_PLUS_PLUS: return "++";
+        case TOK_PLUS_EQUALS: return "+=";
+        case TOK_MINUS: return "-";
+        case TOK_MINUS_MINUS: return "--";
+        case TOK_MINUS_EQUALS: return "-=";
+        case TOK_STAR: return "*";
+        case TOK_STAR_EQUALS: return "*=";
+        case TOK_SLASH: return "/";
+        case TOK_SLASH_EQUALS: return "/=";
+        case TOK_PERCENT: return "%";
+        case TOK_PERCENT_EQUALS: return "%=";
+        case TOK_EQUALS_EQUALS: return "==";
+        case TOK_BANG: return "!";
+        case TOK_BANG_EQUALS: return "!=";
+        case TOK_LESS: return "<";
+        case TOK_LESS_EQUALS: return "<=";
+        case TOK_GREATER: return ">";
+        case TOK_GREATER_EQUALS: return ">=";
+        case TOK_AMPERSAND_AMPERSAND: return "&&";
+        case TOK_PIPE_PIPE: return "||";
+        case TOK_AMPERSAND: return "&";
+        case TOK_AMPERSAND_EQUALS: return "&=";
+        case TOK_PIPE: return "|";
+        case TOK_PIPE_EQUALS: return "|=";
+        case TOK_CARET: return "^";
+        case TOK_CARET_EQUALS: return "^=";
+        case TOK_TILDE: return "~";
+        case TOK_LESS_LESS: return "<<";
+        case TOK_LESS_LESS_EQUALS: return "<<=";
+        case TOK_GREATER_GREATER: return ">>";
+        case TOK_GREATER_GREATER_EQUALS: return ">>=";
+        default:        UNREACHABLE("Not a op kind (%s)", tokenTypesStrings[op]);
+    }
+}
+
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
@@ -40,6 +79,8 @@ static int gfprintf(Generator *g, const char *fmt, ...) {
     va_end(args);
     return ret;
 }
+
+static String gen_expr(Generator *g, Expr *e);
 
 static String gen_primary(Generator *g, Expr *e) {
     Token primary = e->as.primary.value;
@@ -60,11 +101,22 @@ static String gen_primary(Generator *g, Expr *e) {
     return temp;
 }
 
+static String gen_binary(Generator *g, Expr *e) {
+    BinaryExpr bin = e->as.binary;
+
+    String lhs = gen_expr(g, bin.lhs);
+    String rhs = gen_expr(g, bin.rhs);
+
+    String temp = temp_id(e->loc);
+    gfprintf(g, "%s %.*s = %.*s %s %.*s;\n", ktype_to_c(e->type), strf(temp), strf(lhs), op_str(bin.op), strf(rhs));
+    return temp;
+}
+
 static String gen_expr(Generator *g, Expr *e) {
     switch (e->kind) {
         case EXPR_PRIMARY:     return gen_primary(g, e);
-        case EXPR_GROUPING:
-        case EXPR_BINARY:
+        case EXPR_GROUPING:    return str_printf("(%.*s)", strf(gen_expr(g, e->as.grouping.inner)));
+        case EXPR_BINARY:      return gen_binary(g, e);
         case EXPR_UNARY:
         case EXPR_ASSIGN:
         case EXPR_UNARY_POST:
