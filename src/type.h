@@ -54,10 +54,14 @@ struct _Type {
 };
 
 Type *type_make_primitive(PrimitiveTypeKind primitive);
+Type *type_make_primitive_from_token(TokenKind primitive);
 Type *type_make_pointer(Type *pointer);
 Type *type_make_array(Type *elementType, Expr *len);
 Type *type_make_func(Type *retType, StmtList params);
 
 extern PrimitiveTypeKind TokenToPrimitive[];
+
+Type *compare_types(Type *a, Type *b);
+String type_to_string(Type *t);
 
 #endif // TYPE_H

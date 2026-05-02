@@ -10,7 +10,7 @@ struct _Scope {
     HashMap symbols;
     Scope *above;
 
-    TokenKind retType;
+    Type *retType;
     bool inLoop;
 };
 

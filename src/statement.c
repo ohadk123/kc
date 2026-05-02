@@ -1,4 +1,5 @@
 #include "statement.h"
+#include "type.h"
 
 static Stmt *make_stmt(StmtKind kind, Location loc) {
     Stmt *s = malloc(sizeof(Stmt));
@@ -7,7 +8,7 @@ static Stmt *make_stmt(StmtKind kind, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(TokenKind type, Token name, Expr *initalizer, Location loc) {
+Stmt *stmt_make_var(Type *type, Token name, Expr *initalizer, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.type = type;
     s->as.var.name = name;
@@ -59,21 +60,16 @@ Stmt *stmt_make_continue(Location loc) {
     return make_stmt(STMT_CONTINUE, loc);
 }
 
-static const char *type_str(Type *type) {
-    TODO("Type stringification %p", (void *) type);
-}
-
 Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     Stmt *s = make_stmt(STMT_RETURN, loc);
     s->as.returnS.retVal = ret_val;
     return s;
 }
 
-Stmt *stmt_make_func(Type *retType, Token name, StmtList params, StmtList block, Location loc) {
+Stmt *stmt_make_func(Type *funcType, Token name, StmtList block, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
-    s->as.func.retType = retType;
+    s->as.func.funcType = funcType;
     s->as.func.name = name;
-    s->as.func.params = params;
     s->as.func.block = block;
     return s;
 }
@@ -88,8 +84,9 @@ void print_stmt(Stmt *stmt, int indent) {
     switch (stmt->kind) {
         case STMT_VAR:
             printf("%*s\"kind\": \"var\",\n", i * 2, "");
-            printf("%*s\"type\": \"%s\",\n", i * 2, "", type_str(stmt->as.var.type));
-            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", (int)stmt->as.var.name.as.identifier.len, stmt->as.var.name.as.identifier.data);
+            String typeStr = type_to_string(stmt->as.var.type);
+            printf("%*s\"type\": \"%.*s\",\n", i * 2, "", strf(typeStr));
+            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(stmt->as.var.name.as.identifier));
             printf("%*s\"init\": ", i * 2, "");
             print_expr(stmt->as.var.init, i);
             printf("\n");
@@ -166,16 +163,19 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_FUNC: {
             FuncStmt *fn = &stmt->as.func;
             printf("%*s\"kind\": \"func\",\n", i * 2, "");
-            printf("%*s\"ret\": \"%s\",\n", i * 2, "", type_str(fn->retType));
-            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", (int)fn->name.as.identifier.len, fn->name.as.identifier.data);
+            FuncType *funcType = &fn->funcType->as.func;
+            String typeStr = type_to_string(funcType->retType);
+            printf("%*s\"ret\": \"%.*s\",\n", i * 2, "", strf(typeStr));
+            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(fn->name.as.identifier));
             printf("%*s\"params\": [", i * 2, "");
-            for (size_t j = 0; j < fn->params.len; j++) {
-                VarStmt *par = &fn->params.arr[j]->as.var;
-                printf("\n%*s{ \"type\": \"%s\", \"name\": \"%.*s\" }", (i + 1) * 2, "",
-                       type_str(par->type), (int)par->name.as.identifier.len, par->name.as.identifier.data);
-                if (j + 1 < fn->params.len) printf(",");
+            for (size_t j = 0; j < funcType->params.len; j++) {
+                VarStmt *par = &funcType->params.arr[j]->as.var;
+                String paramTypeStr = type_to_string(par->type);
+                printf("\n%*s{ \"type\": \"%.*s\", \"name\": \"%.*s\" }", (i + 1) * 2, "",
+                       strf(paramTypeStr), strf(par->name.as.identifier));
+                if (j + 1 < funcType->params.len) printf(",");
             }
-            if (fn->params.len > 0) printf("\n%*s", i * 2, "");
+            if (funcType->params.len > 0) printf("\n%*s", i * 2, "");
             printf("],\n");
             printf("%*s\"body\": [\n", i * 2, "");
             for (size_t j = 0; j < fn->block.len; j++) {

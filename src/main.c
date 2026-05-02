@@ -1,4 +1,3 @@
-#include "c-codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
@@ -23,14 +22,12 @@ int main(int argc, char *argv[]) {
     // }
 
     parse(&unit);
+
     // for (size_t i = 0; i < unit.ast.len; i++) {
     //     print_stmt(unit.ast.arr[i], 1);
     //     printf("\n");
     // }
-
     semantic_analysis(&unit);
-
-    c_codegen(&unit, stdout);
 
     // printf("compiling done!\n");
 }

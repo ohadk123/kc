@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "type.h"
 #include <stdarg.h>
 
 typedef struct {
@@ -19,24 +20,9 @@ static String qbe_id(Location loc) {
     return str_printf("%%_ktemp_%zu_%zu_%zu", id++, loc.line, loc.col);
 }
 
-static const char *ktype_to_qbe_ext(TokenKind type) {
-    switch (type) {
-        case TOK_VOID:  return "";
-        case TOK_U8:
-        case TOK_BOOL:  return "ub";
-        case TOK_U16:   return "uh";
-        case TOK_U32:
-        case TOK_U64:
-        case TOK_USIZE: TODO("u32, u64, usize types");
-        case TOK_ISIZE: return "l";
-        case TOK_I8:    return "b";
-        case TOK_I16:   return "h";
-        case TOK_I32:   return "w";
-        case TOK_I64:   return "l";
-        case TOK_F32:   return "s";
-        case TOK_F64:   return "d";
-        default:        UNREACHABLE("Not a type (%d)", type);
-    }
+static const char *ktype_to_qbe_ext(Type *type) {
+    (void)type;
+    TODO("%s", __func__);
 }
 
 static String gen_primary(Generator *g, Expr *e) {
@@ -76,10 +62,11 @@ static void gen_stmt(Generator *g, Stmt *s);
 
 static void gen_func(Generator *g, Stmt *s) {
     FuncStmt func = s->as.func;
-    gfprintf(g, "function %s $%.*s(", ktype_to_qbe_ext(func.retType), strf(func.name.as.identifier));
+    FuncType funcType = func.funcType->as.func;
+    gfprintf(g, "function %s $%.*s(", ktype_to_qbe_ext(funcType.retType), strf(func.name.as.identifier));
 
-    for (size_t i = 0; i < func.params.len; i++)
-        gfprintf(g, "w %%%.*s,", strf(func.params.arr[i]->as.var.name.as.identifier));
+    for (size_t i = 0; i < funcType.params.len; i++)
+        gfprintf(g, "w %%%.*s,", strf(funcType.params.arr[i]->as.var.name.as.identifier));
     gfprintf(g, ") {\n@start\n");
 
     for (size_t i = 0; i < func.block.len; i++) gen_stmt(g, func.block.arr[i]);

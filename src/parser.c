@@ -421,12 +421,10 @@ StmtList params_list(Parser *p) {
 }
 
 Type *parse_type(Parser *p) {
-    if (!match_types(p))
-        compile_error(p->unit->fileName, peek(p).loc, "Expected type");
+    TokenKind typeToken = previous(p).kind;
+    Type *baseType = type_make_primitive(TokenToPrimitive[typeToken]);
 
-    Type *baseType = type_make_primitive(TokenToPrimitive[previous(p).kind]);
-
-    while (!match(p, TOK_IDENTIFIER)) {
+    while (!(peek(p).kind == TOK_IDENTIFIER)) {
         if (match(p, TOK_STAR)) {
             baseType = type_make_pointer(baseType);
         } else if (match(p, TOK_LEFT_BRACKET)) {
@@ -437,7 +435,7 @@ Type *parse_type(Parser *p) {
             StmtList params = params_list(p);
             baseType = type_make_func(baseType, params);
         } else {
-            parser_error(p, "Expected '*', '[', or '(' after type");
+            parser_error(p, "Expected '*', '[', '(', or identifier after type");
         }
     }
 
@@ -454,7 +452,8 @@ Stmt *func_def_stmt(Parser *p) {
     expect(p, TOK_LEFT_BRACE, "Expected '{'");
     StmtList body = stmt_list(p);
 
-    return stmt_make_func(type, name, params, body, name.loc);
+    Type *funcType = type_make_func(type, params);
+    return stmt_make_func(funcType, name, body, name.loc);
 }
 
 Stmt *top_level_decl(Parser *p) {
