@@ -8,6 +8,11 @@ static Stmt *make_stmt(StmtKind kind, Location loc) {
     return s;
 }
 
+Stmt *stmt_make_null(Location loc) {
+    Stmt *s = make_stmt(STMT_NULL, loc);
+    return s;
+}
+
 Stmt *stmt_make_var(Type *type, Token name, Expr *initalizer, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.type = type;
@@ -82,6 +87,7 @@ void print_stmt(Stmt *stmt, int indent) {
     printf("{\n");
     int i = indent + 1;
     switch (stmt->kind) {
+        case STMT_NULL: break;
         case STMT_VAR:
             printf("%*s\"kind\": \"var\",\n", i * 2, "");
             String typeStr = type_to_string(stmt->as.var.type);
@@ -194,6 +200,7 @@ void print_stmt(Stmt *stmt, int indent) {
 Token get_top_level_name(Stmt *s) {
     switch (s->kind) {
         case STMT_FUNC: return s->as.func.name;
+        case STMT_NULL:
         case STMT_VAR:
         case STMT_EXPR:
         case STMT_BLOCK:

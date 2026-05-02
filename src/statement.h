@@ -11,6 +11,7 @@ typedef struct {
 } StmtList;
 
 typedef enum {
+    STMT_NULL,
     STMT_VAR,
     STMT_EXPR,
     STMT_BLOCK,
@@ -82,6 +83,7 @@ struct _Stmt {
     } as;
 };
 
+Stmt *stmt_make_null(Location loc);
 Stmt *stmt_make_var(Type *type, Token name, Expr *initalizer, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
