@@ -225,8 +225,7 @@ static Type *check_index(Analyzer *a, Expr *e) {
         compile_error(a->unit->fileName, e->loc, "cannot index value which is not array nor pointer");
 
     Type *indexType = check_expr(a, index.index);
-    if (!is_integer(indexType))
-        compile_error(a->unit->fileName, e->loc, "array index is not an integer");
+    if (!is_integer(indexType)) compile_error(a->unit->fileName, e->loc, "array index is not an integer");
 
     return arrayType->kind == TYPE_ARRAY ? arrayType->as.array.elementType : arrayType->as.pointer;
 }
@@ -259,6 +258,8 @@ static void check_var(Analyzer *a, Stmt *s) {
                       strf(s->as.var.name.as.identifier), strf(a->unit->fileName), s->loc.line, s->loc.col);
     }
 
+    hm_insert(&a->curr->symbols, s->as.var.name.as.identifier, s);
+
     if (check_primitive(s->as.var.type, TYPE_VOID))
         compile_error(a->unit->fileName, s->loc, "variable cannot be of type 'void'");
 
@@ -266,8 +267,6 @@ static void check_var(Analyzer *a, Stmt *s) {
         Type *initType = check_expr(a, s->as.var.init);
         if (!compare_types(initType, s->as.var.type)) TODO("Type error message for variable initializer");
     }
-
-    hm_insert(&a->curr->symbols, s->as.var.name.as.identifier, s);
 }
 
 static void check_block(Analyzer *a, Stmt *s) {
@@ -363,6 +362,7 @@ static void check_continue(Analyzer *a, Stmt *s) {
 
 static void check_stmt(Analyzer *a, Stmt *s) {
     switch (s->kind) {
+        case STMT_NULL:     break;
         case STMT_VAR:      check_var(a, s); break;
         case STMT_EXPR:     check_expr(a, s->as.expr.expr); break;
         case STMT_BLOCK:    check_block(a, s); break;
