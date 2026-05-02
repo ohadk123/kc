@@ -1,7 +1,7 @@
 #include "type.h"
 
 static Type *make_type(TypeKind kind) {
-    Type *t = malloc(sizeof(Type));
+    Type *t = calloc(1, sizeof(Type));
     t->kind = kind;
     t->size = sizeof(void *);
     t->isUnsigned = false;
@@ -12,20 +12,35 @@ Type *type_make_primitive(PrimitiveTypeKind primitive) {
     size_t size;
     bool isUnsigned = true;
     switch (primitive) {
-        case TYPE_VOID:  size = 0; break;
-        case TYPE_BOOL:  size = 1; break;
-        case TYPE_I8:    size = 1; isUnsigned = false; break;
-        case TYPE_U8:    size = 1; break;
-        case TYPE_I16:   size = 2; isUnsigned = false; break;
-        case TYPE_U16:   size = 2; break;
-        case TYPE_I32:   size = 4; isUnsigned = false; break;
-        case TYPE_U32:   size = 4; break;
-        case TYPE_ISIZE: size = sizeof(size_t); isUnsigned = false; break;
+        case TYPE_VOID: size = 0; break;
+        case TYPE_BOOL: size = 1; break;
+        case TYPE_I8:
+            size = 1;
+            isUnsigned = false;
+            break;
+        case TYPE_U8: size = 1; break;
+        case TYPE_I16:
+            size = 2;
+            isUnsigned = false;
+            break;
+        case TYPE_U16: size = 2; break;
+        case TYPE_I32:
+            size = 4;
+            isUnsigned = false;
+            break;
+        case TYPE_U32: size = 4; break;
+        case TYPE_ISIZE:
+            size = sizeof(size_t);
+            isUnsigned = false;
+            break;
         case TYPE_USIZE: size = sizeof(size_t); break;
-        case TYPE_I64:   size = 8; isUnsigned = false; break;
-        case TYPE_U64:   size = 8; break;
-        case TYPE_F32:   size = 4; break;
-        case TYPE_F64:   size = 8; break;
+        case TYPE_I64:
+            size = 8;
+            isUnsigned = false;
+            break;
+        case TYPE_U64: size = 8; break;
+        case TYPE_F32: size = 4; break;
+        case TYPE_F64: size = 8; break;
     }
 
     Type *t = make_type(TYPE_PRIMITIVE);
@@ -35,9 +50,7 @@ Type *type_make_primitive(PrimitiveTypeKind primitive) {
     return t;
 }
 
-Type *type_make_primitive_from_token(TokenKind primitive) {
-    return type_make_primitive(TokenToPrimitive[primitive]);
-}
+Type *type_make_primitive_from_token(TokenKind primitive) { return type_make_primitive(TokenToPrimitive[primitive]); }
 
 Type *type_make_pointer(Type *pointer) {
     Type *t = make_type(TYPE_POINTER);
@@ -60,42 +73,22 @@ Type *type_make_func(Type *retType, StmtList params) {
 }
 
 PrimitiveTypeKind TokenToPrimitive[] = {
-    [TOK_VOID]  = TYPE_VOID,
-    [TOK_BOOL]  = TYPE_BOOL,
-    [TOK_U8]    = TYPE_U8,
-    [TOK_U16]   = TYPE_U16,
-    [TOK_U32]   = TYPE_U32,
-    [TOK_U64]   = TYPE_U64,
-    [TOK_USIZE] = TYPE_USIZE,
-    [TOK_I8]    = TYPE_I8,
-    [TOK_I16]   = TYPE_I16,
-    [TOK_I32]   = TYPE_I32,
-    [TOK_I64]   = TYPE_I64,
-    [TOK_ISIZE] = TYPE_ISIZE,
-    [TOK_F32]   = TYPE_F32,
-    [TOK_F64]   = TYPE_F64,
+    [TOK_VOID] = TYPE_VOID, [TOK_BOOL] = TYPE_BOOL,   [TOK_U8] = TYPE_U8,   [TOK_U16] = TYPE_U16, [TOK_U32] = TYPE_U32,
+    [TOK_U64] = TYPE_U64,   [TOK_USIZE] = TYPE_USIZE, [TOK_I8] = TYPE_I8,   [TOK_I16] = TYPE_I16, [TOK_I32] = TYPE_I32,
+    [TOK_I64] = TYPE_I64,   [TOK_ISIZE] = TYPE_ISIZE, [TOK_F32] = TYPE_F32, [TOK_F64] = TYPE_F64,
 };
 
 static int typePriorities[] = {
-    [TYPE_VOID] = 0,
-    [TYPE_BOOL] = 1,
-    [TYPE_U8] = 2,
-    [TYPE_U16] = 3,
-    [TYPE_U32] = 4,
-    [TYPE_U64] = 5,
-    [TYPE_USIZE] = 6,
-    [TYPE_I8] = 7,
-    [TYPE_I16] = 8,
-    [TYPE_I32] = 9,
-    [TYPE_I64] = 10,
-    [TYPE_ISIZE] = 11,
-    [TYPE_F32] = 12,
-    [TYPE_F64] = 13,
+    [TYPE_VOID] = 0, [TYPE_BOOL] = 1,   [TYPE_U8] = 2,   [TYPE_U16] = 3,  [TYPE_U32] = 4,
+    [TYPE_U64] = 5,  [TYPE_USIZE] = 6,  [TYPE_I8] = 7,   [TYPE_I16] = 8,  [TYPE_I32] = 9,
+    [TYPE_I64] = 10, [TYPE_ISIZE] = 11, [TYPE_F32] = 12, [TYPE_F64] = 13,
 };
 
 PrimitiveTypeKind choose_pritimitive(PrimitiveTypeKind a, PrimitiveTypeKind b) {
-    if (typePriorities[a] > typePriorities[b]) return a;
-    else return b;
+    if (typePriorities[a] > typePriorities[b])
+        return a;
+    else
+        return b;
 }
 
 Type *compare_types(Type *a, Type *b) {
@@ -103,7 +96,7 @@ Type *compare_types(Type *a, Type *b) {
 
     switch (a->kind) {
         case TYPE_PRIMITIVE: return type_make_primitive(choose_pritimitive(a->as.primitive, b->as.primitive));
-        case TYPE_POINTER: {
+        case TYPE_POINTER:   {
             Type *pointedType = compare_types(a->as.pointer, b->as.pointer);
             if (!pointedType) return NULL;
             return type_make_pointer(pointedType);
@@ -155,8 +148,16 @@ String type_to_string(Type *t) {
 
     switch (t->kind) {
         case TYPE_PRIMITIVE: sb_appendf(&sb, "%s", primitive_to_cstr(t->as.primitive)); break;
-        case TYPE_POINTER:   sb_appendf(&sb, "%.*s *", strf(type_to_string(t->as.pointer))); break;
-        case TYPE_ARRAY:     sb_appendf(&sb, "%.*s[]", type_to_string(t->as.array.elementType)); break;
+        case TYPE_POINTER:   {
+            String str = type_to_string(t->as.pointer);
+            sb_appendf(&sb, "%.*s *", strf(str));
+            break;
+        }
+        case TYPE_ARRAY: {
+            String str = type_to_string(t->as.array.elementType);
+            sb_appendf(&sb, "%.*s[]", strf(str));
+            break;
+        }
         case TYPE_FUNC: {
             String retTypeStr = type_to_string(t->as.func.retType);
             sb_appendf(&sb, "%.*s (", strf(retTypeStr));

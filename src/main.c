@@ -23,11 +23,11 @@ int main(int argc, char *argv[]) {
 
     parse(&unit);
 
-    // for (size_t i = 0; i < unit.ast.len; i++) {
-    //     print_stmt(unit.ast.arr[i], 1);
-    //     printf("\n");
-    // }
     semantic_analysis(&unit);
+    for (size_t i = 0; i < unit.ast.len; i++) {
+        print_stmt(unit.ast.arr[i], 1);
+        printf("\n");
+    }
 
     // printf("compiling done!\n");
 }

@@ -2,7 +2,7 @@
 #include "type.h"
 
 static Expr *make_expr(ExprKind kind, Location loc) {
-    Expr *e = malloc(sizeof(Expr));
+    Expr *e = calloc(1, sizeof(Expr));
     e->kind = kind;
     e->loc = loc;
     return e;
@@ -65,6 +65,13 @@ Expr *expr_make_func_call(Expr *func, ExprList args, Location loc) {
     return e;
 }
 
+Expr *expr_make_index(Expr *array, Expr *index, Location loc) {
+    Expr *e = make_expr(EXPR_INDEX, loc);
+    e->as.index.array = array;
+    e->as.index.index = index;
+    return e;
+}
+
 static const char *op_str(TokenKind op) {
     switch (op) {
         case TOK_PLUS:                   return "+";
@@ -112,10 +119,10 @@ void print_expr(Expr *expr, int indent) {
     printf("{\n");
     int i = indent + 1;
 
-    // if (expr->type) {
-    //     String ts = type_to_string(expr->type);
-    //     printf("%*s\"type\": \"%.*s\",\n", i * 2, "", strf(ts));
-    // }
+    if (expr->type) {
+        String ts = type_to_string(expr->type);
+        printf("%*s\"type\": \"%.*s\",\n", i * 2, "", strf(ts));
+    }
 
     switch (expr->kind) {
         case EXPR_PRIMARY: {
@@ -203,6 +210,18 @@ void print_expr(Expr *expr, int indent) {
             printf("]\n");
             break;
         }
+        case EXPR_INDEX: {
+            IndexExpr *idx = &expr->as.index;
+            printf("%*s\"kind\": \"index\",\n", i * 2, "");
+            printf("%*s\"array\": ", i * 2, "");
+            print_expr(idx->array, i);
+            printf(",\n");
+            printf("%*s\"index\": ", i * 2, "");
+            print_expr(idx->index, i);
+            printf("\n");
+            break;
+        }
+
     }
     printf("%*s}", indent * 2, "");
 }

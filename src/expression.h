@@ -40,6 +40,7 @@ typedef enum {
     EXPR_UNARY_POST,
     EXPR_CONDITIONAL,
     EXPR_FUNC_CALL,
+    EXPR_INDEX,
 } ExprKind;
 
 typedef struct {
@@ -78,6 +79,11 @@ typedef struct {
     ExprList args;
 } FuncCallExpr;
 
+typedef struct {
+    Expr *array;
+    Expr *index;
+} IndexExpr;
+
 struct _Expr {
     ExprKind kind;
     Location loc;
@@ -90,6 +96,7 @@ struct _Expr {
         AssignExpr assignment;
         ConditionalExpr conditional;
         FuncCallExpr funcCall;
+        IndexExpr index;
     } as;
 };
 
@@ -101,6 +108,7 @@ Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc);
 Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc);
 Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);
+Expr *expr_make_index(Expr *array, Expr *index, Location loc);
 
 void print_expr(Expr *expr, int indent);
 

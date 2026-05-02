@@ -53,7 +53,8 @@ static String gen_expr(Generator *g, Expr *e) {
         case EXPR_ASSIGN:
         case EXPR_UNARY_POST:
         case EXPR_CONDITIONAL:
-        case EXPR_FUNC_CALL:   TODO("Generate expression of kind (%d)", e->kind);
+        case EXPR_FUNC_CALL:
+        case EXPR_INDEX: TODO("Generate expression of kind (%d)", e->kind);
     }
     UNREACHABLE("Error on expr kind (%d)", e->kind);
 }

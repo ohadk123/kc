@@ -2,7 +2,7 @@
 #include "type.h"
 
 static Stmt *make_stmt(StmtKind kind, Location loc) {
-    Stmt *s = malloc(sizeof(Stmt));
+    Stmt *s = calloc(1, sizeof(Stmt));
     s->kind = kind;
     s->loc = loc;
     return s;

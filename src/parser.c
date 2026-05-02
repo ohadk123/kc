@@ -89,6 +89,10 @@ static Expr *postfix_expr(Parser *p) {
             }
 
             expr = expr_make_func_call(expr, args, expr->loc);
+        } else if (match(p, TOK_LEFT_BRACKET)) {
+            Expr *index = expression(p);
+            expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
+            expr = expr_make_index(expr, index, expr->loc);
         } else {
             break;
         }
@@ -104,6 +108,14 @@ static Expr *unary_expr(Parser *p) {
         Token op = previous(p);
         Expr *inner = unary_expr(p);
         return expr_make_unary(op.kind, inner, op.loc);
+    } else if (match(p, TOK_STAR)) {
+        Token op = previous(p);
+        Expr *inner = unary_expr(p);
+        return expr_make_unary(TOK_STAR, inner, op.loc);
+    } else if (match(p, TOK_AMPERSAND)) {
+        Token op = previous(p);
+        Expr *inner = unary_expr(p);
+        return expr_make_unary(TOK_AMPERSAND, inner, op.loc);
     }
 
     return postfix_expr(p);
@@ -428,8 +440,11 @@ Type *parse_type(Parser *p) {
         if (match(p, TOK_STAR)) {
             baseType = type_make_pointer(baseType);
         } else if (match(p, TOK_LEFT_BRACKET)) {
-            Expr *len = expression(p);
-            expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
+            Expr *len = NULL;
+            if (!match(p, TOK_RIGHT_BRACKET)) {
+                len = expression(p);
+                expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
+            }
             baseType = type_make_array(baseType, len);
         } else if (match(p, TOK_LEFT_PAREN)) {
             StmtList params = params_list(p);

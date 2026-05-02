@@ -119,7 +119,16 @@ static Type *check_unary(Analyzer *a, Expr *e) {
     } else if (unary.op == TOK_AMPERSAND) {
         type = type_make_pointer(type);
     } else if (unary.op == TOK_MINUS) {
-        TODO("Check that type is numeric");
+        if (check_primitive(type, TYPE_U8))
+            type = type_make_primitive_from_token(TOK_I8);
+        else if (check_primitive(type, TYPE_U16))
+            type = type_make_primitive_from_token(TOK_I16);
+        else if (check_primitive(type, TYPE_U32))
+            type = type_make_primitive_from_token(TOK_I32);
+        else if (check_primitive(type, TYPE_U64))
+            type = type_make_primitive_from_token(TOK_I64);
+        else if (check_primitive(type, TYPE_USIZE))
+            type = type_make_primitive_from_token(TOK_ISIZE);
     }
 
     return type;
@@ -185,6 +194,43 @@ static Type *check_func_call(Analyzer *a, Expr *e) {
     return funcType.retType;
 }
 
+static bool is_integer(Type *t) {
+    if (t->kind != TYPE_PRIMITIVE) return false;
+    PrimitiveTypeKind kind = t->as.primitive;
+
+    switch (kind) {
+        case TYPE_VOID:  return false;
+        case TYPE_BOOL:  return false;
+        case TYPE_U8:    return true;
+        case TYPE_U16:   return true;
+        case TYPE_U32:   return true;
+        case TYPE_U64:   return true;
+        case TYPE_USIZE: return true;
+        case TYPE_I8:    return true;
+        case TYPE_I16:   return true;
+        case TYPE_I32:   return true;
+        case TYPE_I64:   return true;
+        case TYPE_ISIZE: return true;
+        case TYPE_F32:   return false;
+        case TYPE_F64:   return false;
+        default:         return false;
+    }
+}
+
+static Type *check_index(Analyzer *a, Expr *e) {
+    IndexExpr index = e->as.index;
+
+    Type *arrayType = check_expr(a, index.array);
+    if (arrayType->kind != TYPE_ARRAY && arrayType->kind != TYPE_POINTER)
+        compile_error(a->unit->fileName, e->loc, "cannot index value which is not array nor pointer");
+
+    Type *indexType = check_expr(a, index.index);
+    if (!is_integer(indexType))
+        compile_error(a->unit->fileName, e->loc, "array index is not an integer");
+
+    return arrayType->kind == TYPE_ARRAY ? arrayType->as.array.elementType : arrayType->as.pointer;
+}
+
 static Type *check_expr(Analyzer *a, Expr *e) {
     Type *type = 0;
 
@@ -197,6 +243,7 @@ static Type *check_expr(Analyzer *a, Expr *e) {
         case EXPR_UNARY_POST:  type = check_expr(a, e->as.unary.inner); break;
         case EXPR_CONDITIONAL: type = check_conditional(a, e); break;
         case EXPR_FUNC_CALL:   type = check_func_call(a, e); break;
+        case EXPR_INDEX:       type = check_index(a, e);
     }
 
     e->type = type;
@@ -237,7 +284,7 @@ static void check_block(Analyzer *a, Stmt *s) {
 }
 
 static void check_while(Analyzer *a, Stmt *s) {
-    if (check_primitive(check_expr(a, s->as.whileS.condition), TYPE_BOOL))
+    if (!check_primitive(check_expr(a, s->as.whileS.condition), TYPE_BOOL))
         compile_error(a->unit->fileName, s->loc, "while condition is not a boolean expression");
     a->curr->inLoop = true;
     check_stmt(a, s->as.whileS.body);
