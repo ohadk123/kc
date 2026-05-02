@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
     FILE *outf = fopen(qbeFile.data, "w");
     codegen(&unit, outf);
     fflush(outf);
+    fclose(outf);
 
     String qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
     system(qbeCommand.data);
