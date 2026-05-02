@@ -108,14 +108,6 @@ static Expr *unary_expr(Parser *p) {
         Token op = previous(p);
         Expr *inner = unary_expr(p);
         return expr_make_unary(op.kind, inner, op.loc);
-    } else if (match(p, TOK_STAR)) {
-        Token op = previous(p);
-        Expr *inner = unary_expr(p);
-        return expr_make_unary(TOK_STAR, inner, op.loc);
-    } else if (match(p, TOK_AMPERSAND)) {
-        Token op = previous(p);
-        Expr *inner = unary_expr(p);
-        return expr_make_unary(TOK_AMPERSAND, inner, op.loc);
     }
 
     return postfix_expr(p);
