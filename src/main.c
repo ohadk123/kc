@@ -1,6 +1,8 @@
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
+#include "codegen.h"
+#include <unistd.h>
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -23,11 +25,27 @@ int main(int argc, char *argv[]) {
 
     parse(&unit);
 
+    // for (size_t i = 0; i < unit.ast.len; i++) {
+    //     print_stmt(unit.ast.arr[i], 1);
+    //     printf("\n");
+    // }
     semantic_analysis(&unit);
-    for (size_t i = 0; i < unit.ast.len; i++) {
-        print_stmt(unit.ast.arr[i], 1);
-        printf("\n");
-    }
+
+    const char *fileNameNoExt = strtok(argv[1], ".");
+    String qbeFile = str_printf("%s.ssa", fileNameNoExt);
+    String asmFile = str_printf("%s.s", fileNameNoExt);
+
+    FILE *outf = fopen(qbeFile.data, "w");
+    codegen(&unit, outf);
+    fflush(outf);
+
+    String qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
+    system(qbeCommand.data);
+    remove(qbeFile.data);
+
+    String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
+    system(asmCommand.data);
+    remove(asmFile.data);
 
     // printf("compiling done!\n");
 }
