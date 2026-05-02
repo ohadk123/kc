@@ -353,7 +353,7 @@ Stmt *if_stmt(Parser *p) {
 StmtList stmt_list(Parser *p) {
     StmtList body = {0};
 
-    while (!match(p, TOK_RIGHT_BRACE) && !is_at_end(p)) {
+    while (!match(p, TOK_RIGHT_BRACE)) {
         Stmt *s = statement(p);
         list_append(&body, s);
     }
