@@ -177,7 +177,7 @@ static Token make_char(Lexer *l) {
 bool scan_file(TranslationUnit *unit) {
     if (!unit) return false;
 
-    Lexer l = (Lexer) {
+    Lexer l = (Lexer){
         .unit = unit,
         .index = 0,
         .line = 1,
@@ -260,6 +260,15 @@ bool scan_file(TranslationUnit *unit) {
             // TOK_SLASH,
             // TOK_SLASH_EQUALS,
             case '/':
+                if (match(&l, '*')) {
+                    while (true) {
+                        if (match(&l, '*') && match(&l, '/')) break;
+                        c = advance(&l);
+                        if (c == '\n') l.line++;
+                    }
+                    break;
+                }
+
                 if (match(&l, '/'))
                     while (!is_at_end(&l) && peek(&l) != '\n') advance(&l);
                 else if (match(&l, '='))
