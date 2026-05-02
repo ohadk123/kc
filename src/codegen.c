@@ -238,6 +238,9 @@ static void gen_func(Generator *g, Stmt *s) {
         gen_stmt(g, s->as.func.block.arr[i]);
     }
 
+    // TODO: empty functions, yay or nay?
+    gprintf(g, "@end\n");
+    gprintf(g, "ret\n");
     gprintf(g, "}\n");
 }
 
@@ -286,6 +289,7 @@ static void gen_continue(Generator *g, Stmt *s) {
 
 static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
+        case STMT_NULL:  break;
         case STMT_BLOCK: {
             StmtList block = s->as.block.block;
             for (size_t i = 0; i < block.len; i++) gen_stmt(g, block.arr[i]);
