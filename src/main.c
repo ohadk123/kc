@@ -1,13 +1,23 @@
+#include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
-#include "codegen.h"
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: kc <file>\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: kc <file> [flags]\n\n");
+        fprintf(stderr, "FLAGS:\n");
+        fprintf(stderr, "    -q        dump qbe output\n");
+        fprintf(stderr, "    -g        compile into executable\n");
         exit(1);
+    }
+
+    bool qbe = false;
+    bool gcc = false;
+    if (argc > 2) {
+        if (!strcmp(argv[2], "-q")) qbe = true;
+        if (!strcmp(argv[2], "-g")) gcc = qbe = true;
     }
 
     TranslationUnit unit = (TranslationUnit){
@@ -35,18 +45,24 @@ int main(int argc, char *argv[]) {
     String qbeFile = str_printf("%s.ssa", fileNameNoExt);
     String asmFile = str_printf("%s.s", fileNameNoExt);
 
-    FILE *outf = fopen(qbeFile.data, "w");
+    FILE *outf = stdout;
+    if (qbe) outf = fopen(qbeFile.data, "w");
     codegen(&unit, outf);
     fflush(outf);
-    fclose(outf);
+    if (qbe) fclose(outf);
 
-    String qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
-    system(qbeCommand.data);
-    remove(qbeFile.data);
+    if (qbe) {
+        String qbeCommand = str_printf("qbe %.*s", strf(qbeFile));
+        if (gcc) qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
+        system(qbeCommand.data);
+        // remove(qbeFile.data);
+    }
 
-    String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
-    system(asmCommand.data);
-    remove(asmFile.data);
+    if (gcc) {
+        String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
+        system(asmCommand.data);
+        // remove(asmFile.data);
+    }
 
     // printf("compiling done!\n");
 }
