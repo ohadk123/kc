@@ -30,6 +30,8 @@ typedef struct {
     Type *type;
     Token name;
     Expr *init;
+
+    String qbeVarAddr;
 } VarStmt;
 
 typedef struct {
