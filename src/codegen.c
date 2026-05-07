@@ -300,6 +300,7 @@ static void gen_var(Generator *g, Stmt *s) {
 
     String qbeVarAddr = declare_var(g, s);
     gprintf(g, "%.*s =l alloc4 1\n", strf(qbeVarAddr));
+    gprintf(g, "storew 0, %.*s\n", strf(qbeVarAddr));
 
     if (var.init) {
         String init = gen_expr(g, var.init);
