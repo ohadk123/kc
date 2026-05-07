@@ -19,7 +19,39 @@ String get_label(const char *name, Location loc) {
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
+
+    Scope *scope;
 } Generator;
+
+static Stmt *find_symbol(Scope *scope, String symbol) {
+    while (scope) {
+        Stmt *var = hm_find_val(&scope->symbols, symbol);
+        if (var) return var;
+        scope = scope->above;
+    }
+
+    return 0;
+}
+
+static Stmt *expect_var(Generator *g, Token nameTok) {
+    assert(nameTok.kind == TOK_IDENTIFIER);
+    Stmt *found = find_symbol(g->scope, nameTok.as.identifier);
+    if (!found) compile_error(g->unit->fileName, nameTok.loc, "unkown symbol '%.*s'", strf(nameTok.as.identifier));
+    return found;
+}
+
+static String declare_var(Generator *g, Stmt *varStmt) {
+    assert(varStmt->kind == STMT_VAR);
+    Stmt *found = find_symbol(g->scope, varStmt->as.var.name.as.identifier);
+    if (found)
+        compile_error(g->unit->fileName, varStmt->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
+                      strf(varStmt->as.var.name.as.identifier), strf(g->unit->fileName), varStmt->loc.line,
+                      varStmt->loc.col);
+
+    varStmt->as.var.qbeVarAddr = qbe_id(varStmt->loc);
+    hm_insert(&g->scope->symbols, varStmt->as.var.name.as.identifier, varStmt);
+    return varStmt->as.var.qbeVarAddr;
+}
 
 int gprintf(Generator *g, const char *fmt, ...) {
     va_list args;
@@ -40,7 +72,12 @@ static String gen_primary(Generator *g, Expr *e) {
     Token val = e->as.primary.value;
 
     switch (val.kind) {
-        case TOK_IDENTIFIER:      TODO("%s: TOK_IDENTIFIER", __func__);
+        case TOK_IDENTIFIER: {
+            String varAddr = expect_var(g, val)->as.var.qbeVarAddr;
+            String temp = qbe_id(val.loc);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(varAddr));
+            return temp;
+        }
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
         case TOK_TRUE:            TODO("%s: TOK_TRUE", __func__);
         case TOK_FALSE:           TODO("%s: TOK_FALSE", __func__);
@@ -231,6 +268,10 @@ static String gen_expr(Generator *g, Expr *e) {
 static void gen_stmt(Generator *g, Stmt *s);
 
 static void gen_func(Generator *g, Stmt *s) {
+    Scope funcScope = {0};
+    funcScope.above = g->scope;
+    g->scope = &funcScope;
+
     gprintf(g, "export function w $%.*s() {\n", strf(s->as.func.name.as.identifier));
     gprintf(g, "@start\n");
 
@@ -242,6 +283,8 @@ static void gen_func(Generator *g, Stmt *s) {
     gprintf(g, "@end\n");
     gprintf(g, "ret\n");
     gprintf(g, "}\n");
+
+    g->scope = funcScope.above;
 }
 
 static void gen_return(Generator *g, Stmt *s) {
@@ -252,9 +295,18 @@ static void gen_return(Generator *g, Stmt *s) {
 }
 
 static void gen_var(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_VAR);
+    VarStmt var = s->as.var;
+
+    String qbeVarAddr = declare_var(g, s);
+    gprintf(g, "%.*s =l alloc4 1\n", strf(qbeVarAddr));
+
+    if (var.init) {
+        String init = gen_expr(g, var.init);
+        gprintf(g, "storew %.*s, %.*s\n", strf(init), strf(qbeVarAddr));
+    }
+
+    return;
 }
 
 static void gen_while(Generator *g, Stmt *s) {
@@ -313,6 +365,7 @@ void codegen(TranslationUnit *unit, FILE *outf) {
     Generator g = (Generator){
         .outf = outf,
         .unit = unit,
+        .scope = &unit->globalSymbols,
     };
 
     for (size_t i = 0; i < unit->ast.len; i++) {
