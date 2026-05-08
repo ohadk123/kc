@@ -212,7 +212,6 @@ static String gen_lvalue(Generator *g, Expr *e) {
 
 static String gen_unary(Generator *g, Expr *e) {
     UnaryExpr unary = e->as.unary;
-    (void)g;
     String out = qbe_id(e->loc);
 
     switch (unary.op) {
@@ -288,7 +287,7 @@ static String gen_assign(Generator *g, Expr *e) {
     String rhs = gen_expr(g, assign.rhs);
 
     switch (assign.op) {
-        case TOK_EQUALS:      gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
+        case TOK_EQUALS:                 gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
         case TOK_PLUS_EQUALS:
         case TOK_MINUS_EQUALS:
         case TOK_STAR_EQUALS:
@@ -298,8 +297,7 @@ static String gen_assign(Generator *g, Expr *e) {
         case TOK_PIPE_EQUALS:
         case TOK_CARET_EQUALS:
         case TOK_LESS_LESS_EQUALS:
-        case TOK_GREATER_GREATER_EQUALS:
-        {
+        case TOK_GREATER_GREATER_EQUALS: {
             String temp = qbe_id(e->loc);
             gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(lhs));
             gprintf(g, "%.*s =w %s %.*s, %.*s\n", strf(temp), get_assign_op(assign.op), strf(temp), strf(rhs),
@@ -317,9 +315,22 @@ static String gen_assign(Generator *g, Expr *e) {
 }
 
 static String gen_unary_post(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    UnaryExpr unary = e->as.unary;
+    String out = qbe_id(e->loc);
+    String temp = qbe_id(e->loc);
+    String inner = gen_lvalue(g, unary.inner);
+
+    const char *opStr;
+    switch (unary.op) {
+        case TOK_PLUS_PLUS:   opStr = "add"; break;
+        case TOK_MINUS_MINUS: opStr = "sub"; break;
+        default:              UNREACHABLE("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
+    }
+
+    gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
+    gprintf(g, "%.*s =w %s %.*s, 1\n", strf(temp), opStr, strf(out));
+    gprintf(g, "storew %.*s, %.*s\n", strf(temp), strf(inner));
+    return out;
 }
 
 static String gen_conditional(Generator *g, Expr *e) {
