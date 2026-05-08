@@ -23,6 +23,23 @@ typedef struct {
     Scope *scope;
 } Generator;
 
+int gprintf(Generator *g, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = vfprintf(g->outf, fmt, args);
+    va_end(args);
+    return ret;
+}
+
+const char *ktype_to_qbe_ext(Type *type) {
+    (void)type;
+    TODO("%s", __func__);
+}
+
+/******************************************************************************
+ * Symbol Resolution
+ *****************************************************************************/
+
 static Stmt *find_symbol(Scope *scope, String symbol) {
     while (scope) {
         Stmt *var = hm_find_val(&scope->symbols, symbol);
@@ -53,18 +70,9 @@ static String declare_var(Generator *g, Stmt *varStmt) {
     return varStmt->as.var.qbeVarAddr;
 }
 
-int gprintf(Generator *g, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    int ret = vfprintf(g->outf, fmt, args);
-    va_end(args);
-    return ret;
-}
-
-const char *ktype_to_qbe_ext(Type *type) {
-    (void)type;
-    TODO("%s", __func__);
-}
+/******************************************************************************
+ * Expression CodeGen
+ *****************************************************************************/
 
 static String gen_expr(Generator *g, Expr *e);
 
@@ -196,10 +204,12 @@ static String gen_unary(Generator *g, Expr *e) {
             gprintf(g, "%.*s =w xor %.*s, -1\n", strf(out), strf(inner));
             return out;
         }
+
         case TOK_MINUS: {
             gprintf(g, "%.*s =w sub 0, %.*s\n", strf(out), strf(inner));
             return out;
         }
+
         case TOK_BANG: {
             String endLabel = get_label("end", e->loc);
             String trueLabel = get_label("true", e->loc);
@@ -216,14 +226,42 @@ static String gen_unary(Generator *g, Expr *e) {
             gprintf(g, "@%.*s\n", strf(endLabel));
             return out;
         }
+
         default: TODO("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
     }
 }
 
+static String gen_lvalue(Generator *g, Expr *e) {
+    switch (e->kind) {
+        case EXPR_PRIMARY: {
+            if (e->as.primary.value.kind != TOK_IDENTIFIER) break;
+            return expect_var(g, e->as.primary.value)->as.var.qbeVarAddr;
+        }
+        case EXPR_GROUPING: return gen_lvalue(g, e->as.grouping.inner);
+        case EXPR_UNARY: {
+            if (e->as.unary.op != TOK_STAR) break;
+            return gen_expr(g, e->as.unary.inner);
+        }
+        default: break;
+    }
+
+    compile_error(g->unit->fileName, e->loc, "expression is not assignable");
+}
+
 static String gen_assign(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    AssignExpr assign = e->as.assignment;
+
+    String lhs = gen_lvalue(g, assign.lhs);
+    String rhs = gen_expr(g, assign.rhs);
+
+    switch (assign.op) {
+        case TOK_EQUALS: gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
+        default:         TODO("operand %s", tokenTypesStrings[assign.op]);
+    }
+
+    String temp = qbe_id(e->loc);
+    gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(lhs));
+    return temp;
 }
 
 static String gen_unary_post(Generator *g, Expr *e) {
@@ -265,6 +303,10 @@ static String gen_expr(Generator *g, Expr *e) {
     UNREACHABLE("Error on expr kind (%d)", e->kind);
 }
 
+/******************************************************************************
+ * Statement CodeGen
+ *****************************************************************************/
+
 static void gen_stmt(Generator *g, Stmt *s);
 
 static void gen_func(Generator *g, Stmt *s) {
@@ -281,7 +323,7 @@ static void gen_func(Generator *g, Stmt *s) {
 
     // TODO: empty functions, yay or nay?
     gprintf(g, "@end\n");
-    gprintf(g, "ret\n");
+    gprintf(g, "ret 0\n");
     gprintf(g, "}\n");
 
     g->scope = funcScope.above;
