@@ -187,35 +187,53 @@ static String gen_binary(Generator *g, Expr *e) {
             return out;
         }
 
-        default: TODO("%s: Unsupported binary operator (%s)", __func__, tokenTypesStrings[binary.op]);
+        default: UNREACHABLE("%s: Unsupported binary operator (%s)", __func__, tokenTypesStrings[binary.op]);
     }
 
     return out;
 }
 
+static String gen_lvalue(Generator *g, Expr *e) {
+    switch (e->kind) {
+        case EXPR_PRIMARY: {
+            if (e->as.primary.value.kind != TOK_IDENTIFIER) break;
+            return expect_var(g, e->as.primary.value)->as.var.qbeVarAddr;
+        }
+        case EXPR_GROUPING: return gen_lvalue(g, e->as.grouping.inner);
+        case EXPR_UNARY:    {
+            if (e->as.unary.op != TOK_STAR) break;
+            return gen_expr(g, e->as.unary.inner);
+        }
+        default: break;
+    }
+
+    compile_error(g->unit->fileName, e->loc, "expression is not assignable");
+}
+
 static String gen_unary(Generator *g, Expr *e) {
     UnaryExpr unary = e->as.unary;
     (void)g;
-    String inner = gen_expr(g, unary.inner);
     String out = qbe_id(e->loc);
 
     switch (unary.op) {
         case TOK_TILDE: {
+            String inner = gen_expr(g, unary.inner);
             gprintf(g, "%.*s =w xor %.*s, -1\n", strf(out), strf(inner));
             return out;
         }
 
         case TOK_MINUS: {
+            String inner = gen_expr(g, unary.inner);
             gprintf(g, "%.*s =w sub 0, %.*s\n", strf(out), strf(inner));
             return out;
         }
 
         case TOK_BANG: {
+            String inner = gen_expr(g, unary.inner);
             String endLabel = get_label("end", e->loc);
             String trueLabel = get_label("true", e->loc);
             String falseLabel = get_label("false", e->loc);
 
-            String inner = gen_expr(g, unary.inner);
             gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(inner), strf(falseLabel), strf(trueLabel));
 
             gprintf(g, "@%.*s\n", strf(trueLabel));
@@ -227,25 +245,40 @@ static String gen_unary(Generator *g, Expr *e) {
             return out;
         }
 
-        default: TODO("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
+        case TOK_PLUS_PLUS: {
+            String inner = gen_lvalue(g, unary.inner);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
+            gprintf(g, "%.*s =w add %.*s, 1\n", strf(out), strf(out));
+            gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
+            return out;
+        }
+
+        case TOK_MINUS_MINUS: {
+            String inner = gen_lvalue(g, unary.inner);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
+            gprintf(g, "%.*s =w sub %.*s, 1\n", strf(out), strf(out));
+            gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
+            return out;
+        }
+
+        default: UNREACHABLE("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
     }
 }
 
-static String gen_lvalue(Generator *g, Expr *e) {
-    switch (e->kind) {
-        case EXPR_PRIMARY: {
-            if (e->as.primary.value.kind != TOK_IDENTIFIER) break;
-            return expect_var(g, e->as.primary.value)->as.var.qbeVarAddr;
-        }
-        case EXPR_GROUPING: return gen_lvalue(g, e->as.grouping.inner);
-        case EXPR_UNARY: {
-            if (e->as.unary.op != TOK_STAR) break;
-            return gen_expr(g, e->as.unary.inner);
-        }
-        default: break;
+static const char *get_assign_op(TokenKind op) {
+    switch (op) {
+        case TOK_PLUS_EQUALS:            return "add";
+        case TOK_MINUS_EQUALS:           return "sub";
+        case TOK_STAR_EQUALS:            return "mul";
+        case TOK_SLASH_EQUALS:           return "div";
+        case TOK_PERCENT_EQUALS:         return "rem";
+        case TOK_AMPERSAND_EQUALS:       return "and";
+        case TOK_PIPE_EQUALS:            return "or";
+        case TOK_CARET_EQUALS:           return "xor";
+        case TOK_LESS_LESS_EQUALS:       return "shl";
+        case TOK_GREATER_GREATER_EQUALS: return "sar";
+        default:                         UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
     }
-
-    compile_error(g->unit->fileName, e->loc, "expression is not assignable");
 }
 
 static String gen_assign(Generator *g, Expr *e) {
@@ -255,8 +288,27 @@ static String gen_assign(Generator *g, Expr *e) {
     String rhs = gen_expr(g, assign.rhs);
 
     switch (assign.op) {
-        case TOK_EQUALS: gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
-        default:         TODO("operand %s", tokenTypesStrings[assign.op]);
+        case TOK_EQUALS:      gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
+        case TOK_PLUS_EQUALS:
+        case TOK_MINUS_EQUALS:
+        case TOK_STAR_EQUALS:
+        case TOK_SLASH_EQUALS:
+        case TOK_PERCENT_EQUALS:
+        case TOK_AMPERSAND_EQUALS:
+        case TOK_PIPE_EQUALS:
+        case TOK_CARET_EQUALS:
+        case TOK_LESS_LESS_EQUALS:
+        case TOK_GREATER_GREATER_EQUALS:
+        {
+            String temp = qbe_id(e->loc);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(lhs));
+            gprintf(g, "%.*s =w %s %.*s, %.*s\n", strf(temp), get_assign_op(assign.op), strf(temp), strf(rhs),
+                    strf(temp));
+            gprintf(g, "storew %.*s, %.*s\n", strf(temp), strf(lhs));
+            break;
+        }
+
+        default: UNREACHABLE("operand %s", tokenTypesStrings[assign.op]);
     }
 
     String temp = qbe_id(e->loc);
