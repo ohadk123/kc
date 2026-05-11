@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: kc <file>\n");
         exit(1);
-    }
+    };
 
     TranslationUnit unit = (TranslationUnit){
         .fileName = str_from_cstr(argv[1]),
