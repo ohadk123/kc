@@ -47,11 +47,13 @@ int main(int argc, char *argv[]) {
 
     String qbeCommand = str_printf("qbe %.*s", strf(qbeFile));
     qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
-    system(qbeCommand.data);
+    int ret = system(qbeCommand.data);
+    printf("qbe done with code %d\n", ret);
     remove(qbeFile.data);
 
     String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
-    system(asmCommand.data);
+    ret = system(asmCommand.data);
+    printf("gcc done with code %d\n", ret);
     remove(asmFile.data);
 
     // printf("compiling done!\n");
@@ -108,13 +110,15 @@ int main2(int argc, char *argv[]) {
     if (qbe) {
         String qbeCommand = str_printf("qbe %.*s", strf(qbeFile));
         if (gcc) qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
-        system(qbeCommand.data);
+        int ret = system(qbeCommand.data);
+        printf("qbe done with code %d\n", ret);
         // remove(qbeFile.data);
     }
 
     if (gcc) {
         String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
-        system(asmCommand.data);
+        int ret = system(asmCommand.data);
+        printf("gcc done with code %d\n", ret);
         // remove(asmFile.data);
     }
 
