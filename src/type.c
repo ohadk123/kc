@@ -9,7 +9,7 @@ static Type *make_type(TypeKind kind) {
 }
 
 Type *type_make_primitive(PrimitiveTypeKind primitive) {
-    size_t size;
+    size_t size = 0;
     bool isUnsigned = true;
     switch (primitive) {
         case TYPE_VOID: size = 0; break;
