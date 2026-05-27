@@ -397,6 +397,9 @@ static void gen_return(Generator *g, Stmt *s) {
         gprintf(g, "ret\n");
     else
         gprintf(g, "ret %s\n", gen_expr(g, s->as.returnS.retVal));
+
+    String retLabel = get_label("ret", s->loc);
+    gprintf(g, "@%.*s\n", strf(retLabel));
 }
 
 static void gen_var(Generator *g, Stmt *s) {
