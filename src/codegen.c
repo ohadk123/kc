@@ -439,8 +439,6 @@ static void gen_if(Generator *g, Stmt *s) {
     gprintf(g, "@%.*s\n", strf(elseLabel));
     if (ifS.elseBranch) gen_stmt(g, ifS.elseBranch);
     gprintf(g, "@%.*s\n", strf(endLabel));
-
-    return;
 }
 
 static void gen_for(Generator *g, Stmt *s) {
