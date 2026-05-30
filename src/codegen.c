@@ -24,6 +24,8 @@ typedef struct {
 } Generator;
 
 int gprintf(Generator *g, const char *fmt, ...) {
+    static size_t line = 0;
+    if (g->outf == stdout) printf("[%zu] ", line++);
     va_list args;
     va_start(args, fmt);
     int ret = vfprintf(g->outf, fmt, args);
