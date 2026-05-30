@@ -478,9 +478,46 @@ static void gen_var(Generator *g, Stmt *s) {
 }
 
 static void gen_while(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    WhileStmt w = s->as.whileS;
+
+    String condLabel = get_label("cond", s->loc);
+    String bodyLabel = get_label("loop", s->loc);
+    String endLabel = get_label("end", s->loc);
+
+    enter_scope(g);
+
+    gprintf(g, "@%.*s\n", strf(condLabel));
+    String condVal = gen_expr(g, w.condition);
+    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
+
+    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gen_stmt(g, w.body);
+    gprintf(g, "jmp @%.*s\n", strf(condLabel));
+
+    gprintf(g, "@%.*s\n", strf(endLabel));
+
+    exit_scope(g);
+}
+
+static void gen_do_while(Generator *g, Stmt *s) {
+    WhileStmt w = s->as.doWhile;
+
+    String condLabel = get_label("cond", s->loc);
+    String bodyLabel = get_label("loop", s->loc);
+    String endLabel = get_label("end", s->loc);
+
+    enter_scope(g);
+
+    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gen_stmt(g, w.body);
+
+    gprintf(g, "@%.*s\n", strf(condLabel));
+    String condVal = gen_expr(g, w.condition);
+
+    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
+    gprintf(g, "@%.*s\n", strf(endLabel));
+
+    exit_scope(g);
 }
 
 static void gen_if(Generator *g, Stmt *s) {
@@ -508,9 +545,32 @@ static void gen_if(Generator *g, Stmt *s) {
 }
 
 static void gen_for(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    ForStmt f = s->as.forS;
+    String condLabel = get_label("cond", s->loc);
+    String bodyLabel = get_label("loop", s->loc);
+    String incLabel = get_label("inc", s->loc);
+    String endLabel = get_label("end", s->loc);
+
+    enter_scope(g);
+
+    if (f.initializer) gen_stmt(g, f.initializer);
+
+    gprintf(g, "@%.*s\n", strf(condLabel));
+    if (f.condition) {
+        String condVal = gen_expr(g, f.condition);
+        gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
+    }
+
+    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gen_stmt(g, f.body);
+
+    gprintf(g, "@%.*s\n", strf(incLabel));
+    if (f.increment) gen_expr(g, f.increment);
+    gprintf(g, "jmp @%.*s\n", strf(condLabel));
+
+    gprintf(g, "@%.*s\n", strf(endLabel));
+
+    exit_scope(g);
 }
 
 static void gen_break(Generator *g, Stmt *s) {
@@ -534,6 +594,7 @@ static void gen_stmt(Generator *g, Stmt *s) {
         case STMT_VAR:      gen_var(g, s);                break;
         case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
         case STMT_WHILE:    gen_while(g, s);              break;
+        case STMT_DO_WHILE: gen_do_while(g, s);           break;
         case STMT_IF:       gen_if(g, s);                 break;
         case STMT_FOR:      gen_for(g, s);                break;
         case STMT_BREAK:    gen_break(g, s);              break;
