@@ -38,6 +38,10 @@ const char *ktype_to_qbe_ext(Type *type) {
     TODO("%s", __func__);
 }
 
+/******************************************************************************
+ * Scope Helpers
+ *****************************************************************************/
+
 static void enter_scope(Generator *g) {
     Scope *newScope = calloc(1, sizeof(Scope));
     newScope->above = g->scope;
