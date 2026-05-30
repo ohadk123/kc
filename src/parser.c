@@ -397,6 +397,7 @@ Stmt *do_while_stmt(Parser *p) {
 
     Expr *cond = expression(p);
     expect(p, TOK_RIGHT_PAREN, "Expected ')' after while condition");
+    expect(p, TOK_SEMICOLON, "Expected ';' after do/while");
 
     return stmt_make_do_while(cond, body, loc);
 }
