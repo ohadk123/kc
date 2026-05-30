@@ -38,6 +38,18 @@ const char *ktype_to_qbe_ext(Type *type) {
     TODO("%s", __func__);
 }
 
+static void enter_scope(Generator *g) {
+    Scope *newScope = calloc(1, sizeof(Scope));
+    newScope->above = g->scope;
+    g->scope = newScope;
+}
+
+static inline void exit_scope(Generator *g) {
+    Scope *oldScope = g->scope;
+    g->scope = oldScope->above;
+    free(oldScope);
+}
+
 /******************************************************************************
  * Symbol Resolution
  *****************************************************************************/
@@ -386,8 +398,8 @@ static String gen_index(Generator *g, Expr *e) {
 
 static String gen_expr(Generator *g, Expr *e) {
     switch (e->kind) {
-        case EXPR_PRIMARY:     return gen_primary(g, e); break;
-        case EXPR_GROUPING:    return gen_expr(g, e->as.grouping.inner); break;
+        case EXPR_PRIMARY:     return gen_primary(g, e);
+        case EXPR_GROUPING:    return gen_expr(g, e->as.grouping.inner);
         case EXPR_BINARY:      return gen_binary(g, e);
         case EXPR_UNARY:       return gen_unary(g, e);
         case EXPR_ASSIGN:      return gen_assign(g, e);
@@ -405,10 +417,15 @@ static String gen_expr(Generator *g, Expr *e) {
 
 static void gen_stmt(Generator *g, Stmt *s);
 
+static void gen_block(Generator *g, Stmt *s) {
+    StmtList block = s->as.block.block;
+    enter_scope(g);
+    for (size_t i = 0; i < block.len; i++) gen_stmt(g, block.arr[i]);
+    exit_scope(g);
+}
+
 static void gen_func(Generator *g, Stmt *s) {
-    Scope funcScope = {0};
-    funcScope.above = g->scope;
-    g->scope = &funcScope;
+    enter_scope(g);
 
     gprintf(g, "export function w $%.*s() {\n", strf(s->as.func.name.as.identifier));
     gprintf(g, "@start\n");
@@ -422,7 +439,7 @@ static void gen_func(Generator *g, Stmt *s) {
     gprintf(g, "ret 0\n");
     gprintf(g, "}\n");
 
-    g->scope = funcScope.above;
+    exit_scope(g);
 }
 
 static void gen_return(Generator *g, Stmt *s) {
@@ -497,21 +514,17 @@ static void gen_continue(Generator *g, Stmt *s) {
 
 static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL:  break;
-        case STMT_BLOCK: {
-            StmtList block = s->as.block.block;
-            for (size_t i = 0; i < block.len; i++) gen_stmt(g, block.arr[i]);
-            break;
-        }
-        case STMT_FUNC:     gen_func(g, s); break;
-        case STMT_RETURN:   gen_return(g, s); break;
-        case STMT_VAR:      gen_var(g, s); break;
+        case STMT_NULL:                                   break;
+        case STMT_BLOCK:    gen_block(g, s);              break;
+        case STMT_FUNC:     gen_func(g, s);               break;
+        case STMT_RETURN:   gen_return(g, s);             break;
+        case STMT_VAR:      gen_var(g, s);                break;
         case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
-        case STMT_WHILE:    gen_while(g, s); break;
-        case STMT_IF:       gen_if(g, s); break;
-        case STMT_FOR:      gen_for(g, s); break;
-        case STMT_BREAK:    gen_break(g, s); break;
-        case STMT_CONTINUE: gen_continue(g, s); break;
+        case STMT_WHILE:    gen_while(g, s);              break;
+        case STMT_IF:       gen_if(g, s);                 break;
+        case STMT_FOR:      gen_for(g, s);                break;
+        case STMT_BREAK:    gen_break(g, s);              break;
+        case STMT_CONTINUE: gen_continue(g, s);           break;
     }
 }
 
