@@ -491,6 +491,8 @@ static void gen_if(Generator *g, Stmt *s) {
     String endLabel = get_label("end", s->loc);
     String elseLabel = ifS.elseBranch ? get_label("else", s->loc) : endLabel;
 
+    enter_scope(g);
+
     gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(cond), strf(thenLabel), strf(elseLabel));
     gprintf(g, "@%.*s\n", strf(thenLabel));
     gen_stmt(g, ifS.thenBranch);
@@ -501,6 +503,8 @@ static void gen_if(Generator *g, Stmt *s) {
         gprintf(g, "jmp @%.*s\n", strf(endLabel));
     }
     gprintf(g, "@%.*s\n", strf(endLabel));
+
+    exit_scope(g);
 }
 
 static void gen_for(Generator *g, Stmt *s) {
