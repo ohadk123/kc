@@ -275,16 +275,18 @@ static String gen_unary(Generator *g, Expr *e) {
 
         case TOK_PLUS_PLUS: {
             String inner = gen_lvalue(g, unary.inner);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
-            gprintf(g, "%.*s =w add %.*s, 1\n", strf(out), strf(out));
+            String loadTemp = qbe_id(e->loc);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(loadTemp), strf(inner));
+            gprintf(g, "%.*s =w add %.*s, 1\n", strf(out), strf(loadTemp));
             gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
             return out;
         }
 
         case TOK_MINUS_MINUS: {
             String inner = gen_lvalue(g, unary.inner);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
-            gprintf(g, "%.*s =w sub %.*s, 1\n", strf(out), strf(out));
+            String loadTemp = qbe_id(e->loc);
+            gprintf(g, "%.*s =w loadw %.*s\n", strf(loadTemp), strf(inner));
+            gprintf(g, "%.*s =w sub %.*s, 1\n", strf(out), strf(loadTemp));
             gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
             return out;
         }
