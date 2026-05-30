@@ -58,6 +58,7 @@ static inline void exit_scope(Generator *g) {
  * Symbol Resolution
  *****************************************************************************/
 
+// Find symbol is scope bottom to top
 static Stmt *find_symbol(Scope *scope, String symbol) {
     while (scope) {
         Stmt *var = hm_find_val(&scope->symbols, symbol);
@@ -77,14 +78,16 @@ static Stmt *expect_var(Generator *g, Token nameTok) {
 
 static String declare_var(Generator *g, Stmt *varStmt) {
     assert(varStmt->kind == STMT_VAR);
-    Stmt *found = find_symbol(g->scope, varStmt->as.var.name.as.identifier);
+
+    String varName = varStmt->as.var.name.as.identifier;
+    // Stmt *found = find_symbol(g->scope, varName);
+    Stmt *found = hm_find_val(&g->scope->symbols, varName);
     if (found)
         compile_error(g->unit->fileName, varStmt->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
-                      strf(varStmt->as.var.name.as.identifier), strf(g->unit->fileName), varStmt->loc.line,
-                      varStmt->loc.col);
+                      strf(varName), strf(g->unit->fileName), varStmt->loc.line, varStmt->loc.col);
 
     varStmt->as.var.qbeVarAddr = qbe_id(varStmt->loc);
-    hm_insert(&g->scope->symbols, varStmt->as.var.name.as.identifier, varStmt);
+    hm_insert(&g->scope->symbols, varName, varStmt);
     return varStmt->as.var.qbeVarAddr;
 }
 
