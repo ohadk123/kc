@@ -45,16 +45,17 @@ int main(int argc, char *argv[]) {
     fflush(outf);
     fclose(outf);
 
-    String qbeCommand = str_printf("qbe %.*s", strf(qbeFile));
-    qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
+    String qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
     int ret = system(qbeCommand.data);
     printf("qbe done with code %d\n", ret);
     remove(qbeFile.data);
+    if (ret != 0) exit(1);
 
     String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
     ret = system(asmCommand.data);
     printf("gcc done with code %d\n", ret);
     remove(asmFile.data);
+    if (ret != 0) exit(2);
 
     // printf("compiling done!\n");
     return 0;
