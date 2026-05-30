@@ -336,9 +336,32 @@ static String gen_unary_post(Generator *g, Expr *e) {
 }
 
 static String gen_conditional(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    ConditionalExpr c = e->as.conditional;
+    String temp = qbe_id(e->loc);
+    String thenLabel = get_label("then", e->loc);
+    String thenLabelEnd = get_label("thenEnd", e->loc);
+    String elseLabel = get_label("else", e->loc);
+    String elseLabelEnd = get_label("elseEnd", e->loc);
+    String endLabel = get_label("end", e->loc);
+
+    String cond = gen_expr(g, c.condition);
+    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(cond), strf(thenLabel), strf(elseLabel));
+
+    gprintf(g, "@%.*s\n", strf(thenLabel));
+    String thenVal = gen_expr(g, c.thenBranch);
+    gprintf(g, "@%.*s\n", strf(thenLabelEnd));
+    gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
+    gprintf(g, "@%.*s\n", strf(elseLabel));
+    String elseVal = gen_expr(g, c.elseBranch);
+    gprintf(g, "@%.*s\n", strf(elseLabelEnd));
+    gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
+    gprintf(g, "@%.*s\n", strf(endLabel));
+    gprintf(g, "%.*s =w phi @%.*s %.*s, @%.*s %.*s\n", strf(temp), strf(thenLabelEnd), strf(thenVal),
+            strf(elseLabelEnd), strf(elseVal));
+
+    return temp;
 }
 
 static String gen_func_call(Generator *g, Expr *e) {
