@@ -153,17 +153,22 @@ static String gen_binary(Generator *g, Expr *e) {
             String falseLabel = get_label("false", e->loc);
             String rhsLabel = get_label("rhs", e->loc);
 
+            // check lhs, if it's false, no need to check rhs, jump to false label
             String lhs = gen_expr(g, binary.lhs);
             gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(lhs), strf(rhsLabel), strf(falseLabel));
+
             gprintf(g, "@%.*s\n", strf(rhsLabel));
             String rhs = gen_expr(g, binary.rhs);
             gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(rhs), strf(trueLabel), strf(falseLabel));
+
             gprintf(g, "@%.*s\n", strf(trueLabel));
-            gprintf(g, "%.*s =w copy 1\n", strf(out));
             gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
             gprintf(g, "@%.*s\n", strf(falseLabel));
-            gprintf(g, "%.*s =w copy 0\n", strf(out));
+            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
             gprintf(g, "@%.*s\n", strf(endLabel));
+            gprintf(g, "%.*s =w phi @%.*s 1, @%.*s 0\n", strf(out), strf(trueLabel), strf(falseLabel));
             return out;
         }
 
@@ -173,6 +178,7 @@ static String gen_binary(Generator *g, Expr *e) {
             String falseLabel = get_label("false", e->loc);
             String rhsLabel = get_label("rhs", e->loc);
 
+            // check lhs, if it's true, no need to check rhs, jump to true label
             String lhs = gen_expr(g, binary.lhs);
             gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(lhs), strf(trueLabel), strf(rhsLabel));
 
@@ -181,11 +187,13 @@ static String gen_binary(Generator *g, Expr *e) {
             gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(rhs), strf(trueLabel), strf(falseLabel));
 
             gprintf(g, "@%.*s\n", strf(trueLabel));
-            gprintf(g, "%.*s =w copy 1\n", strf(out));
             gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
             gprintf(g, "@%.*s\n", strf(falseLabel));
-            gprintf(g, "%.*s =w copy 0\n", strf(out));
+            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+
             gprintf(g, "@%.*s\n", strf(endLabel));
+            gprintf(g, "%.*s =w phi @%.*s 1, @%.*s 0\n", strf(out), strf(trueLabel), strf(falseLabel));
             return out;
         }
 
