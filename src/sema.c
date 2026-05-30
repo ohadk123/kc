@@ -362,17 +362,18 @@ static void check_continue(Analyzer *a, Stmt *s) {
 
 static void check_stmt(Analyzer *a, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL:     break;
-        case STMT_VAR:      check_var(a, s); break;
+        case STMT_NULL:                                     break;
+        case STMT_VAR:      check_var(a, s);                break;
         case STMT_EXPR:     check_expr(a, s->as.expr.expr); break;
-        case STMT_BLOCK:    check_block(a, s); break;
-        case STMT_WHILE:    check_while(a, s); break;
-        case STMT_IF:       check_if(a, s); break;
-        case STMT_FOR:      check_for(a, s); break;
-        case STMT_RETURN:   check_return(a, s); break;
-        case STMT_FUNC:     check_func(a, s); break;
-        case STMT_BREAK:    check_break(a, s); break;
-        case STMT_CONTINUE: check_continue(a, s); break;
+        case STMT_BLOCK:    check_block(a, s);              break;
+        case STMT_WHILE:    check_while(a, s);              break;
+        case STMT_DO_WHILE: check_while(a, s);              break;
+        case STMT_IF:       check_if(a, s);                 break;
+        case STMT_FOR:      check_for(a, s);                break;
+        case STMT_RETURN:   check_return(a, s);             break;
+        case STMT_FUNC:     check_func(a, s);               break;
+        case STMT_BREAK:    check_break(a, s);              break;
+        case STMT_CONTINUE: check_continue(a, s);           break;
     }
 }
 

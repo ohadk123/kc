@@ -40,6 +40,13 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc) {
     return s;
 }
 
+Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc) {
+    Stmt *s = make_stmt(STMT_DO_WHILE, loc);
+    s->as.doWhile.condition = cond;
+    s->as.doWhile.body = body;
+    return s;
+}
+
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc) {
     Stmt *s = make_stmt(STMT_IF, loc);
     s->as.ifS.condition = cond;
@@ -125,6 +132,15 @@ void print_stmt(Stmt *stmt, int indent) {
             print_stmt(stmt->as.whileS.body, i);
             printf("\n");
             break;
+        case STMT_DO_WHILE:
+            printf("%*s\"kind\": \"do/while\",\n", i * 2, "");
+            printf("%*s\"cond\": ", i * 2, "");
+            print_expr(stmt->as.doWhile.condition, i);
+            printf(",\n");
+            printf("%*s\"body\": ", i * 2, "");
+            print_stmt(stmt->as.doWhile.body, i);
+            printf("\n");
+            break;
         case STMT_IF:
             printf("%*s\"kind\": \"if\",\n", i * 2, "");
             printf("%*s\"cond\": ", i * 2, "");
@@ -205,6 +221,7 @@ Token get_top_level_name(Stmt *s) {
         case STMT_EXPR:
         case STMT_BLOCK:
         case STMT_WHILE:
+        case STMT_DO_WHILE:
         case STMT_IF:
         case STMT_FOR:
         case STMT_RETURN:

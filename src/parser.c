@@ -388,6 +388,19 @@ Stmt *return_stmt(Parser *p) {
     return stmt_make_return(ret_val, loc);
 }
 
+Stmt *do_while_stmt(Parser *p) {
+    Location loc = previous(p).loc;
+    Stmt *body = statement(p);
+
+    expect(p, TOK_WHILE, "Expect 'while' in do/while loop");
+    expect(p, TOK_LEFT_PAREN, "Exected '(' after after while");
+
+    Expr *cond = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expected ')' after while condition");
+
+    return stmt_make_do_while(cond, body, loc);
+}
+
 Stmt *statement(Parser *p) {
     if (match_types(p))           return var_stmt(p);
     if (match(p, TOK_FOR))        return for_stmt(p);
@@ -397,6 +410,7 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_BREAK))      return break_stmt(p);
     if (match(p, TOK_CONTINUE))   return continue_stmt(p);
     if (match(p, TOK_RETURN))     return return_stmt(p);
+    if (match(p, TOK_DO))         return do_while_stmt(p);
 
     Location loc = peek(p).loc;
     if (match(p, TOK_SEMICOLON))  return stmt_make_null(loc);
