@@ -12,6 +12,9 @@ struct _Scope {
 
     Type *retType;
     bool inLoop;
+
+    String contLabel;
+    String breakLabel;
 };
 
 typedef struct {

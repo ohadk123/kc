@@ -7,12 +7,12 @@ static uint64_t counter(void) {
     return count++;
 }
 
-String qbe_id(Location loc) {
+static String qbe_id(Location loc) {
     int id = counter();
     return str_printf("%%_ktemp_%zu_%zu_%zu", id++, loc.line, loc.col);
 }
 
-String get_label(const char *name, Location loc) {
+static String get_label(const char *name, Location loc) {
     return str_printf("__%s.%zu.%zu.%zu", name, loc.line, loc.col, counter());
 }
 
@@ -23,19 +23,19 @@ typedef struct {
     Scope *scope;
 } Generator;
 
-int gprintf(Generator *g, const char *fmt, ...) {
-    static size_t line = 0;
-    if (g->outf == stdout) printf("[%zu] ", line++);
-    va_list args;
-    va_start(args, fmt);
-    int ret = vfprintf(g->outf, fmt, args);
-    va_end(args);
-    return ret;
-}
+// static int gprintf(Generator *g, const char *fmt, ...) {
+//     // static size_t line = 0;
+//     // if (g->outf == stdout) printf("[%zu] ", line++);
+//     va_list args;
+//     va_start(args, fmt);
+//     int ret = vfprintf(g->outf, fmt, args);
+//     va_end(args);
+//     return ret;
+// }
 
-int gprintfln(Generator *g, const char *fmt, ...) {
-    static size_t line = 0;
-    if (g->outf == stdout) printf("[%zu] ", line++);
+static int gprintfln(Generator *g, const char *fmt, ...) {
+    // static size_t line = 0;
+    // if (g->outf == stdout) printf("[%zu] ", line++);
     va_list args;
     va_start(args, fmt);
     int ret = vfprintf(g->outf, fmt, args);
@@ -77,7 +77,7 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
         scope = scope->above;
     }
 
-    return 0;
+    return NULL;
 }
 
 static Stmt *expect_var(Generator *g, Token nameTok) {
@@ -497,6 +497,9 @@ static void gen_while(Generator *g, Stmt *s) {
 
     enter_scope(g);
 
+    g->scope->contLabel = condLabel;
+    g->scope->breakLabel = endLabel;
+
     gprintfln(g, "@%.*s", strf(condLabel));
     String condVal = gen_expr(g, w.condition);
     gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
@@ -518,6 +521,9 @@ static void gen_do_while(Generator *g, Stmt *s) {
     String endLabel = get_label("end", s->loc);
 
     enter_scope(g);
+
+    g->scope->contLabel = condLabel;
+    g->scope->breakLabel = endLabel;
 
     gprintfln(g, "@%.*s", strf(bodyLabel));
     gen_stmt(g, w.body);
@@ -564,6 +570,9 @@ static void gen_for(Generator *g, Stmt *s) {
 
     enter_scope(g);
 
+    g->scope->contLabel = incLabel;
+    g->scope->breakLabel = endLabel;
+
     if (f.initializer) gen_stmt(g, f.initializer);
 
     gprintfln(g, "@%.*s", strf(condLabel));
@@ -581,19 +590,40 @@ static void gen_for(Generator *g, Stmt *s) {
 
     gprintfln(g, "@%.*s", strf(endLabel));
 
+    g->scope->breakLabel = endLabel;
     exit_scope(g);
 }
 
 static void gen_break(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    String breakLabel = {0};
+    for (Scope *scope = g->scope; scope; scope = scope->above) {
+        if (scope->breakLabel.len != 0) {
+            breakLabel = scope->breakLabel;
+            break;
+        }
+    }
+    if (breakLabel.len == 0) compile_error(g->unit->fileName, s->loc, "'continue' not in loop");
+
+    gprintfln(g, "jmp @%.*s", strf(breakLabel));
+
+    String after = get_label("after", s->loc);
+    gprintfln(g, "@%.*s", strf(after));
 }
 
 static void gen_continue(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    String contLabel = {0};
+    for (Scope *scope = g->scope; scope; scope = scope->above) {
+        if (scope->contLabel.len != 0) {
+            contLabel = scope->contLabel;
+            break;
+        }
+    }
+    if (contLabel.len == 0) compile_error(g->unit->fileName, s->loc, "'continue' not in loop");
+
+    gprintfln(g, "jmp @%.*s", strf(contLabel));
+
+    String after = get_label("after", s->loc);
+    gprintfln(g, "@%.*s", strf(after));
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
