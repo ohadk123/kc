@@ -33,6 +33,17 @@ int gprintf(Generator *g, const char *fmt, ...) {
     return ret;
 }
 
+int gprintfln(Generator *g, const char *fmt, ...) {
+    static size_t line = 0;
+    if (g->outf == stdout) printf("[%zu] ", line++);
+    va_list args;
+    va_start(args, fmt);
+    int ret = vfprintf(g->outf, fmt, args);
+    va_end(args);
+    fprintf(g->outf, "\n");
+    return ret;
+}
+
 const char *ktype_to_qbe_ext(Type *type) {
     (void)type;
     TODO("%s", __func__);
@@ -104,7 +115,7 @@ static String gen_primary(Generator *g, Expr *e) {
         case TOK_IDENTIFIER: {
             String varAddr = expect_var(g, val)->as.var.qbeVarAddr;
             String temp = qbe_id(val.loc);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(varAddr));
+            gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(varAddr));
             return temp;
         }
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
@@ -162,7 +173,7 @@ static String gen_binary(Generator *g, Expr *e) {
         case TOK_LESS_EQUALS:     {
             String lhs = gen_expr(g, binary.lhs);
             String rhs = gen_expr(g, binary.rhs);
-            gprintf(g, "%.*s =w %s %.*s, %.*s\n", strf(out), get_bin_op(binary.op), strf(lhs), strf(rhs));
+            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_bin_op(binary.op), strf(lhs), strf(rhs));
             break;
         }
 
@@ -174,20 +185,20 @@ static String gen_binary(Generator *g, Expr *e) {
 
             // check lhs, if it's false, no need to check rhs, jump to false label
             String lhs = gen_expr(g, binary.lhs);
-            gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(lhs), strf(rhsLabel), strf(falseLabel));
+            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(lhs), strf(rhsLabel), strf(falseLabel));
 
-            gprintf(g, "@%.*s\n", strf(rhsLabel));
+            gprintfln(g, "@%.*s", strf(rhsLabel));
             String rhs = gen_expr(g, binary.rhs);
-            gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(rhs), strf(trueLabel), strf(falseLabel));
+            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(rhs), strf(trueLabel), strf(falseLabel));
 
-            gprintf(g, "@%.*s\n", strf(trueLabel));
-            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(trueLabel));
+            gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-            gprintf(g, "@%.*s\n", strf(falseLabel));
-            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(falseLabel));
+            gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-            gprintf(g, "@%.*s\n", strf(endLabel));
-            gprintf(g, "%.*s =w phi @%.*s 1, @%.*s 0\n", strf(out), strf(trueLabel), strf(falseLabel));
+            gprintfln(g, "@%.*s", strf(endLabel));
+            gprintfln(g, "%.*s =w phi @%.*s 1, @%.*s 0", strf(out), strf(trueLabel), strf(falseLabel));
             return out;
         }
 
@@ -199,20 +210,20 @@ static String gen_binary(Generator *g, Expr *e) {
 
             // check lhs, if it's true, no need to check rhs, jump to true label
             String lhs = gen_expr(g, binary.lhs);
-            gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(lhs), strf(trueLabel), strf(rhsLabel));
+            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(lhs), strf(trueLabel), strf(rhsLabel));
 
-            gprintf(g, "@%.*s\n", strf(rhsLabel));
+            gprintfln(g, "@%.*s", strf(rhsLabel));
             String rhs = gen_expr(g, binary.rhs);
-            gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(rhs), strf(trueLabel), strf(falseLabel));
+            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(rhs), strf(trueLabel), strf(falseLabel));
 
-            gprintf(g, "@%.*s\n", strf(trueLabel));
-            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(trueLabel));
+            gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-            gprintf(g, "@%.*s\n", strf(falseLabel));
-            gprintf(g, "jmp @%.*s\n", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(falseLabel));
+            gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-            gprintf(g, "@%.*s\n", strf(endLabel));
-            gprintf(g, "%.*s =w phi @%.*s 1, @%.*s 0\n", strf(out), strf(trueLabel), strf(falseLabel));
+            gprintfln(g, "@%.*s", strf(endLabel));
+            gprintfln(g, "%.*s =w phi @%.*s 1, @%.*s 0", strf(out), strf(trueLabel), strf(falseLabel));
             return out;
         }
 
@@ -246,13 +257,13 @@ static String gen_unary(Generator *g, Expr *e) {
     switch (unary.op) {
         case TOK_TILDE: {
             String inner = gen_expr(g, unary.inner);
-            gprintf(g, "%.*s =w xor %.*s, -1\n", strf(out), strf(inner));
+            gprintfln(g, "%.*s =w xor %.*s, -1", strf(out), strf(inner));
             return out;
         }
 
         case TOK_MINUS: {
             String inner = gen_expr(g, unary.inner);
-            gprintf(g, "%.*s =w sub 0, %.*s\n", strf(out), strf(inner));
+            gprintfln(g, "%.*s =w sub 0, %.*s", strf(out), strf(inner));
             return out;
         }
 
@@ -262,32 +273,32 @@ static String gen_unary(Generator *g, Expr *e) {
             String trueLabel = get_label("true", e->loc);
             String falseLabel = get_label("false", e->loc);
 
-            gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(inner), strf(falseLabel), strf(trueLabel));
+            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(inner), strf(falseLabel), strf(trueLabel));
 
-            gprintf(g, "@%.*s\n", strf(trueLabel));
-            gprintf(g, "%.*s =w copy 1\n", strf(out));
-            gprintf(g, "jmp @%.*s\n", strf(endLabel));
-            gprintf(g, "@%.*s\n", strf(falseLabel));
-            gprintf(g, "%.*s =w copy 0\n", strf(out));
-            gprintf(g, "@%.*s\n", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(trueLabel));
+            gprintfln(g, "%.*s =w copy 1", strf(out));
+            gprintfln(g, "jmp @%.*s", strf(endLabel));
+            gprintfln(g, "@%.*s", strf(falseLabel));
+            gprintfln(g, "%.*s =w copy 0", strf(out));
+            gprintfln(g, "@%.*s", strf(endLabel));
             return out;
         }
 
         case TOK_PLUS_PLUS: {
             String inner = gen_lvalue(g, unary.inner);
             String loadTemp = qbe_id(e->loc);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(loadTemp), strf(inner));
-            gprintf(g, "%.*s =w add %.*s, 1\n", strf(out), strf(loadTemp));
-            gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
+            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
+            gprintfln(g, "%.*s =w add %.*s, 1", strf(out), strf(loadTemp));
+            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
             return out;
         }
 
         case TOK_MINUS_MINUS: {
             String inner = gen_lvalue(g, unary.inner);
             String loadTemp = qbe_id(e->loc);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(loadTemp), strf(inner));
-            gprintf(g, "%.*s =w sub %.*s, 1\n", strf(out), strf(loadTemp));
-            gprintf(g, "storew %.*s, %.*s\n", strf(out), strf(inner));
+            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
+            gprintfln(g, "%.*s =w sub %.*s, 1", strf(out), strf(loadTemp));
+            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
             return out;
         }
 
@@ -318,7 +329,7 @@ static String gen_assign(Generator *g, Expr *e) {
     String rhs = gen_expr(g, assign.rhs);
 
     switch (assign.op) {
-        case TOK_EQUALS:                 gprintf(g, "storew %.*s, %.*s\n", strf(rhs), strf(lhs)); break;
+        case TOK_EQUALS:                 gprintfln(g, "storew %.*s, %.*s", strf(rhs), strf(lhs)); break;
         case TOK_PLUS_EQUALS:
         case TOK_MINUS_EQUALS:
         case TOK_STAR_EQUALS:
@@ -330,10 +341,10 @@ static String gen_assign(Generator *g, Expr *e) {
         case TOK_LESS_LESS_EQUALS:
         case TOK_GREATER_GREATER_EQUALS: {
             String temp = qbe_id(e->loc);
-            gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(lhs));
-            gprintf(g, "%.*s =w %s %.*s, %.*s\n", strf(temp), get_assign_op(assign.op), strf(temp), strf(rhs),
+            gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(lhs));
+            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(temp), get_assign_op(assign.op), strf(temp), strf(rhs),
                     strf(temp));
-            gprintf(g, "storew %.*s, %.*s\n", strf(temp), strf(lhs));
+            gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(lhs));
             break;
         }
 
@@ -341,7 +352,7 @@ static String gen_assign(Generator *g, Expr *e) {
     }
 
     String temp = qbe_id(e->loc);
-    gprintf(g, "%.*s =w loadw %.*s\n", strf(temp), strf(lhs));
+    gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(lhs));
     return temp;
 }
 
@@ -358,9 +369,9 @@ static String gen_unary_post(Generator *g, Expr *e) {
         default:              UNREACHABLE("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
     }
 
-    gprintf(g, "%.*s =w loadw %.*s\n", strf(out), strf(inner));
-    gprintf(g, "%.*s =w %s %.*s, 1\n", strf(temp), opStr, strf(out));
-    gprintf(g, "storew %.*s, %.*s\n", strf(temp), strf(inner));
+    gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(inner));
+    gprintfln(g, "%.*s =w %s %.*s, 1", strf(temp), opStr, strf(out));
+    gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(inner));
     return out;
 }
 
@@ -374,20 +385,20 @@ static String gen_conditional(Generator *g, Expr *e) {
     String endLabel = get_label("end", e->loc);
 
     String cond = gen_expr(g, c.condition);
-    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(cond), strf(thenLabel), strf(elseLabel));
+    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(cond), strf(thenLabel), strf(elseLabel));
 
-    gprintf(g, "@%.*s\n", strf(thenLabel));
+    gprintfln(g, "@%.*s", strf(thenLabel));
     String thenVal = gen_expr(g, c.thenBranch);
-    gprintf(g, "@%.*s\n", strf(thenLabelEnd));
-    gprintf(g, "jmp @%.*s\n", strf(endLabel));
+    gprintfln(g, "@%.*s", strf(thenLabelEnd));
+    gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-    gprintf(g, "@%.*s\n", strf(elseLabel));
+    gprintfln(g, "@%.*s", strf(elseLabel));
     String elseVal = gen_expr(g, c.elseBranch);
-    gprintf(g, "@%.*s\n", strf(elseLabelEnd));
-    gprintf(g, "jmp @%.*s\n", strf(endLabel));
+    gprintfln(g, "@%.*s", strf(elseLabelEnd));
+    gprintfln(g, "jmp @%.*s", strf(endLabel));
 
-    gprintf(g, "@%.*s\n", strf(endLabel));
-    gprintf(g, "%.*s =w phi @%.*s %.*s, @%.*s %.*s\n", strf(temp), strf(thenLabelEnd), strf(thenVal),
+    gprintfln(g, "@%.*s", strf(endLabel));
+    gprintfln(g, "%.*s =w phi @%.*s %.*s, @%.*s %.*s", strf(temp), strf(thenLabelEnd), strf(thenVal),
             strf(elseLabelEnd), strf(elseVal));
 
     return temp;
@@ -436,29 +447,29 @@ static void gen_block(Generator *g, Stmt *s) {
 static void gen_func(Generator *g, Stmt *s) {
     enter_scope(g);
 
-    gprintf(g, "export function w $%.*s() {\n", strf(s->as.func.name.as.identifier));
-    gprintf(g, "@start\n");
+    gprintfln(g, "export function w $%.*s() {", strf(s->as.func.name.as.identifier));
+    gprintfln(g, "@start");
 
     for (size_t i = 0; i < s->as.func.block.len; i++) {
         gen_stmt(g, s->as.func.block.arr[i]);
     }
 
     // TODO: empty functions, yay or nay?
-    gprintf(g, "@end\n");
-    gprintf(g, "ret 0\n");
-    gprintf(g, "}\n");
+    gprintfln(g, "@end");
+    gprintfln(g, "ret 0");
+    gprintfln(g, "}");
 
     exit_scope(g);
 }
 
 static void gen_return(Generator *g, Stmt *s) {
     if (!s->as.returnS.retVal)
-        gprintf(g, "ret\n");
+        gprintfln(g, "ret");
     else
-        gprintf(g, "ret %s\n", gen_expr(g, s->as.returnS.retVal));
+        gprintfln(g, "ret %s", gen_expr(g, s->as.returnS.retVal));
 
     String retLabel = get_label("ret", s->loc);
-    gprintf(g, "@%.*s\n", strf(retLabel));
+    gprintfln(g, "@%.*s", strf(retLabel));
 }
 
 static void gen_var(Generator *g, Stmt *s) {
@@ -466,12 +477,12 @@ static void gen_var(Generator *g, Stmt *s) {
     VarStmt var = s->as.var;
 
     String qbeVarAddr = declare_var(g, s);
-    gprintf(g, "%.*s =l alloc4 1\n", strf(qbeVarAddr));
-    gprintf(g, "storew 0, %.*s\n", strf(qbeVarAddr));
+    gprintfln(g, "%.*s =l alloc4 1", strf(qbeVarAddr));
+    gprintfln(g, "storew 0, %.*s", strf(qbeVarAddr));
 
     if (var.init) {
         String init = gen_expr(g, var.init);
-        gprintf(g, "storew %.*s, %.*s\n", strf(init), strf(qbeVarAddr));
+        gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qbeVarAddr));
     }
 
     return;
@@ -486,15 +497,15 @@ static void gen_while(Generator *g, Stmt *s) {
 
     enter_scope(g);
 
-    gprintf(g, "@%.*s\n", strf(condLabel));
+    gprintfln(g, "@%.*s", strf(condLabel));
     String condVal = gen_expr(g, w.condition);
-    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
+    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
 
-    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gprintfln(g, "@%.*s", strf(bodyLabel));
     gen_stmt(g, w.body);
-    gprintf(g, "jmp @%.*s\n", strf(condLabel));
+    gprintfln(g, "jmp @%.*s", strf(condLabel));
 
-    gprintf(g, "@%.*s\n", strf(endLabel));
+    gprintfln(g, "@%.*s", strf(endLabel));
 
     exit_scope(g);
 }
@@ -508,14 +519,14 @@ static void gen_do_while(Generator *g, Stmt *s) {
 
     enter_scope(g);
 
-    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gprintfln(g, "@%.*s", strf(bodyLabel));
     gen_stmt(g, w.body);
 
-    gprintf(g, "@%.*s\n", strf(condLabel));
+    gprintfln(g, "@%.*s", strf(condLabel));
     String condVal = gen_expr(g, w.condition);
 
-    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
-    gprintf(g, "@%.*s\n", strf(endLabel));
+    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
+    gprintfln(g, "@%.*s", strf(endLabel));
 
     exit_scope(g);
 }
@@ -530,16 +541,16 @@ static void gen_if(Generator *g, Stmt *s) {
 
     enter_scope(g);
 
-    gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(cond), strf(thenLabel), strf(elseLabel));
-    gprintf(g, "@%.*s\n", strf(thenLabel));
+    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(cond), strf(thenLabel), strf(elseLabel));
+    gprintfln(g, "@%.*s", strf(thenLabel));
     gen_stmt(g, ifS.thenBranch);
-    gprintf(g, "jmp @%.*s\n", strf(endLabel));
+    gprintfln(g, "jmp @%.*s", strf(endLabel));
     if (ifS.elseBranch) {
-        gprintf(g, "@%.*s\n", strf(elseLabel));
+        gprintfln(g, "@%.*s", strf(elseLabel));
         gen_stmt(g, ifS.elseBranch);
-        gprintf(g, "jmp @%.*s\n", strf(endLabel));
+        gprintfln(g, "jmp @%.*s", strf(endLabel));
     }
-    gprintf(g, "@%.*s\n", strf(endLabel));
+    gprintfln(g, "@%.*s", strf(endLabel));
 
     exit_scope(g);
 }
@@ -555,20 +566,20 @@ static void gen_for(Generator *g, Stmt *s) {
 
     if (f.initializer) gen_stmt(g, f.initializer);
 
-    gprintf(g, "@%.*s\n", strf(condLabel));
+    gprintfln(g, "@%.*s", strf(condLabel));
     if (f.condition) {
         String condVal = gen_expr(g, f.condition);
-        gprintf(g, "jnz %.*s, @%.*s, @%.*s\n", strf(condVal), strf(bodyLabel), strf(endLabel));
+        gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
     }
 
-    gprintf(g, "@%.*s\n", strf(bodyLabel));
+    gprintfln(g, "@%.*s", strf(bodyLabel));
     gen_stmt(g, f.body);
 
-    gprintf(g, "@%.*s\n", strf(incLabel));
+    gprintfln(g, "@%.*s", strf(incLabel));
     if (f.increment) gen_expr(g, f.increment);
-    gprintf(g, "jmp @%.*s\n", strf(condLabel));
+    gprintfln(g, "jmp @%.*s", strf(condLabel));
 
-    gprintf(g, "@%.*s\n", strf(endLabel));
+    gprintfln(g, "@%.*s", strf(endLabel));
 
     exit_scope(g);
 }
