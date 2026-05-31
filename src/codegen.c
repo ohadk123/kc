@@ -23,15 +23,15 @@ typedef struct {
     Scope *scope;
 } Generator;
 
-// static int gprintf(Generator *g, const char *fmt, ...) {
-//     // static size_t line = 0;
-//     // if (g->outf == stdout) printf("[%zu] ", line++);
-//     va_list args;
-//     va_start(args, fmt);
-//     int ret = vfprintf(g->outf, fmt, args);
-//     va_end(args);
-//     return ret;
-// }
+static int gprintf(Generator *g, const char *fmt, ...) {
+    // static size_t line = 0;
+    // if (g->outf == stdout) printf("[%zu] ", line++);
+    va_list args;
+    va_start(args, fmt);
+    int ret = vfprintf(g->outf, fmt, args);
+    va_end(args);
+    return ret;
+}
 
 static int gprintfln(Generator *g, const char *fmt, ...) {
     // static size_t line = 0;
@@ -405,9 +405,24 @@ static String gen_conditional(Generator *g, Expr *e) {
 }
 
 static String gen_func_call(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    FuncCallExpr funcCall = e->as.funcCall;
+    String temp = qbe_id(e->loc);
+    assert(funcCall.func->type == EXPR_PRIMARY && funcCall.func->as.primary.value.kind == TOK_IDENTIFIER);
+
+    String funcName = funcCall.func->as.primary.value.as.identifier;
+    Stmt *found = find_symbol(g->scope, funcName);
+    assert(found->kind == STMT_FUNC);
+    FuncStmt funcDef = found->as.func;
+
+    ExprList args = funcCall.args;
+    String argVals[args.len];
+    for (size_t i = 0; i < args.len; i++) argVals[i] = gen_expr(g, args.arr[i]);
+
+    gprintf(g, "%.*s =w call $%.*s (", strf(temp), strf(funcDef.name.as.identifier));
+    for (size_t i = 0; i < args.len; i++) gprintf(g, "%.*s, ", strf(argVals[i]));
+    gprintf(g, ")\n");
+
+    return temp;
 }
 
 static String gen_index(Generator *g, Expr *e) {
@@ -457,7 +472,7 @@ static void gen_func(Generator *g, Stmt *s) {
     // TODO: empty functions, yay or nay?
     gprintfln(g, "@end");
     gprintfln(g, "ret 0");
-    gprintfln(g, "}");
+    gprintfln(g, "}\n");
 
     exit_scope(g);
 }
