@@ -461,8 +461,18 @@ static void gen_block(Generator *g, Stmt *s) {
 
 static void gen_func(Generator *g, Stmt *s) {
     enter_scope(g);
+    FuncStmt f = s->as.func;
 
-    gprintfln(g, "export function w $%.*s() {", strf(s->as.func.name.as.identifier));
+    gprintf(g, "export function w $%.*s(", strf(f.name.as.identifier));
+
+    StmtList params = f.funcType->as.func.params;
+    for (size_t i = 0; i < params.len; i++) {
+        Stmt *p = params.arr[i];
+        assert (p->kind == STMT_VAR && p->as.var.name.kind == TOK_IDENTIFIER);
+        declare_var(g, p);
+        gprintf(g, "w %%%.*s, ", strf(p->as.var.name.as.identifier));
+    }
+    gprintfln(g, ") {");
     gprintfln(g, "@start");
 
     for (size_t i = 0; i < s->as.func.block.len; i++) {
