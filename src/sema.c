@@ -45,9 +45,9 @@ static bool check_primitive(Type *t, PrimitiveTypeKind primitive) {
 typedef struct {
     TranslationUnit *unit;
     Scope *curr;
-} Analyzer;
+} Checker;
 
-static Type *check_expr(Analyzer *a, Expr *e);
+static Type *check_expr(Checker *a, Expr *e);
 
 static TokenKind int_lit_to_token_kind(Token integerTok, String fileName) {
     assert(integerTok.kind == TOK_INTEGER_LITERAL);
@@ -59,7 +59,7 @@ static TokenKind int_lit_to_token_kind(Token integerTok, String fileName) {
     compile_error(fileName, integerTok.loc, "integer literal is too large");
 }
 
-static Type *check_primary(Analyzer *a, Expr *e) {
+static Type *check_primary(Checker *a, Expr *e) {
     PrimaryExpr prime = e->as.primary;
 
     switch (prime.value.kind) {
@@ -81,7 +81,7 @@ static Type *check_primary(Analyzer *a, Expr *e) {
     }
 }
 
-static Type *check_binary(Analyzer *a, Expr *e) {
+static Type *check_binary(Checker *a, Expr *e) {
     BinaryExpr bin = e->as.binary;
 
     Type *lhs = check_expr(a, bin.lhs);
@@ -104,7 +104,7 @@ static Type *check_binary(Analyzer *a, Expr *e) {
     return type;
 }
 
-static Type *check_unary(Analyzer *a, Expr *e) {
+static Type *check_unary(Checker *a, Expr *e) {
     UnaryExpr unary = e->as.unary;
 
     Type *type = check_expr(a, unary.inner);
@@ -142,7 +142,7 @@ static bool is_lvalue(Expr *e) {
     return false;
 }
 
-static Type *check_assign(Analyzer *a, Expr *e) {
+static Type *check_assign(Checker *a, Expr *e) {
     AssignExpr ass = e->as.assignment;
 
     // assignee must be a variable identifier
@@ -154,7 +154,7 @@ static Type *check_assign(Analyzer *a, Expr *e) {
     return compare_types(lhs, rhs);
 }
 
-static Type *check_conditional(Analyzer *a, Expr *e) {
+static Type *check_conditional(Checker *a, Expr *e) {
     ConditionalExpr cond = e->as.conditional;
 
     Type *condType = check_expr(a, cond.condition);
@@ -166,7 +166,7 @@ static Type *check_conditional(Analyzer *a, Expr *e) {
     return compare_types(thenBranch, elseType);
 }
 
-static Type *check_func_call(Analyzer *a, Expr *e) {
+static Type *check_func_call(Checker *a, Expr *e) {
     FuncCallExpr funcCall = e->as.funcCall;
 
     Type *funcDeclType = check_expr(a, funcCall.func);
@@ -217,7 +217,7 @@ static bool is_integer(Type *t) {
     }
 }
 
-static Type *check_index(Analyzer *a, Expr *e) {
+static Type *check_index(Checker *a, Expr *e) {
     IndexExpr index = e->as.index;
 
     Type *arrayType = check_expr(a, index.array);
@@ -230,7 +230,7 @@ static Type *check_index(Analyzer *a, Expr *e) {
     return arrayType->kind == TYPE_ARRAY ? arrayType->as.array.elementType : arrayType->as.pointer;
 }
 
-static Type *check_expr(Analyzer *a, Expr *e) {
+static Type *check_expr(Checker *a, Expr *e) {
     Type *type = 0;
 
     switch (e->kind) {
@@ -249,9 +249,9 @@ static Type *check_expr(Analyzer *a, Expr *e) {
     return type;
 }
 
-static void check_stmt(Analyzer *a, Stmt *s);
+static void check_stmt(Checker *a, Stmt *s);
 
-static void check_var(Analyzer *a, Stmt *s) {
+static void check_var(Checker *a, Stmt *s) {
     Stmt *symbol = find_symbol(a->curr, s->as.var.name.as.identifier);
     if (symbol) {
         compile_error(a->unit->fileName, s->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
@@ -269,7 +269,7 @@ static void check_var(Analyzer *a, Stmt *s) {
     }
 }
 
-static void check_block(Analyzer *a, Stmt *s) {
+static void check_block(Checker *a, Stmt *s) {
     Scope next = (Scope){
         .above = a->curr,
         .symbols = {0},
@@ -282,7 +282,7 @@ static void check_block(Analyzer *a, Stmt *s) {
     a->curr = a->curr->above;
 }
 
-static void check_while(Analyzer *a, Stmt *s) {
+static void check_while(Checker *a, Stmt *s) {
     if (!check_primitive(check_expr(a, s->as.whileS.condition), TYPE_BOOL))
         compile_error(a->unit->fileName, s->loc, "while condition is not a boolean expression");
     a->curr->inLoop = true;
@@ -290,7 +290,7 @@ static void check_while(Analyzer *a, Stmt *s) {
     a->curr->inLoop = false;
 }
 
-static void check_if(Analyzer *a, Stmt *s) {
+static void check_if(Checker *a, Stmt *s) {
     if (!check_primitive(check_expr(a, s->as.ifS.condition), TYPE_BOOL)) {
         compile_error(a->unit->fileName, s->loc, "if condition is not a boolean expression");
     }
@@ -298,7 +298,7 @@ static void check_if(Analyzer *a, Stmt *s) {
     if (s->as.ifS.elseBranch) check_stmt(a, s->as.ifS.elseBranch);
 }
 
-static void check_for(Analyzer *a, Stmt *s) {
+static void check_for(Checker *a, Stmt *s) {
     Scope forScope = (Scope){
         .above = a->curr,
         .inLoop = true,
@@ -317,7 +317,7 @@ static void check_for(Analyzer *a, Stmt *s) {
     a->curr = a->curr->above;
 }
 
-static void check_return(Analyzer *a, Stmt *s) {
+static void check_return(Checker *a, Stmt *s) {
     Scope *retScope = a->curr;
     while (retScope && !retScope->retType) retScope = retScope->above;
     if (!retScope) compile_error(a->unit->fileName, s->loc, "return statement not in a function");
@@ -334,7 +334,7 @@ static void check_return(Analyzer *a, Stmt *s) {
         compile_error(a->unit->fileName, s->loc, "missing return type");
 }
 
-static void check_func(Analyzer *a, Stmt *s) {
+static void check_func(Checker *a, Stmt *s) {
     FuncStmt func = s->as.func;
     Scope funcScope = {
         .symbols = {0},
@@ -348,19 +348,19 @@ static void check_func(Analyzer *a, Stmt *s) {
     a->curr = a->curr->above;
 }
 
-static void check_break(Analyzer *a, Stmt *s) {
+static void check_break(Checker *a, Stmt *s) {
     Scope *loopScope = a->curr;
     while (loopScope && !loopScope->inLoop) loopScope = loopScope->above;
     if (!loopScope) compile_error(a->unit->fileName, s->loc, "'break' statement not in loop");
 }
 
-static void check_continue(Analyzer *a, Stmt *s) {
+static void check_continue(Checker *a, Stmt *s) {
     Scope *loopScope = a->curr;
     while (loopScope && !loopScope->inLoop) loopScope = loopScope->above;
     if (!loopScope) compile_error(a->unit->fileName, s->loc, "'continue' statement not in loop");
 }
 
-static void check_stmt(Analyzer *a, Stmt *s) {
+static void check_stmt(Checker *a, Stmt *s) {
     switch (s->kind) {
         case STMT_NULL:                                     break;
         case STMT_VAR:      check_var(a, s);                break;
@@ -378,7 +378,7 @@ static void check_stmt(Analyzer *a, Stmt *s) {
 }
 
 void semantic_analysis(TranslationUnit *unit) {
-    Analyzer a = {0};
+    Checker a = {0};
     a.curr = &unit->globalSymbols;
     a.unit = unit;
 
