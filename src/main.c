@@ -15,6 +15,24 @@ int main(int argc, char *argv[]) {
         .input = str_from_file(argv[1]),
     };
 
+    scan_file(&unit);
+    parse(&unit);
+    semantic_analysis(&unit);
+    codegen(&unit, stdout);
+    return 0;
+}
+
+int main1(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: kc <file>\n");
+        exit(1);
+    };
+
+    TranslationUnit unit = (TranslationUnit){
+        .fileName = str_from_cstr(argv[1]),
+        .input = str_from_file(argv[1]),
+    };
+
     if (!scan_file(&unit)) {
         printf("LEXER ERROR");
     }
