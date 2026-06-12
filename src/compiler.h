@@ -26,5 +26,6 @@ typedef struct {
 } TranslationUnit;
 
 __attribute__((__noreturn__)) void compile_error(String fileName, Location place, const char *fmt, ...);
+bool compile_err_no_abort(String fileName, Location place, const char *fmt, ...);
 
 #endif // COMPILER_H

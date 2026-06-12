@@ -2,7 +2,9 @@
 #include "compiler.h"
 #include "type.h"
 
-void fill_global_symbol_table(TranslationUnit *unit) {
+bool fill_global_symbol_table(TranslationUnit *unit) {
+    bool hadError = false;
+
     for (size_t i = 0; i < unit->ast.len; i++) {
         Stmt *s = unit->ast.arr[i];
         Token nameTok = get_top_level_name(s);
@@ -11,11 +13,13 @@ void fill_global_symbol_table(TranslationUnit *unit) {
 
         if (!hm_insert(&unit->globalSymbols.symbols, key, s)) {
             Stmt *first = hm_find_val(&unit->globalSymbols.symbols, key);
-            compile_error(unit->fileName, s->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
-                          (int)key.len, key.data, (int)unit->fileName.len, unit->fileName.data, first->loc.line,
-                          first->loc.col);
+            hadError = compile_err_no_abort(
+                unit->fileName, s->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]", (int)key.len,
+                key.data, (int)unit->fileName.len, unit->fileName.data, first->loc.line, first->loc.col);
         }
     }
+
+    return hadError;
 }
 
 static Stmt *find_symbol(Scope *scope, String symbol) {
@@ -45,6 +49,7 @@ static bool check_primitive(Type *t, PrimitiveTypeKind primitive) {
 typedef struct {
     TranslationUnit *unit;
     Scope *curr;
+    bool hadError;
 } Checker;
 
 static Type *check_expr(Checker *c, Expr *e);
@@ -362,29 +367,33 @@ static void check_continue(Checker *c, Stmt *s) {
 
 static void check_stmt(Checker *c, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL:                                     break;
-        case STMT_VAR:      check_var(c, s);                break;
+        case STMT_NULL:     break;
+        case STMT_VAR:      check_var(c, s); break;
         case STMT_EXPR:     check_expr(c, s->as.expr.expr); break;
-        case STMT_BLOCK:    check_block(c, s);              break;
-        case STMT_WHILE:    check_while(c, s);              break;
-        case STMT_DO_WHILE: check_while(c, s);              break;
-        case STMT_IF:       check_if(c, s);                 break;
-        case STMT_FOR:      check_for(c, s);                break;
-        case STMT_RETURN:   check_return(c, s);             break;
-        case STMT_FUNC:     check_func(c, s);               break;
-        case STMT_BREAK:    check_break(c, s);              break;
-        case STMT_CONTINUE: check_continue(c, s);           break;
+        case STMT_BLOCK:    check_block(c, s); break;
+        case STMT_WHILE:    check_while(c, s); break;
+        case STMT_DO_WHILE: check_while(c, s); break;
+        case STMT_IF:       check_if(c, s); break;
+        case STMT_FOR:      check_for(c, s); break;
+        case STMT_RETURN:   check_return(c, s); break;
+        case STMT_FUNC:     check_func(c, s); break;
+        case STMT_BREAK:    check_break(c, s); break;
+        case STMT_CONTINUE: check_continue(c, s); break;
     }
 }
 
-void semantic_analysis(TranslationUnit *unit) {
-    Checker c = {0};
-    c.curr = &unit->globalSymbols;
-    c.unit = unit;
+bool semantic_analysis(TranslationUnit *unit) {
+    Checker c = {
+        .unit = unit,
+        .curr = &unit->globalSymbols,
+        .hadError = false,
+    };
 
-    fill_global_symbol_table(unit);
+    c.hadError = fill_global_symbol_table(unit);
 
     for (size_t i = 0; i < unit->ast.len; i++) {
         check_stmt(&c, unit->ast.arr[i]);
     }
+
+    return c.hadError;
 }
