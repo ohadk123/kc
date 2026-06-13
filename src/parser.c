@@ -443,7 +443,7 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-static TLStmt *func_def_stmt(Parser *p) {
+static Tld *func_def_stmt(Parser *p) {
     parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
@@ -453,10 +453,10 @@ static TLStmt *func_def_stmt(Parser *p) {
     expect(p, TOK_LEFT_BRACE, "Expected '{'");
     StmtList body = stmt_list(p);
 
-    return tlstmt_make_func(name, params, body, name.loc);
+    return tld_make_func(name, params, body, name.loc);
 }
 
-static TLStmt *top_level_decl(Parser *p) {
+static Tld *top_level_decl(Parser *p) {
     if (match_types(p)) return func_def_stmt(p);
 
     parser_error(p, "Unkown top level declaration");
@@ -464,7 +464,7 @@ static TLStmt *top_level_decl(Parser *p) {
 
 void translation_unit(Parser *p) {
     while (!is_at_end(p)) {
-        TLStmt *s = top_level_decl(p);
+        Tld *s = top_level_decl(p);
         list_append(&p->unit->ast, s);
     }
 }

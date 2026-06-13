@@ -15,7 +15,7 @@ typedef struct {
         uint64_t constant;
         String ident;
     } as;
-} KirVal;
+} ValKir;
 
 // KIR Instruction
 
@@ -31,49 +31,49 @@ typedef enum {
 } InstKirKind;
 
 typedef struct {
-    KirVal val;
+    ValKir val;
 } ReturnInstKir;
 
 typedef enum {
     KIR_UNARY_OP_COMPLEMENT,
     KIR_UNARY_OP_NEGATE,
     KIR_UNARY_OP_NOT,
-} KirUnaryOp;
+} UnaryInstKirOp;
 
 typedef struct {
-    KirUnaryOp op;
+    UnaryInstKirOp op;
     String dst;
-    KirVal src;
+    ValKir src;
 } UnaryInstKir;
 
 typedef enum {
-    KIR_BINARY_OP_ADD,
-    KIR_BINARY_OP_SUB,
-    KIR_BINARY_OP_MULT,
-    KIR_BINARY_OP_DIV,
-    KIR_BINARY_OP_REM,
-    KIR_BINARY_OP_BIT_AND,
-    KIR_BINARY_OP_BIT_OR,
-    KIR_BINARY_OP_BIT_XOR,
-    KIR_BINARY_OP_SHL,
-    KIR_BINARY_OP_SHR,
-    KIR_BINARY_OP_EQ,
-    KIR_BINARY_OP_NEQ,
-    KIR_BINARY_OP_LT,
-    KIR_BINARY_OP_LE,
-    KIR_BINARY_OP_GT,
-    KIR_BINARY_OP_GE,
-} KirBinaryOp;
+    KIR_BINARY_ADD,
+    KIR_BINARY_SUB,
+    KIR_BINARY_MULT,
+    KIR_BINARY_DIV,
+    KIR_BINARY_REM,
+    KIR_BINARY_BIT_AND,
+    KIR_BINARY_BIT_OR,
+    KIR_BINARY_BIT_XOR,
+    KIR_BINARY_SHL,
+    KIR_BINARY_SHR,
+    KIR_BINARY_EQ,
+    KIR_BINARY_NEQ,
+    KIR_BINARY_LT,
+    KIR_BINARY_LE,
+    KIR_BINARY_GT,
+    KIR_BINARY_GE,
+} BinaryInstKirOp;
 
 typedef struct {
-    KirBinaryOp op;
+    BinaryInstKirOp op;
     String dst;
-    KirVal src1, src2;
+    ValKir src1, src2;
 } BinaryInstKir;
 
 typedef struct {
     String dst;
-    KirVal src;
+    ValKir src;
 } CopyInstKir;
 
 typedef struct {
@@ -81,12 +81,12 @@ typedef struct {
 } JumpInstKir;
 
 typedef struct {
-    KirVal cond;
+    ValKir cond;
     String target;
 } JzInstKir;
 
 typedef struct {
-    KirVal cond;
+    ValKir cond;
     String target;
 } JnzInstKir;
 
@@ -108,14 +108,14 @@ typedef struct {
     } as;
 } InstKir;
 
-InstKir *inst_kir_make_return(KirVal val);
-InstKir *inst_kir_make_unary(KirUnaryOp op, String dst, KirVal src);
-InstKir *inst_kir_make_binary(KirBinaryOp op, String dst, KirVal src1, KirVal src2);
-InstKir *inst_kir_make_copy(String dst, KirVal src);
-InstKir *inst_kir_make_jump(String target);
-InstKir *inst_kir_make_jz(KirVal cond, String target);
-InstKir *inst_kir_make_jnz(KirVal cond, String target);
-InstKir *inst_kir_make_label(String name);
+InstKir *kir_make_return(ValKir val);
+InstKir *kir_make_unary(UnaryInstKirOp op, String dst, ValKir src);
+InstKir *kir_make_binary(BinaryInstKirOp op, String dst, ValKir src1, ValKir src2);
+InstKir *kir_make_copy(String dst, ValKir src);
+InstKir *kir_make_jump(String target);
+InstKir *kir_make_jz(ValKir cond, String target);
+InstKir *kir_make_jnz(ValKir cond, String target);
+InstKir *kir_make_label(String name);
 
 typedef struct {
     LIST_FIELDS(InstKir *);
