@@ -1,5 +1,4 @@
 #include "parser.h"
-#include "type.h"
 
 typedef struct {
     TranslationUnit *unit;
@@ -40,6 +39,11 @@ inline static Token peek_ahead(Parser *p, size_t offset) {
 static Token expect(Parser *p, TokenKind expected, const char *msg) {
     if (match(p, expected)) return previous(p);
     parser_error(p, msg);
+}
+
+void parse_type(Parser *p) {
+    (void) p;
+    return;
 }
 
 /******************************************************************************
@@ -280,10 +284,8 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
  *****************************************************************************/
 
 Stmt *statement(Parser *p);
-Type *parse_type(Parser *p);
-
 Stmt *var_stmt(Parser *p) {
-    Type *type = parse_type(p);
+    parse_type(p);
 
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
     Expr *init = NULL;
@@ -291,7 +293,7 @@ Stmt *var_stmt(Parser *p) {
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
-    return stmt_make_var(type, name, init, name.loc);
+    return stmt_make_var(name, init, name.loc);
 }
 
 Stmt *for_stmt(Parser *p) {
@@ -427,10 +429,10 @@ StmtList params_list(Parser *p) {
 
     while (true) {
         if (!match_types(p)) parser_error(p, "Expected parameter type");
-        Type *type = parse_type(p);
+        parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token name = previous(p);
-        Stmt *param = stmt_make_var(type, name, NULL, name.loc);
+        Stmt *param = stmt_make_var(name, NULL, name.loc);
         list_append(&params, param);
         if (!match(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
@@ -441,33 +443,8 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-Type *parse_type(Parser *p) {
-    TokenKind typeToken = previous(p).kind;
-    Type *baseType = type_make_primitive(TokenToPrimitive[typeToken]);
-
-    while (!(peek(p).kind == TOK_IDENTIFIER)) {
-        if (match(p, TOK_STAR)) {
-            baseType = type_make_pointer(baseType);
-        } else if (match(p, TOK_LEFT_BRACKET)) {
-            Expr *len = NULL;
-            if (!match(p, TOK_RIGHT_BRACKET)) {
-                len = expression(p);
-                expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
-            }
-            baseType = type_make_array(baseType, len);
-        } else if (match(p, TOK_LEFT_PAREN)) {
-            StmtList params = params_list(p);
-            baseType = type_make_func(baseType, params);
-        } else {
-            parser_error(p, "Expected '*', '[', '(', or identifier after type");
-        }
-    }
-
-    return baseType;
-}
-
 Stmt *func_def_stmt(Parser *p) {
-    Type *type = parse_type(p);
+    parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
     expect(p, TOK_LEFT_PAREN, "Expectd '('");
@@ -476,8 +453,7 @@ Stmt *func_def_stmt(Parser *p) {
     expect(p, TOK_LEFT_BRACE, "Expected '{'");
     StmtList body = stmt_list(p);
 
-    Type *funcType = type_make_func(type, params);
-    return stmt_make_func(funcType, name, body, name.loc);
+    return stmt_make_func(name, params, body, name.loc);
 }
 
 Stmt *top_level_decl(Parser *p) {

@@ -10,7 +10,6 @@ struct _Scope {
     HashMap symbols;
     Scope *above;
 
-    Type *retType;
     bool inLoop;
 
     String contLabel;

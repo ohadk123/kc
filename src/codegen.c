@@ -1,5 +1,4 @@
 #include "codegen.h"
-#include "type.h"
 #include <stdarg.h>
 
 static uint64_t counter(void) {
@@ -42,11 +41,6 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
     va_end(args);
     fprintf(g->outf, "\n");
     return ret;
-}
-
-const char *ktype_to_qbe_ext(Type *type) {
-    (void)type;
-    TODO("%s", __func__);
 }
 
 /******************************************************************************
@@ -407,7 +401,7 @@ static String gen_conditional(Generator *g, Expr *e) {
 static String gen_func_call(Generator *g, Expr *e) {
     FuncCallExpr funcCall = e->as.funcCall;
     String temp = qbe_id(e->loc);
-    assert(funcCall.func->type == EXPR_PRIMARY && funcCall.func->as.primary.value.kind == TOK_IDENTIFIER);
+    assert(funcCall.func->kind == EXPR_PRIMARY && funcCall.func->as.primary.value.kind == TOK_IDENTIFIER);
 
     String funcName = funcCall.func->as.primary.value.as.identifier;
     Stmt *found = find_symbol(g->scope, funcName);
@@ -465,7 +459,7 @@ static void gen_func(Generator *g, Stmt *s) {
 
     gprintf(g, "export function w $%.*s(", strf(f.name.as.identifier));
 
-    StmtList params = f.funcType->as.func.params;
+    StmtList params = f.params;
     for (size_t i = 0; i < params.len; i++) {
         Stmt *p = params.arr[i];
         assert (p->kind == STMT_VAR && p->as.var.name.kind == TOK_IDENTIFIER);
