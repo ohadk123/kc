@@ -5,8 +5,8 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
     bool hadError = false;
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        Stmt *s = unit->ast.arr[i];
-        Token nameTok = get_top_level_name(s);
+        TLStmt *s = unit->ast.arr[i];
+        Token nameTok = s->name;
         assert(nameTok.kind == TOK_IDENTIFIER);
         String key = nameTok.as.identifier;
 
@@ -145,12 +145,6 @@ static void check_return(Checker *c, Stmt *s) {
     TODO("%s", __func__);
 }
 
-static void check_func(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
-}
-
 static void check_break(Checker *c, Stmt *s) {
     (void)c;
     (void)s;
@@ -174,9 +168,23 @@ static void check_stmt(Checker *c, Stmt *s) {
         case STMT_IF:       check_if(c, s);                 return;
         case STMT_FOR:      check_for(c, s);                return;
         case STMT_RETURN:   check_return(c, s);             return;
-        case STMT_FUNC:     check_func(c, s);               return;
         case STMT_BREAK:    check_break(c, s);              return;
         case STMT_CONTINUE: check_continue(c, s);           return;
+    }
+}
+
+static void check_func(Checker *c, TLStmt *s) {
+    assert(s->kind == TLSTMT_FUNC);
+    (void) c;
+    StmtList body = s->as.func.body;
+    for (size_t i = 0; i < body.len; i++) {
+        check_stmt(c, body.arr[i]);
+    }
+}
+
+static void check_tlstmt(Checker *c, TLStmt *s) {
+    switch (s->kind) {
+        case TLSTMT_FUNC: check_func(c, s); return;
     }
 }
 
@@ -190,7 +198,7 @@ bool semantic_analysis(TranslationUnit *unit) {
     c.hadError = fill_global_symbol_table(unit);
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        check_stmt(&c, unit->ast.arr[i]);
+        check_tlstmt(&c, unit->ast.arr[i]);
     }
 
     return !c.hadError;

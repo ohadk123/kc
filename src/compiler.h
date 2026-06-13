@@ -2,6 +2,7 @@
 #define COMPILER_H
 
 #include "hashmap.h"
+#include "kir.h"
 #include "statement.h"
 #include "token.h"
 
@@ -20,7 +21,8 @@ typedef struct {
     String fileName;
     String input;
     TokensList tokens;
-    StmtList ast;
+    TLStmtList ast;
+    ProgramKir *kir;
     Scope globalSymbols;
 } TranslationUnit;
 

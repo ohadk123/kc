@@ -1,4 +1,3 @@
-#include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
@@ -18,7 +17,6 @@ int main(int argc, char *argv[]) {
     scan_file(&unit);
     parse(&unit);
     semantic_analysis(&unit);
-    codegen(&unit, stdout);
     return 0;
 }
 
@@ -50,7 +48,6 @@ int main1(int argc, char *argv[]) {
     semantic_analysis(&unit);
 
     if (argc > 2 && !strcmp(argv[2], "-q")) {
-        codegen(&unit, stdout);
         return 0;
     }
 
@@ -59,7 +56,6 @@ int main1(int argc, char *argv[]) {
     String asmFile = str_printf("%s.s", fileNameNoExt);
 
     FILE *outf = fopen(qbeFile.data, "w");
-    codegen(&unit, outf);
     fflush(outf);
     fclose(outf);
 
@@ -122,7 +118,6 @@ int main2(int argc, char *argv[]) {
 
     FILE *outf = stdout;
     if (qbe) outf = fopen(qbeFile.data, "w");
-    codegen(&unit, outf);
     fflush(outf);
     if (qbe) fclose(outf);
 
