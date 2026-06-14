@@ -1,5 +1,4 @@
 #include "lexer.h"
-#include "lower.h"
 #include "parser.h"
 #include "sema.h"
 #include <unistd.h>
@@ -18,7 +17,6 @@ int main(int argc, char *argv[]) {
     scan_file(&unit);
     parse(&unit);
     semantic_analysis(&unit);
-    lower_ast(&unit, NULL);
     return 0;
 }
 
