@@ -290,6 +290,11 @@ Stmt *var_stmt(Parser *p) {
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
     Expr *init = NULL;
     if (match(p, TOK_EQUALS)) init = expression(p);
+    else init = expr_make_primary((Token) {
+            .kind = TOK_INTEGER_LITERAL,
+            .loc = name.loc,
+            .as.integerLiteral = 0,
+    }, name.loc);
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
