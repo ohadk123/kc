@@ -79,10 +79,10 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
     return NULL;
 }
 
-static Stmt *expect_var(Checker *c, Token nameTok) {
-    assert(nameTok.kind == TOK_IDENTIFIER);
-    Stmt *found = find_symbol(c->curr, nameTok.as.identifier);
-    if (!found) compile_error(c->unit->fileName, nameTok.loc, "Unkown symbol '%.*s'", strf(nameTok.as.identifier));
+static Stmt *expect_var(Checker *c, Token *nameTok) {
+    assert(nameTok->kind == TOK_IDENTIFIER);
+    Stmt *found = find_symbol(c->curr, nameTok->as.identifier);
+    if (!found) checker_error(c, nameTok, "Unkown symbol '%.*s'", strf(nameTok->as.identifier));
     return found;
 }
 
@@ -92,12 +92,11 @@ static void declare_var(Checker *c, Stmt *varStmt) {
     String varName = varStmt->as.var.name.as.identifier;
     Stmt *found = hm_find_val(&c->curr->symbols, varName);
     if (found)
-        compile_error(c->unit->fileName, varStmt->loc, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
-                      strf(varName), strf(c->unit->fileName), varStmt->loc.line, varStmt->loc.col);
+        checker_error(c, varStmt, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]", strf(varName),
+                      strf(c->unit->fileName), varStmt->loc.line, varStmt->loc.col);
 
     hm_insert(&c->curr->symbols, varName, varStmt);
 }
-
 
 static void check_expr(Checker *c, Expr *e);
 static void check_stmt(Checker *c, Stmt *s);
