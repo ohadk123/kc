@@ -86,19 +86,16 @@ static Stmt *expect_var(Checker *c, Token nameTok) {
     return found;
 }
 
-static String declare_var(Checker *c, Stmt *varStmt) {
+static void declare_var(Checker *c, Stmt *varStmt) {
     assert(varStmt->kind == STMT_VAR);
 
     String varName = varStmt->as.var.name.as.identifier;
-    // Stmt *found = find_symbol(g->scope, varName);
     Stmt *found = hm_find_val(&c->curr->symbols, varName);
     if (found)
         compile_error(c->unit->fileName, varStmt->loc, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
                       strf(varName), strf(c->unit->fileName), varStmt->loc.line, varStmt->loc.col);
 
-    varStmt->as.var.qbeVarAddr = qbe_id(varStmt->loc);
-    hm_insert(&c->scope->symbols, varName, varStmt);
-    return varStmt->as.var.qbeVarAddr;
+    hm_insert(&c->curr->symbols, varName, varStmt);
 }
 
 
@@ -197,9 +194,12 @@ static void check_var(Checker *c, Stmt *s) {
 }
 
 static void check_block(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_BLOCK);
+    StmtList block = s->as.block.block;
+
+    enter_scope(c);
+    for (size_t i = 0; i < block.len; i++) check_stmt(c, block.arr[i]);
+    exit_scope(c);
 }
 
 static void check_while(Checker *c, Stmt *s) {
