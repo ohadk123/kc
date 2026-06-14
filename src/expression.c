@@ -10,6 +10,7 @@ static Expr *make_expr(ExprKind kind, Location loc) {
 Expr *expr_make_primary(Token val, Location loc) {
     Expr *e = make_expr(EXPR_PRIMARY, loc);
     e->as.primary.value = val;
+    e->as.primary.decl = NULL;
     return e;
 }
 

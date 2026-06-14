@@ -24,6 +24,8 @@
 
 #include "token.h"
 
+typedef struct _Stmt Stmt;
+
 typedef struct _Expr Expr;
 typedef struct {
     LIST_FIELDS(Expr *);
@@ -43,6 +45,7 @@ typedef enum {
 
 typedef struct {
     Token value;
+    Stmt *decl;
 } PrimaryExpr;
 
 typedef struct {
