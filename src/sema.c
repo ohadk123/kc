@@ -113,8 +113,11 @@ static void declare_var(Checker *c, Stmt *varStmt) {
     hm_insert(&c->curr->symbols, varName, varStmt);
 }
 
+/******************************************************************************
+ * Expression Checking
+ *****************************************************************************/
+
 static void check_expr(Checker *c, Expr *e);
-static void check_stmt(Checker *c, Stmt *s);
 
 static void check_primary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
@@ -194,6 +197,10 @@ static void check_expr(Checker *c, Expr *e) {
         case EXPR_INDEX:       check_index(c, e);                   return;
     }
 }
+
+/******************************************************************************
+ * Statement Checking
+ *****************************************************************************/
 
 static void check_stmt(Checker *c, Stmt *s);
 
