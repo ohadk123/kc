@@ -265,7 +265,6 @@ static void check_stmt(Checker *c, Stmt *s) {
 }
 
 bool semantic_analysis(TranslationUnit *unit) {
-    return true;
     Checker c = {
         .unit = unit,
         .curr = &unit->globalSymbols,
