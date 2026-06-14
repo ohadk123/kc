@@ -98,8 +98,8 @@ static String lower_func_call(Generator *g, Expr *e) {
 }
 
 static String lower_index(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
+    (void) g;
+    (void) e;
     TODO("%s", __func__);
 }
 
@@ -125,62 +125,68 @@ static String lower_expr(Generator *g, Expr *e) {
 static void lower_stmt(Generator *g, Stmt *s);
 
 static void lower_block(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_return(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_var(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_while(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_do_while(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_if(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_for(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
+    TODO("%s", __func__);
+}
+
+static void lower_func(Generator *g, Stmt *s) {
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_break(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_continue(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
+    (void) g;
+    (void) s;
     TODO("%s", __func__);
 }
 
 static void lower_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL:                                   break;
+        case STMT_NULL:                                     break;
         case STMT_BLOCK:    lower_block(g, s);              break;
         case STMT_RETURN:   lower_return(g, s);             break;
         case STMT_VAR:      lower_var(g, s);                break;
@@ -189,24 +195,11 @@ static void lower_stmt(Generator *g, Stmt *s) {
         case STMT_DO_WHILE: lower_do_while(g, s);           break;
         case STMT_IF:       lower_if(g, s);                 break;
         case STMT_FOR:      lower_for(g, s);                break;
+        case STMT_FUNC:     lower_func(g, s);               break;
         case STMT_BREAK:    lower_break(g, s);              break;
         case STMT_CONTINUE: lower_continue(g, s);           break;
     }
     UNREACHABLE("Error on stmt kind (%d)", s->kind);
-}
-
-static void lower_func(Generator *g, Tld *d) {
-    (void)g;
-    (void)d;
-    (void) lower_stmt;
-    TODO("%s", __func__);
-}
-
-static void lower_tld(Generator *g, Tld *d) {
-    switch (d->kind) {
-        case TLD_FUNC: lower_func(g, d); return;
-    }
-    UNREACHABLE("Error on top level decl kind (%d)", d->kind);
 }
 
 void lower_ast(TranslationUnit *unit, FILE *outf) {
@@ -222,6 +215,6 @@ void lower_ast(TranslationUnit *unit, FILE *outf) {
     (void) get_label("", (Location){0});
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        lower_tld(&g, unit->ast.arr[i]);
+        lower_stmt(&g, unit->ast.arr[i]);
     }
 }

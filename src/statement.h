@@ -63,7 +63,7 @@ typedef struct {
 typedef struct {
     Token name;
     StmtList params;
-    StmtList block;
+    StmtList body;
 } FuncStmt;
 
 struct _Stmt {

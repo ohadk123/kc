@@ -5,8 +5,8 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
     bool hadError = false;
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        Tld *s = unit->ast.arr[i];
-        Token nameTok = s->name;
+        Stmt *s = unit->ast.arr[i];
+        Token nameTok = get_top_level_name(s);
         assert(nameTok.kind == TOK_IDENTIFIER);
         String key = nameTok.as.identifier;
 
@@ -30,14 +30,14 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
 //
 //     return 0;
 // }
-//
-// static bool is_lvalue(Expr *e) {
-//     if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER) return true;
-//     if (e->kind == EXPR_GROUPING) return is_lvalue(e->as.grouping.inner);
-//     if (e->kind == EXPR_UNARY && e->as.unary.op == TOK_STAR) return true;
-//
-//     return false;
-// }
+
+static bool is_lvalue(Expr *e) {
+    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER) return true; // variable
+    if (e->kind == EXPR_GROUPING) return is_lvalue(e->as.grouping.inner); // inner expression is lvalue? (x)++
+    if (e->kind == EXPR_UNARY && e->as.unary.op == TOK_STAR) return true; // pointer dereference
+
+    return false;
+}
 
 typedef struct {
     TranslationUnit *unit;
@@ -45,40 +45,119 @@ typedef struct {
     bool hadError;
 } Checker;
 
+#define checker_error(c, o, fmt, ...) \
+    c->hadError = compile_err_no_abort((c)->unit->fileName, (o)->loc, fmt, ##__VA_ARGS__)
+
+/******************************************************************************
+ * Scope Helpers
+ *****************************************************************************/
+
+static void enter_scope(Checker *c) {
+    Scope *new = calloc(1, sizeof(Scope));
+    new->above = c->curr;
+    c->curr = new;
+}
+
+static void exit_scope(Checker *c) {
+    Scope *old = c->curr;
+    c->curr = old->above;
+    free(old);
+}
+
+/******************************************************************************
+ * Symbol Resolution
+ *****************************************************************************/
+
+// Find symbol is scope bottom to top
+static Stmt *find_symbol(Scope *scope, String symbol) {
+    while (scope) {
+        Stmt *var = hm_find_val(&scope->symbols, symbol);
+        if (var) return var;
+        scope = scope->above;
+    }
+
+    return NULL;
+}
+
+static Stmt *expect_var(Checker *c, Token nameTok) {
+    assert(nameTok.kind == TOK_IDENTIFIER);
+    Stmt *found = find_symbol(c->curr, nameTok.as.identifier);
+    if (!found) compile_error(c->unit->fileName, nameTok.loc, "Unkown symbol '%.*s'", strf(nameTok.as.identifier));
+    return found;
+}
+
+static String declare_var(Checker *c, Stmt *varStmt) {
+    assert(varStmt->kind == STMT_VAR);
+
+    String varName = varStmt->as.var.name.as.identifier;
+    // Stmt *found = find_symbol(g->scope, varName);
+    Stmt *found = hm_find_val(&c->curr->symbols, varName);
+    if (found)
+        compile_error(c->unit->fileName, varStmt->loc, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
+                      strf(varName), strf(c->unit->fileName), varStmt->loc.line, varStmt->loc.col);
+
+    varStmt->as.var.qbeVarAddr = qbe_id(varStmt->loc);
+    hm_insert(&c->scope->symbols, varName, varStmt);
+    return varStmt->as.var.qbeVarAddr;
+}
+
+
+static void check_expr(Checker *c, Expr *e);
+static void check_stmt(Checker *c, Stmt *s);
+
 static void check_primary(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_PRIMARY);
+    Token prim = e->as.primary.value;
+
+    (void) c;
+    switch (prim.kind) {
+        case TOK_IDENTIFIER:      TODO("%s: TOK_IDENTIFIER", __func__);
+        case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
+        case TOK_CHAR_LITERAL:    return;
+        case TOK_INTEGER_LITERAL: return;
+        case TOK_FLOAT_LITERAL:   return;
+        case TOK_TRUE:            return;
+        case TOK_FALSE:           return;
+        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[prim.kind]);
+    }
 }
 
 static void check_binary(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_BINARY);
+    BinaryExpr bin = e->as.binary;
+
+    check_expr(c, bin.lhs);
+    check_expr(c, bin.rhs);
 }
 
 static void check_unary(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
-}
+    assert(e->kind == EXPR_UNARY || e->kind == EXPR_UNARY_POST);
+    UnaryExpr un = e->as.unary;
 
-static void check_unary_post(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    if ((un.op == TOK_PLUS_PLUS || un.op == TOK_MINUS_MINUS) && !is_lvalue(un.inner))
+        checker_error(c, e, "Expression is not assignable");
+
+    check_expr(c, un.inner);
 }
 
 static void check_assign(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_ASSIGN);
+    AssignExpr ass = e->as.assignment;
+
+    Expr *asignee = ass.lhs;
+    if (!is_lvalue(asignee)) checker_error(c, e, "Expression is not assignable");
+
+    check_expr(c, ass.lhs);
+    check_expr(c, ass.rhs);
 }
 
 static void check_conditional(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_CONDITIONAL);
+    ConditionalExpr cond = e->as.conditional;
+
+    check_expr(c, cond.condition);
+    check_expr(c, cond.elseBranch);
+    check_expr(c, cond.thenBranch);
 }
 
 static void check_func_call(Checker *c, Expr *e) {
@@ -88,9 +167,11 @@ static void check_func_call(Checker *c, Expr *e) {
 }
 
 static void check_index(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_INDEX);
+    IndexExpr i = e->as.index;
+
+    check_expr(c, i.index);
+    check_expr(c, i.array);
 }
 
 static void check_expr(Checker *c, Expr *e) {
@@ -100,7 +181,7 @@ static void check_expr(Checker *c, Expr *e) {
         case EXPR_BINARY:      check_binary(c, e);                  return;
         case EXPR_UNARY:       check_unary(c, e);                   return;
         case EXPR_ASSIGN:      check_assign(c, e);                  return;
-        case EXPR_UNARY_POST:  check_unary_post(c, e);              return;
+        case EXPR_UNARY_POST:  check_unary(c, e);              return;
         case EXPR_CONDITIONAL: check_conditional(c, e);             return;
         case EXPR_FUNC_CALL:   check_func_call(c, e);               return;
         case EXPR_INDEX:       check_index(c, e);                   return;
@@ -145,6 +226,15 @@ static void check_return(Checker *c, Stmt *s) {
     TODO("%s", __func__);
 }
 
+static void check_func(Checker *c, Stmt *s) {
+    assert(s->kind == STMT_FUNC);
+    (void) c;
+    StmtList body = s->as.func.body;
+    for (size_t i = 0; i < body.len; i++) {
+        check_stmt(c, body.arr[i]);
+    }
+}
+
 static void check_break(Checker *c, Stmt *s) {
     (void)c;
     (void)s;
@@ -168,23 +258,9 @@ static void check_stmt(Checker *c, Stmt *s) {
         case STMT_IF:       check_if(c, s);                 return;
         case STMT_FOR:      check_for(c, s);                return;
         case STMT_RETURN:   check_return(c, s);             return;
+        case STMT_FUNC:     check_func(c, s);               return;
         case STMT_BREAK:    check_break(c, s);              return;
         case STMT_CONTINUE: check_continue(c, s);           return;
-    }
-}
-
-static void check_func(Checker *c, Tld *s) {
-    assert(s->kind == TLD_FUNC);
-    (void) c;
-    StmtList body = s->as.func.body;
-    for (size_t i = 0; i < body.len; i++) {
-        check_stmt(c, body.arr[i]);
-    }
-}
-
-static void check_tld(Checker *c, Tld *s) {
-    switch (s->kind) {
-        case TLD_FUNC: check_func(c, s); return;
     }
 }
 
@@ -199,7 +275,7 @@ bool semantic_analysis(TranslationUnit *unit) {
     c.hadError = fill_global_symbol_table(unit);
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        check_tld(&c, unit->ast.arr[i]);
+        check_stmt(&c, unit->ast.arr[i]);
     }
 
     return !c.hadError;

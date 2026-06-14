@@ -21,7 +21,7 @@ typedef struct {
     String fileName;
     String input;
     TokensList tokens;
-    TldList ast;
+    StmtList ast;
     ProgramKir *kir;
     Scope globalSymbols;
 } TranslationUnit;

@@ -80,7 +80,7 @@ Stmt *stmt_make_func(Token name, StmtList params, StmtList block, Location loc) 
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.name = name;
     s->as.func.params = params;
-    s->as.func.block = block;
+    s->as.func.body = block;
     return s;
 }
 
@@ -192,10 +192,10 @@ void print_stmt(Stmt *stmt, int indent) {
             if (fn->params.len > 0) printf("\n%*s", i * 2, "");
             printf("],\n");
             printf("%*s\"body\": [\n", i * 2, "");
-            for (size_t j = 0; j < fn->block.len; j++) {
+            for (size_t j = 0; j < fn->body.len; j++) {
                 printf("%*s", (i + 1) * 2, "");
-                print_stmt(fn->block.arr[j], i + 1);
-                if (j + 1 < fn->block.len) printf(",");
+                print_stmt(fn->body.arr[j], i + 1);
+                if (j + 1 < fn->body.len) printf(",");
                 printf("\n");
             }
             printf("%*s]\n", i * 2, "");
