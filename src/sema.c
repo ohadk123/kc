@@ -32,7 +32,22 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
 // }
 
 static bool is_lvalue(Expr *e) {
-    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER) return true; // variable
+    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER && e->as.primary.decl) {
+        switch (e->as.primary.decl->kind) {
+            case STMT_VAR:      return true;
+            case STMT_NULL:
+            case STMT_EXPR:
+            case STMT_BLOCK:
+            case STMT_WHILE:
+            case STMT_DO_WHILE:
+            case STMT_IF:
+            case STMT_FOR:
+            case STMT_RETURN:
+            case STMT_FUNC:
+            case STMT_BREAK:
+            case STMT_CONTINUE: return false;
+        }
+    }
     if (e->kind == EXPR_GROUPING) return is_lvalue(e->as.grouping.inner); // inner expression is lvalue? (x)++
     if (e->kind == EXPR_UNARY && e->as.unary.op == TOK_STAR) return true; // pointer dereference
 
@@ -105,9 +120,9 @@ static void check_primary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
     Token prim = e->as.primary.value;
 
-    (void) c;
+    (void)c;
     switch (prim.kind) {
-        case TOK_IDENTIFIER:      TODO("%s: TOK_IDENTIFIER", __func__);
+        case TOK_IDENTIFIER:      e->as.primary.decl = expect_var(c, &prim); return;
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
         case TOK_CHAR_LITERAL:    return;
         case TOK_INTEGER_LITERAL: return;
@@ -120,40 +135,37 @@ static void check_primary(Checker *c, Expr *e) {
 
 static void check_binary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_BINARY);
-    BinaryExpr bin = e->as.binary;
 
-    check_expr(c, bin.lhs);
-    check_expr(c, bin.rhs);
+    check_expr(c, e->as.binary.lhs);
+    check_expr(c, e->as.binary.rhs);
 }
 
 static void check_unary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_UNARY || e->kind == EXPR_UNARY_POST);
+
     UnaryExpr un = e->as.unary;
+    check_expr(c, un.inner);
 
     if ((un.op == TOK_PLUS_PLUS || un.op == TOK_MINUS_MINUS) && !is_lvalue(un.inner))
         checker_error(c, e, "Expression is not assignable");
-
-    check_expr(c, un.inner);
 }
 
 static void check_assign(Checker *c, Expr *e) {
     assert(e->kind == EXPR_ASSIGN);
-    AssignExpr ass = e->as.assignment;
 
-    Expr *asignee = ass.lhs;
-    if (!is_lvalue(asignee)) checker_error(c, e, "Expression is not assignable");
+    AssignExpr assign = e->as.assignment;
+    check_expr(c, assign.lhs);
+    check_expr(c, assign.rhs);
 
-    check_expr(c, ass.lhs);
-    check_expr(c, ass.rhs);
+    if (!is_lvalue(assign.lhs)) checker_error(c, e, "Expression is not assignable");
 }
 
 static void check_conditional(Checker *c, Expr *e) {
     assert(e->kind == EXPR_CONDITIONAL);
-    ConditionalExpr cond = e->as.conditional;
 
-    check_expr(c, cond.condition);
-    check_expr(c, cond.elseBranch);
-    check_expr(c, cond.thenBranch);
+    check_expr(c, e->as.conditional.condition);
+    check_expr(c, e->as.conditional.elseBranch);
+    check_expr(c, e->as.conditional.thenBranch);
 }
 
 static void check_func_call(Checker *c, Expr *e) {
@@ -164,10 +176,9 @@ static void check_func_call(Checker *c, Expr *e) {
 
 static void check_index(Checker *c, Expr *e) {
     assert(e->kind == EXPR_INDEX);
-    IndexExpr i = e->as.index;
 
-    check_expr(c, i.index);
-    check_expr(c, i.array);
+    check_expr(c, e->as.index.index);
+    check_expr(c, e->as.index.array);
 }
 
 static void check_expr(Checker *c, Expr *e) {
@@ -177,7 +188,7 @@ static void check_expr(Checker *c, Expr *e) {
         case EXPR_BINARY:      check_binary(c, e);                  return;
         case EXPR_UNARY:       check_unary(c, e);                   return;
         case EXPR_ASSIGN:      check_assign(c, e);                  return;
-        case EXPR_UNARY_POST:  check_unary(c, e);              return;
+        case EXPR_UNARY_POST:  check_unary(c, e);                   return;
         case EXPR_CONDITIONAL: check_conditional(c, e);             return;
         case EXPR_FUNC_CALL:   check_func_call(c, e);               return;
         case EXPR_INDEX:       check_index(c, e);                   return;
@@ -187,9 +198,10 @@ static void check_expr(Checker *c, Expr *e) {
 static void check_stmt(Checker *c, Stmt *s);
 
 static void check_var(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_VAR);
+
+    check_expr(c, s->as.var.init);
+    declare_var(c, s);
 }
 
 static void check_block(Checker *c, Stmt *s) {
@@ -227,11 +239,16 @@ static void check_return(Checker *c, Stmt *s) {
 
 static void check_func(Checker *c, Stmt *s) {
     assert(s->kind == STMT_FUNC);
-    (void) c;
+
+    enter_scope(c);
+
+    StmtList params = s->as.func.params;
+    for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
+
     StmtList body = s->as.func.body;
-    for (size_t i = 0; i < body.len; i++) {
-        check_stmt(c, body.arr[i]);
-    }
+    for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
+
+    exit_scope(c);
 }
 
 static void check_break(Checker *c, Stmt *s) {
@@ -248,7 +265,7 @@ static void check_continue(Checker *c, Stmt *s) {
 
 static void check_stmt(Checker *c, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL: return;
+        case STMT_NULL:                                     return;
         case STMT_VAR:      check_var(c, s);                return;
         case STMT_EXPR:     check_expr(c, s->as.expr.expr); return;
         case STMT_BLOCK:    check_block(c, s);              return;
