@@ -63,9 +63,27 @@ static String gen_binary(Generator *g, Expr *e) {
 }
 
 static String gen_unary(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_UNARY);
+    UnaryExpr unary = e->as.unary;
+
+    String out = qbe_var(e->loc);
+    switch (unary.op) {
+        case TOK_MINUS: {
+            String inner = gen_expr(g, unary.inner);
+            gprintfln(g, "%.*s =w sub 0, %.*s", strf(out), strf(inner));
+            break;
+        }
+
+        case TOK_TILDE: {
+            String inner = gen_expr(g, unary.inner);
+            gprintfln(g, "%.*s =w xor %.*s, -1", strf(out), strf(inner));
+            break;
+        }
+
+        default: TODO("%s: Unary operator \"%s\"", __func__, tokenTypesStrings[unary.op]);
+    }
+
+    return out;
 }
 
 static String gen_assign(Generator *g, Expr *e) {
