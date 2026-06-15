@@ -11,6 +11,11 @@ static String qbe_var(Location l) {
     return str_printf("%%_ktemp_%zu_%zu_%zu", i, l.line, l.col);
 }
 
+static String qbe_label(const char *name, Location l) {
+    uint64_t i = counter();
+    return str_printf("@_%s_%zu_%zu_%zu", name, i, l.line, l.col);
+}
+
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
