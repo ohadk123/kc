@@ -58,6 +58,9 @@ typedef struct {
     TranslationUnit *unit;
     Scope *curr;
     bool hadError;
+
+    bool inFunc;
+    int loopCount;
 } Checker;
 
 #define checker_error(c, o, fmt, ...) \
@@ -239,15 +242,15 @@ static void check_for(Checker *c, Stmt *s) {
 }
 
 static void check_return(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    if (!c->inFunc) checker_error(c, s, "Return statement not in a function");
+    if (s->as.returnS.retVal) check_expr(c, s->as.returnS.retVal);
 }
 
 static void check_func(Checker *c, Stmt *s) {
     assert(s->kind == STMT_FUNC);
 
     enter_scope(c);
+    c->inFunc = true;
 
     StmtList params = s->as.func.params;
     for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
@@ -256,6 +259,7 @@ static void check_func(Checker *c, Stmt *s) {
     for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
 
     exit_scope(c);
+    c->inFunc = false;
 }
 
 static void check_break(Checker *c, Stmt *s) {
@@ -292,6 +296,8 @@ bool semantic_analysis(TranslationUnit *unit) {
         .unit = unit,
         .curr = &unit->globalSymbols,
         .hadError = false,
+        .inFunc = false,
+        .loopCount = 0,
     };
 
     c.hadError = fill_global_symbol_table(unit);
