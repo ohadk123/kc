@@ -66,7 +66,6 @@ static String get_lvalue(Generator *g, Expr *e) {
 
 static String gen_primary(Generator *g, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
-    (void)g;
     Token val = e->as.primary.value;
 
     switch (val.kind) {
@@ -195,13 +194,7 @@ static String gen_unary(Generator *g, Expr *e) {
 
         case TOK_BANG: {
             String inner = gen_expr(g, un.inner);
-            String zero = qbe_label("zero", e->loc);
-            String one = qbe_label("one", e->loc);
-            String end = qbe_label("end", e->loc);
-
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(inner), strf(zero), strf(one));
-
-            gprint_phi_zero_one(g, out, zero, one, end);
+            gprintfln(g, "%.*s =w ceqw %.*s, 0", strf(out), strf(inner));
             break;
         }
 
