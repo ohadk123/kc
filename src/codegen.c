@@ -71,6 +71,27 @@ static String gen_primary(Generator *g, Expr *e) {
         default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[val.kind]);
     }
 }
+static const char *get_bin_op(TokenKind op) {
+    switch (op) {
+        case TOK_PLUS:            return "add";
+        case TOK_MINUS:           return "sub";
+        case TOK_STAR:            return "mul";
+        case TOK_SLASH:           return "div";
+        case TOK_PERCENT:         return "rem";
+        case TOK_CARET:           return "xor";
+        case TOK_LESS_LESS:       return "shl";
+        case TOK_GREATER_GREATER: return "sar";
+        case TOK_AMPERSAND:       return "and";
+        case TOK_PIPE:            return "or";
+        case TOK_EQUALS_EQUALS:   return "ceqw";
+        case TOK_BANG_EQUALS:     return "cnew";
+        case TOK_GREATER:         return "csgtw";
+        case TOK_GREATER_EQUALS:  return "csgew";
+        case TOK_LESS:            return "csltw";
+        case TOK_LESS_EQUALS:     return "cslew";
+        default:                  UNREACHABLE("Not an arithmetic operand (%s)", tokenTypesStrings[op]);
+    }
+}
 
 static String gen_binary(Generator *g, Expr *e) {
     assert(e->kind == EXPR_BINARY);
@@ -78,78 +99,63 @@ static String gen_binary(Generator *g, Expr *e) {
 
     String out = qbe_var(e->loc);
     switch (bin.op) {
-        case TOK_PLUS: {
+        case TOK_PLUS:
+        case TOK_MINUS:
+        case TOK_STAR:
+        case TOK_SLASH:
+        case TOK_PERCENT:
+        case TOK_CARET:
+        case TOK_LESS_LESS:
+        case TOK_GREATER_GREATER:
+        case TOK_AMPERSAND:
+        case TOK_PIPE:
+        case TOK_EQUALS_EQUALS:
+        case TOK_BANG_EQUALS:
+        case TOK_GREATER:
+        case TOK_GREATER_EQUALS:
+        case TOK_LESS:
+        case TOK_LESS_EQUALS: {
             String lhs = gen_expr(g, bin.lhs);
             String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w add %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
+            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_bin_op(bin.op), strf(lhs), strf(rhs));
             break;
         }
 
-        case TOK_MINUS: {
+        case TOK_AMPERSAND_AMPERSAND: {
+            String one = qbe_label("ift", e->loc);
+            String zero = qbe_label("iff", e->loc);
+            String rhsLabel = qbe_label("rhs", e->loc);
+            String end = qbe_label("end", e->loc);
+
             String lhs = gen_expr(g, bin.lhs);
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(rhsLabel), strf(zero));
+
+            gprintfln(g, "%.*s", strf(rhsLabel));
             String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w sub %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(rhs), strf(one), strf(zero));
+
+            gprint_phi_zero_one(g, out, zero, one, end);
             break;
         }
 
-        case TOK_STAR: {
+        case TOK_PIPE_PIPE: {
+            String one = qbe_label("one", e->loc);
+            String zero = qbe_label("zero", e->loc);
+            String rhsLabel = qbe_label("rhs", e->loc);
+            String end = qbe_label("end", e->loc);
+
             String lhs = gen_expr(g, bin.lhs);
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(one), strf(rhsLabel));
+
+            gprintfln(g, "%.*s", strf(rhsLabel));
             String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w mul %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(rhs), strf(one), strf(zero));
+
+            gprint_phi_zero_one(g, out, zero, one, end);
             break;
         }
 
-        case TOK_SLASH: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w div %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_PERCENT: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w rem %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_AMPERSAND: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w and %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_PIPE: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w or %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_CARET: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w xor %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_LESS_LESS: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w shl %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_GREATER_GREATER: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w sar %.*s, %.*s", strf(out), strf(lhs), strf(rhs));
-            break;
-        }
-
-
-        default:          TODO("%s: Binary operator \"%s\"", __func__, tokenTypesStrings[bin.op]);
+        default: TODO("%s: Binary operator \"%s\"", __func__, tokenTypesStrings[bin.op]);
     }
 
     return out;
