@@ -38,17 +38,6 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
     return ret;
 }
 
-static void gprint_phi_zero_one(Generator *g, String out, String zero, String one, String end) {
-    gprintfln(g, "%.*s", strf(zero));
-    gprintfln(g, "jmp %.*s", strf(end));
-
-    gprintfln(g, "%.*s", strf(one));
-    gprintfln(g, "jmp %.*s", strf(end));
-
-    gprintfln(g, "%.*s", strf(end));
-    gprintfln(g, "%.*s =w phi %.*s 0, %.*s 1", strf(out), strf(zero), strf(one));
-}
-
 /******************************************************************************
  * Expression CodeGen
  *****************************************************************************/
@@ -134,37 +123,29 @@ static String gen_binary(Generator *g, Expr *e) {
             break;
         }
 
-        case TOK_AMPERSAND_AMPERSAND: {
-            String one = qbe_label("one", e->loc);
-            String zero = qbe_label("zero", e->loc);
-            String rhsLabel = qbe_label("rhs", e->loc);
-            String end = qbe_label("end", e->loc);
-
-            String lhs = gen_expr(g, bin.lhs);
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(rhsLabel), strf(zero));
-
-            gprintfln(g, "%.*s", strf(rhsLabel));
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(rhs), strf(one), strf(zero));
-
-            gprint_phi_zero_one(g, out, zero, one, end);
-            break;
-        }
-
+        case TOK_AMPERSAND_AMPERSAND:
         case TOK_PIPE_PIPE: {
             String one = qbe_label("one", e->loc);
             String zero = qbe_label("zero", e->loc);
-            String rhsLabel = qbe_label("rhs", e->loc);
+            String rhsL = qbe_label("rhs", e->loc);
             String end = qbe_label("end", e->loc);
+            bool isAnd = bin.op == TOK_AMPERSAND_AMPERSAND;
 
             String lhs = gen_expr(g, bin.lhs);
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(one), strf(rhsLabel));
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(isAnd ? rhsL : one), strf(isAnd ? zero : rhsL));
 
-            gprintfln(g, "%.*s", strf(rhsLabel));
+            gprintfln(g, "%.*s", strf(rhsL));
             String rhs = gen_expr(g, bin.rhs);
             gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(rhs), strf(one), strf(zero));
 
-            gprint_phi_zero_one(g, out, zero, one, end);
+            gprintfln(g, "%.*s", strf(zero));
+            gprintfln(g, "jmp %.*s", strf(end));
+
+            gprintfln(g, "%.*s", strf(one));
+            gprintfln(g, "jmp %.*s", strf(end));
+
+            gprintfln(g, "%.*s", strf(end));
+            gprintfln(g, "%.*s =w phi %.*s 0, %.*s 1", strf(out), strf(zero), strf(one));
             break;
         }
 
@@ -333,8 +314,10 @@ static void gen_return(Generator *g, Stmt *s) {
 
     if (!retVal)
         gprintfln(g, "ret");
-    else
-        gprintfln(g, "ret %s", gen_expr(g, retVal));
+    else {
+        String ret = gen_expr(g, retVal);
+        gprintfln(g, "ret %.*s", strf(ret));
+    }
 }
 
 static void gen_var(Generator *g, Stmt *s) {
