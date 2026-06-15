@@ -122,8 +122,8 @@ static String gen_binary(Generator *g, Expr *e) {
         }
 
         case TOK_AMPERSAND_AMPERSAND: {
-            String one = qbe_label("ift", e->loc);
-            String zero = qbe_label("iff", e->loc);
+            String one = qbe_label("one", e->loc);
+            String zero = qbe_label("zero", e->loc);
             String rhsLabel = qbe_label("rhs", e->loc);
             String end = qbe_label("end", e->loc);
 
