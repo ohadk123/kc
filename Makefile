@@ -2,13 +2,13 @@ SRC_DIR=./src
 BUILD_DIR=./build
 
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -Werror -g -O3
+CFLAGS=-Wall -Wextra -pedantic -Werror -g -O3 -Wno-infinite-recursion
 
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 all:
-	compiledb make compile
+	compiledb make compile -j
 
 compile: build $(BUILD_DIR)/kc
 

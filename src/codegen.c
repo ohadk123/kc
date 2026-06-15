@@ -1,6 +1,16 @@
 #include "codegen.h"
 #include <stdarg.h>
 
+static uint64_t counter(void) {
+    static uint64_t i = 0;
+    return i++;
+}
+
+static String qbe_var(Location l) {
+    uint64_t i = counter();
+    return str_printf("%%_ktemp_%zu_%zu_%zu", i, l.line, l.col);
+}
+
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
