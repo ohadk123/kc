@@ -179,6 +179,18 @@ static String gen_unary(Generator *g, Expr *e) {
             break;
         }
 
+        case TOK_BANG: {
+            String inner = gen_expr(g, un.inner);
+            String zero = qbe_label("zero", e->loc);
+            String one = qbe_label("one", e->loc);
+            String end = qbe_label("end", e->loc);
+
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(inner), strf(zero), strf(one));
+
+            gprint_phi_zero_one(g, out, zero, one, end);
+            break;
+        }
+
         default: TODO("%s: Unary operator \"%s\"", __func__, tokenTypesStrings[un.op]);
     }
 
