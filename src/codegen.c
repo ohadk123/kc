@@ -55,13 +55,27 @@ static void gprint_phi_zero_one(Generator *g, String out, String zero, String on
 
 static String gen_expr(Generator *g, Expr *e);
 
+static String get_lvalue(Generator *g, Expr *e) {
+    switch (e->kind) {
+        case EXPR_PRIMARY:  return e->as.primary.decl->as.var.qbe_var;
+        case EXPR_GROUPING: return get_lvalue(g, e->as.grouping.inner);
+        case EXPR_UNARY:    return gen_expr(g, e->as.unary.inner);
+        default: UNREACHABLE("%s: Not an expression that can be lvalue", __func__);
+    }
+}
+
 static String gen_primary(Generator *g, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
     (void)g;
     Token val = e->as.primary.value;
 
     switch (val.kind) {
-        case TOK_IDENTIFIER:      TODO("%s: TOK_IDENTIFIER", __func__);
+        case TOK_IDENTIFIER: {
+            String out = qbe_var(e->loc);
+            String qvar = get_lvalue(g, e);
+            gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(qvar));
+            return out;
+        }
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
         case TOK_CHAR_LITERAL:    return str_printf("%u", val.as.charLiteral);
         case TOK_INTEGER_LITERAL: return str_printf("%zu", val.as.integerLiteral);
@@ -191,23 +205,77 @@ static String gen_unary(Generator *g, Expr *e) {
             break;
         }
 
+        case TOK_PLUS_PLUS:
+        case TOK_MINUS_MINUS: {
+            String inner = get_lvalue(g, un.inner);
+            String loadTemp = qbe_var(e->loc);
+            const char *op = un.op == TOK_PLUS_PLUS ? "add" : "sub";
+
+            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
+            gprintfln(g, "%.*s =w %s %.*s, 1", strf(out), op, strf(loadTemp));
+            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
+            break;
+        }
+
         default: TODO("%s: Unary operator \"%s\"", __func__, tokenTypesStrings[un.op]);
     }
 
     return out;
 }
 
+static const char *get_assign_op(TokenKind op) {
+    switch (op) {
+        case TOK_PLUS_EQUALS:            return "add";
+        case TOK_MINUS_EQUALS:           return "sub";
+        case TOK_STAR_EQUALS:            return "mul";
+        case TOK_SLASH_EQUALS:           return "div";
+        case TOK_PERCENT_EQUALS:         return "rem";
+        case TOK_AMPERSAND_EQUALS:       return "and";
+        case TOK_PIPE_EQUALS:            return "or";
+        case TOK_CARET_EQUALS:           return "xor";
+        case TOK_LESS_LESS_EQUALS:       return "shl";
+        case TOK_GREATER_GREATER_EQUALS: return "sar";
+        default: UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
+    }
+}
+
+
 static String gen_assign(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_ASSIGN);
+    AssignExpr assign = e->as.assignment;
+
+    String lhs = get_lvalue(g, assign.lhs);
+    String rhs = gen_expr(g, assign.rhs);
+    String out = qbe_var(e->loc);
+
+    if (assign.op == TOK_EQUALS) {
+        gprintfln(g, "%.*s =w copy %.*s", strf(out), strf(rhs));
+    } else {
+        String old = qbe_var(e->loc);
+        gprintfln(g, "%.*s =w loadw %.*s", strf(old), strf(lhs));
+        gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_assign_op(assign.op), strf(old), strf(rhs));
+    }
+
+    gprintfln(g, "storew %.*s, %.*s", strf(out), strf(lhs));
+    return out;
 }
 
 static String gen_unary_post(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_UNARY_POST);
+    UnaryExpr un = e->as.unary;
+
+    String out = qbe_var(e->loc);
+    String temp = qbe_var(e->loc);
+    String inner = get_lvalue(g, un.inner);
+    const char *op = un.op == TOK_PLUS_PLUS ? "add" : "sub";
+
+    gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(inner));
+    gprintfln(g, "%.*s =w %s %.*s, 1", strf(temp), op, strf(out));
+    gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(inner));
+
+    return out;
 }
+
 
 static String gen_conditional(Generator *g, Expr *e) {
     (void)g;
@@ -261,6 +329,8 @@ static void gen_func(Generator *g, Stmt *s) {
     StmtList body = s->as.func.body;
     for (size_t i = 0; i < body.len; i++) gen_stmt(g, body.arr[i]);
 
+    gprintfln(g, "@end");
+    gprintfln(g, "ret 0");
     gprintfln(g, "}\n");
 }
 
@@ -275,9 +345,15 @@ static void gen_return(Generator *g, Stmt *s) {
 }
 
 static void gen_var(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_VAR);
+    VarStmt var = s->as.var;
+
+    String qvar = qbe_var(s->loc);
+    gprintfln(g, "%.*s =l alloc4 1", strf(qvar));
+    assert(var.init);
+    String init = gen_expr(g, var.init);
+    gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qvar));
+    s->as.var.qbe_var = qvar;
 }
 
 static void gen_while(Generator *g, Stmt *s) {

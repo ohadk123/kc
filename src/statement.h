@@ -28,6 +28,7 @@ typedef enum {
 typedef struct {
     Token name;
     Expr *init;
+    String qbe_var;
 } VarStmt;
 
 typedef struct {
