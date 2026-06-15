@@ -1,40 +1,20 @@
 #include "codegen.h"
 #include <stdarg.h>
 
-static uint64_t counter(void) {
-    static uint64_t count = 0;
-    return count++;
-}
-
-static String qbe_id(Location loc) {
-    int id = counter();
-    return str_printf("%%_ktemp_%zu_%zu_%zu", id++, loc.line, loc.col);
-}
-
-static String get_label(const char *name, Location loc) {
-    return str_printf("__%s.%zu.%zu.%zu", name, loc.line, loc.col, counter());
-}
-
 typedef struct {
     FILE *outf;
     TranslationUnit *unit;
-
-    Scope *scope;
 } Generator;
 
-static int gprintf(Generator *g, const char *fmt, ...) {
-    // static size_t line = 0;
-    // if (g->outf == stdout) printf("[%zu] ", line++);
-    va_list args;
-    va_start(args, fmt);
-    int ret = vfprintf(g->outf, fmt, args);
-    va_end(args);
-    return ret;
-}
+// static int gprintf(Generator *g, const char *fmt, ...) {
+//     va_list args;
+//     va_start(args, fmt);
+//     int ret = vfprintf(g->outf, fmt, args);
+//     va_end(args);
+//     return ret;
+// }
 
 static int gprintfln(Generator *g, const char *fmt, ...) {
-    // static size_t line = 0;
-    // if (g->outf == stdout) printf("[%zu] ", line++);
     va_list args;
     va_start(args, fmt);
     int ret = vfprintf(g->outf, fmt, args);
@@ -44,379 +24,62 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
 }
 
 /******************************************************************************
- * Scope Helpers
- *****************************************************************************/
-
-static void enter_scope(Generator *g) {
-    Scope *newScope = calloc(1, sizeof(Scope));
-    newScope->above = g->scope;
-    g->scope = newScope;
-}
-
-static inline void exit_scope(Generator *g) {
-    Scope *oldScope = g->scope;
-    g->scope = oldScope->above;
-    free(oldScope);
-}
-
-/******************************************************************************
- * Symbol Resolution
- *****************************************************************************/
-
-// Find symbol is scope bottom to top
-static Stmt *find_symbol(Scope *scope, String symbol) {
-    while (scope) {
-        Stmt *var = hm_find_val(&scope->symbols, symbol);
-        if (var) return var;
-        scope = scope->above;
-    }
-
-    return NULL;
-}
-
-static Stmt *expect_var(Generator *g, Token nameTok) {
-    assert(nameTok.kind == TOK_IDENTIFIER);
-    Stmt *found = find_symbol(g->scope, nameTok.as.identifier);
-    if (!found) compile_error(g->unit->fileName, nameTok.loc, "unkown symbol '%.*s'", strf(nameTok.as.identifier));
-    return found;
-}
-
-static String declare_var(Generator *g, Stmt *varStmt) {
-    assert(varStmt->kind == STMT_VAR);
-
-    String varName = varStmt->as.var.name.as.identifier;
-    // Stmt *found = find_symbol(g->scope, varName);
-    Stmt *found = hm_find_val(&g->scope->symbols, varName);
-    if (found)
-        compile_error(g->unit->fileName, varStmt->loc, "symbol '%.*s' already delcared before at [%.*s:%zu:%zu]",
-                      strf(varName), strf(g->unit->fileName), varStmt->loc.line, varStmt->loc.col);
-
-    varStmt->as.var.qbeVarAddr = qbe_id(varStmt->loc);
-    hm_insert(&g->scope->symbols, varName, varStmt);
-    return varStmt->as.var.qbeVarAddr;
-}
-
-/******************************************************************************
  * Expression CodeGen
  *****************************************************************************/
 
 static String gen_expr(Generator *g, Expr *e);
 
 static String gen_primary(Generator *g, Expr *e) {
+    assert(e->kind == EXPR_PRIMARY);
+    (void) g;
     Token val = e->as.primary.value;
 
     switch (val.kind) {
-        case TOK_IDENTIFIER: {
-            String varAddr = expect_var(g, val)->as.var.qbeVarAddr;
-            String temp = qbe_id(val.loc);
-            gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(varAddr));
-            return temp;
-        }
+        case TOK_IDENTIFIER:      TODO("%s: TOK_IDENTIFIER", __func__);
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case TOK_TRUE:            TODO("%s: TOK_TRUE", __func__);
-        case TOK_FALSE:           TODO("%s: TOK_FALSE", __func__);
-        case TOK_CHAR_LITERAL:    TODO("%s: TOK_CHAR_LITERAL", __func__);
+        case TOK_CHAR_LITERAL:    return str_printf("%u", val.as.charLiteral);
         case TOK_INTEGER_LITERAL: return str_printf("%zu", val.as.integerLiteral);
         case TOK_FLOAT_LITERAL:   TODO("%s: TOK_FLOAT_LITERAL", __func__);
-        default:                  compile_error(g->unit->fileName, e->loc, "Unsupported primary expression");
-    }
-}
-
-static const char *get_bin_op(TokenKind op) {
-    switch (op) {
-        case TOK_PLUS:            return "add";
-        case TOK_MINUS:           return "sub";
-        case TOK_STAR:            return "mul";
-        case TOK_SLASH:           return "div";
-        case TOK_PERCENT:         return "rem";
-        case TOK_CARET:           return "xor";
-        case TOK_LESS_LESS:       return "shl";
-        case TOK_GREATER_GREATER: return "sar";
-        case TOK_AMPERSAND:       return "and";
-        case TOK_PIPE:            return "or";
-        case TOK_EQUALS_EQUALS:   return "ceqw";
-        case TOK_BANG_EQUALS:     return "cnew";
-        case TOK_GREATER:         return "csgtw";
-        case TOK_GREATER_EQUALS:  return "csgew";
-        case TOK_LESS:            return "csltw";
-        case TOK_LESS_EQUALS:     return "cslew";
-        default:                  UNREACHABLE("Not an arithmetic operand (%s)", tokenTypesStrings[op]);
+        case TOK_TRUE:            return str_from_cstr("1");
+        case TOK_FALSE:           return str_from_cstr("0");
+        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[val.kind]);
     }
 }
 
 static String gen_binary(Generator *g, Expr *e) {
-    BinaryExpr binary = e->as.binary;
-
-    String out = qbe_id(e->loc);
-    switch (binary.op) {
-        case TOK_PLUS:
-        case TOK_MINUS:
-        case TOK_STAR:
-        case TOK_SLASH:
-        case TOK_PERCENT:
-        case TOK_CARET:
-        case TOK_LESS_LESS:
-        case TOK_GREATER_GREATER:
-        case TOK_AMPERSAND:
-        case TOK_PIPE:
-        case TOK_EQUALS_EQUALS:
-        case TOK_BANG_EQUALS:
-        case TOK_GREATER:
-        case TOK_GREATER_EQUALS:
-        case TOK_LESS:
-        case TOK_LESS_EQUALS:     {
-            String lhs = gen_expr(g, binary.lhs);
-            String rhs = gen_expr(g, binary.rhs);
-            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_bin_op(binary.op), strf(lhs), strf(rhs));
-            break;
-        }
-
-        case TOK_AMPERSAND_AMPERSAND: {
-            String endLabel = get_label("end", e->loc);
-            String trueLabel = get_label("true", e->loc);
-            String falseLabel = get_label("false", e->loc);
-            String rhsLabel = get_label("rhs", e->loc);
-
-            // check lhs, if it's false, no need to check rhs, jump to false label
-            String lhs = gen_expr(g, binary.lhs);
-            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(lhs), strf(rhsLabel), strf(falseLabel));
-
-            gprintfln(g, "@%.*s", strf(rhsLabel));
-            String rhs = gen_expr(g, binary.rhs);
-            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(rhs), strf(trueLabel), strf(falseLabel));
-
-            gprintfln(g, "@%.*s", strf(trueLabel));
-            gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-            gprintfln(g, "@%.*s", strf(falseLabel));
-            gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-            gprintfln(g, "@%.*s", strf(endLabel));
-            gprintfln(g, "%.*s =w phi @%.*s 1, @%.*s 0", strf(out), strf(trueLabel), strf(falseLabel));
-            return out;
-        }
-
-        case TOK_PIPE_PIPE: {
-            String endLabel = get_label("end", e->loc);
-            String trueLabel = get_label("true", e->loc);
-            String falseLabel = get_label("false", e->loc);
-            String rhsLabel = get_label("rhs", e->loc);
-
-            // check lhs, if it's true, no need to check rhs, jump to true label
-            String lhs = gen_expr(g, binary.lhs);
-            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(lhs), strf(trueLabel), strf(rhsLabel));
-
-            gprintfln(g, "@%.*s", strf(rhsLabel));
-            String rhs = gen_expr(g, binary.rhs);
-            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(rhs), strf(trueLabel), strf(falseLabel));
-
-            gprintfln(g, "@%.*s", strf(trueLabel));
-            gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-            gprintfln(g, "@%.*s", strf(falseLabel));
-            gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-            gprintfln(g, "@%.*s", strf(endLabel));
-            gprintfln(g, "%.*s =w phi @%.*s 1, @%.*s 0", strf(out), strf(trueLabel), strf(falseLabel));
-            return out;
-        }
-
-        default: UNREACHABLE("%s: Unsupported binary operator (%s)", __func__, tokenTypesStrings[binary.op]);
-    }
-
-    return out;
-}
-
-static String gen_lvalue(Generator *g, Expr *e) {
-    switch (e->kind) {
-        case EXPR_PRIMARY: {
-            if (e->as.primary.value.kind != TOK_IDENTIFIER) break;
-            return expect_var(g, e->as.primary.value)->as.var.qbeVarAddr;
-        }
-        case EXPR_GROUPING: return gen_lvalue(g, e->as.grouping.inner);
-        case EXPR_UNARY:    {
-            if (e->as.unary.op != TOK_STAR) break;
-            return gen_expr(g, e->as.unary.inner);
-        }
-        default: break;
-    }
-
-    compile_error(g->unit->fileName, e->loc, "expression is not assignable");
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_unary(Generator *g, Expr *e) {
-    UnaryExpr unary = e->as.unary;
-    String out = qbe_id(e->loc);
-
-    switch (unary.op) {
-        case TOK_TILDE: {
-            String inner = gen_expr(g, unary.inner);
-            gprintfln(g, "%.*s =w xor %.*s, -1", strf(out), strf(inner));
-            return out;
-        }
-
-        case TOK_MINUS: {
-            String inner = gen_expr(g, unary.inner);
-            gprintfln(g, "%.*s =w sub 0, %.*s", strf(out), strf(inner));
-            return out;
-        }
-
-        case TOK_BANG: {
-            String inner = gen_expr(g, unary.inner);
-            String endLabel = get_label("end", e->loc);
-            String trueLabel = get_label("true", e->loc);
-            String falseLabel = get_label("false", e->loc);
-
-            gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(inner), strf(falseLabel), strf(trueLabel));
-
-            gprintfln(g, "@%.*s", strf(trueLabel));
-            gprintfln(g, "%.*s =w copy 1", strf(out));
-            gprintfln(g, "jmp @%.*s", strf(endLabel));
-            gprintfln(g, "@%.*s", strf(falseLabel));
-            gprintfln(g, "%.*s =w copy 0", strf(out));
-            gprintfln(g, "@%.*s", strf(endLabel));
-            return out;
-        }
-
-        case TOK_PLUS_PLUS: {
-            String inner = gen_lvalue(g, unary.inner);
-            String loadTemp = qbe_id(e->loc);
-            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
-            gprintfln(g, "%.*s =w add %.*s, 1", strf(out), strf(loadTemp));
-            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
-            return out;
-        }
-
-        case TOK_MINUS_MINUS: {
-            String inner = gen_lvalue(g, unary.inner);
-            String loadTemp = qbe_id(e->loc);
-            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
-            gprintfln(g, "%.*s =w sub %.*s, 1", strf(out), strf(loadTemp));
-            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
-            return out;
-        }
-
-        default: UNREACHABLE("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
-    }
-}
-
-static const char *get_assign_op(TokenKind op) {
-    switch (op) {
-        case TOK_PLUS_EQUALS:            return "add";
-        case TOK_MINUS_EQUALS:           return "sub";
-        case TOK_STAR_EQUALS:            return "mul";
-        case TOK_SLASH_EQUALS:           return "div";
-        case TOK_PERCENT_EQUALS:         return "rem";
-        case TOK_AMPERSAND_EQUALS:       return "and";
-        case TOK_PIPE_EQUALS:            return "or";
-        case TOK_CARET_EQUALS:           return "xor";
-        case TOK_LESS_LESS_EQUALS:       return "shl";
-        case TOK_GREATER_GREATER_EQUALS: return "sar";
-        default:                         UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
-    }
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_assign(Generator *g, Expr *e) {
-    AssignExpr assign = e->as.assignment;
-
-    String lhs = gen_lvalue(g, assign.lhs);
-    String rhs = gen_expr(g, assign.rhs);
-
-    switch (assign.op) {
-        case TOK_EQUALS:                 gprintfln(g, "storew %.*s, %.*s", strf(rhs), strf(lhs)); break;
-        case TOK_PLUS_EQUALS:
-        case TOK_MINUS_EQUALS:
-        case TOK_STAR_EQUALS:
-        case TOK_SLASH_EQUALS:
-        case TOK_PERCENT_EQUALS:
-        case TOK_AMPERSAND_EQUALS:
-        case TOK_PIPE_EQUALS:
-        case TOK_CARET_EQUALS:
-        case TOK_LESS_LESS_EQUALS:
-        case TOK_GREATER_GREATER_EQUALS: {
-            String temp = qbe_id(e->loc);
-            gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(lhs));
-            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(temp), get_assign_op(assign.op), strf(temp), strf(rhs),
-                    strf(temp));
-            gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(lhs));
-            break;
-        }
-
-        default: UNREACHABLE("operand %s", tokenTypesStrings[assign.op]);
-    }
-
-    String temp = qbe_id(e->loc);
-    gprintfln(g, "%.*s =w loadw %.*s", strf(temp), strf(lhs));
-    return temp;
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_unary_post(Generator *g, Expr *e) {
-    UnaryExpr unary = e->as.unary;
-    String out = qbe_id(e->loc);
-    String temp = qbe_id(e->loc);
-    String inner = gen_lvalue(g, unary.inner);
-
-    const char *opStr;
-    switch (unary.op) {
-        case TOK_PLUS_PLUS:   opStr = "add"; break;
-        case TOK_MINUS_MINUS: opStr = "sub"; break;
-        default:              UNREACHABLE("%s: Unsupported unary operator (%s)", __func__, tokenTypesStrings[unary.op]);
-    }
-
-    gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(inner));
-    gprintfln(g, "%.*s =w %s %.*s, 1", strf(temp), opStr, strf(out));
-    gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(inner));
-    return out;
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_conditional(Generator *g, Expr *e) {
-    ConditionalExpr c = e->as.conditional;
-    String temp = qbe_id(e->loc);
-    String thenLabel = get_label("then", e->loc);
-    String thenLabelEnd = get_label("thenEnd", e->loc);
-    String elseLabel = get_label("else", e->loc);
-    String elseLabelEnd = get_label("elseEnd", e->loc);
-    String endLabel = get_label("end", e->loc);
-
-    String cond = gen_expr(g, c.condition);
-    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(cond), strf(thenLabel), strf(elseLabel));
-
-    gprintfln(g, "@%.*s", strf(thenLabel));
-    String thenVal = gen_expr(g, c.thenBranch);
-    gprintfln(g, "@%.*s", strf(thenLabelEnd));
-    gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-    gprintfln(g, "@%.*s", strf(elseLabel));
-    String elseVal = gen_expr(g, c.elseBranch);
-    gprintfln(g, "@%.*s", strf(elseLabelEnd));
-    gprintfln(g, "jmp @%.*s", strf(endLabel));
-
-    gprintfln(g, "@%.*s", strf(endLabel));
-    gprintfln(g, "%.*s =w phi @%.*s %.*s, @%.*s %.*s", strf(temp), strf(thenLabelEnd), strf(thenVal),
-            strf(elseLabelEnd), strf(elseVal));
-
-    return temp;
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_func_call(Generator *g, Expr *e) {
-    FuncCallExpr funcCall = e->as.funcCall;
-    String temp = qbe_id(e->loc);
-    assert(funcCall.func->kind == EXPR_PRIMARY && funcCall.func->as.primary.value.kind == TOK_IDENTIFIER);
-
-    String funcName = funcCall.func->as.primary.value.as.identifier;
-    Stmt *found = find_symbol(g->scope, funcName);
-    assert(found->kind == STMT_FUNC);
-    FuncStmt funcDef = found->as.func;
-
-    ExprList args = funcCall.args;
-    String argVals[args.len];
-    for (size_t i = 0; i < args.len; i++) argVals[i] = gen_expr(g, args.arr[i]);
-
-    gprintf(g, "%.*s =w call $%.*s (", strf(temp), strf(funcDef.name.as.identifier));
-    for (size_t i = 0; i < args.len; i++) gprintf(g, "%.*s, ", strf(argVals[i]));
-    gprintf(g, ")\n");
-
-    return temp;
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
 }
 
 static String gen_index(Generator *g, Expr *e) {
@@ -447,218 +110,87 @@ static String gen_expr(Generator *g, Expr *e) {
 static void gen_stmt(Generator *g, Stmt *s);
 
 static void gen_block(Generator *g, Stmt *s) {
-    StmtList block = s->as.block.block;
-    enter_scope(g);
-    for (size_t i = 0; i < block.len; i++) gen_stmt(g, block.arr[i]);
-    exit_scope(g);
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_func(Generator *g, Stmt *s) {
-    enter_scope(g);
-    FuncStmt f = s->as.func;
-
-    gprintf(g, "export function w $%.*s(", strf(f.name.as.identifier));
-
-    StmtList params = f.params;
-    for (size_t i = 0; i < params.len; i++) {
-        Stmt *p = params.arr[i];
-        assert (p->kind == STMT_VAR && p->as.var.name.kind == TOK_IDENTIFIER);
-        declare_var(g, p);
-        gprintf(g, "w %%%.*s, ", strf(p->as.var.name.as.identifier));
-    }
-    gprintfln(g, ") {");
+    gprintfln(g, "export function w $main() {");
     gprintfln(g, "@start");
 
-    for (size_t i = 0; i < s->as.func.block.len; i++) {
-        gen_stmt(g, s->as.func.block.arr[i]);
-    }
+    StmtList body = s->as.func.body;
+    for (size_t i = 0; i < body.len; i++) gen_stmt(g, body.arr[i]);
 
-    // TODO: empty functions, yay or nay?
-    gprintfln(g, "@end");
-    gprintfln(g, "ret 0");
     gprintfln(g, "}\n");
-
-    exit_scope(g);
 }
 
 static void gen_return(Generator *g, Stmt *s) {
-    if (!s->as.returnS.retVal)
+    assert(s->kind == STMT_RETURN);
+    Expr *retVal = s->as.returnS.retVal;
+
+    if (!retVal)
         gprintfln(g, "ret");
     else
-        gprintfln(g, "ret %s", gen_expr(g, s->as.returnS.retVal));
-
-    String retLabel = get_label("ret", s->loc);
-    gprintfln(g, "@%.*s", strf(retLabel));
+        gprintfln(g, "ret %s", gen_expr(g, retVal));
 }
 
 static void gen_var(Generator *g, Stmt *s) {
-    assert(s->kind == STMT_VAR);
-    VarStmt var = s->as.var;
-
-    String qbeVarAddr = declare_var(g, s);
-    gprintfln(g, "%.*s =l alloc4 1", strf(qbeVarAddr));
-    gprintfln(g, "storew 0, %.*s", strf(qbeVarAddr));
-
-    if (var.init) {
-        String init = gen_expr(g, var.init);
-        gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qbeVarAddr));
-    }
-
-    return;
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_while(Generator *g, Stmt *s) {
-    WhileStmt w = s->as.whileS;
-
-    String condLabel = get_label("cond", s->loc);
-    String bodyLabel = get_label("loop", s->loc);
-    String endLabel = get_label("end", s->loc);
-
-    enter_scope(g);
-
-    g->scope->contLabel = condLabel;
-    g->scope->breakLabel = endLabel;
-
-    gprintfln(g, "@%.*s", strf(condLabel));
-    String condVal = gen_expr(g, w.condition);
-    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
-
-    gprintfln(g, "@%.*s", strf(bodyLabel));
-    gen_stmt(g, w.body);
-    gprintfln(g, "jmp @%.*s", strf(condLabel));
-
-    gprintfln(g, "@%.*s", strf(endLabel));
-
-    exit_scope(g);
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_do_while(Generator *g, Stmt *s) {
-    WhileStmt w = s->as.doWhile;
-
-    String condLabel = get_label("cond", s->loc);
-    String bodyLabel = get_label("loop", s->loc);
-    String endLabel = get_label("end", s->loc);
-
-    enter_scope(g);
-
-    g->scope->contLabel = condLabel;
-    g->scope->breakLabel = endLabel;
-
-    gprintfln(g, "@%.*s", strf(bodyLabel));
-    gen_stmt(g, w.body);
-
-    gprintfln(g, "@%.*s", strf(condLabel));
-    String condVal = gen_expr(g, w.condition);
-
-    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
-    gprintfln(g, "@%.*s", strf(endLabel));
-
-    exit_scope(g);
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_if(Generator *g, Stmt *s) {
-    IfStmt ifS = s->as.ifS;
-
-    String cond = gen_expr(g, ifS.condition);
-    String thenLabel = get_label("then", s->loc);
-    String endLabel = get_label("end", s->loc);
-    String elseLabel = ifS.elseBranch ? get_label("else", s->loc) : endLabel;
-
-    enter_scope(g);
-
-    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(cond), strf(thenLabel), strf(elseLabel));
-    gprintfln(g, "@%.*s", strf(thenLabel));
-    gen_stmt(g, ifS.thenBranch);
-    gprintfln(g, "jmp @%.*s", strf(endLabel));
-    if (ifS.elseBranch) {
-        gprintfln(g, "@%.*s", strf(elseLabel));
-        gen_stmt(g, ifS.elseBranch);
-        gprintfln(g, "jmp @%.*s", strf(endLabel));
-    }
-    gprintfln(g, "@%.*s", strf(endLabel));
-
-    exit_scope(g);
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_for(Generator *g, Stmt *s) {
-    ForStmt f = s->as.forS;
-    String condLabel = get_label("cond", s->loc);
-    String bodyLabel = get_label("loop", s->loc);
-    String incLabel = get_label("inc", s->loc);
-    String endLabel = get_label("end", s->loc);
-
-    enter_scope(g);
-
-    g->scope->contLabel = incLabel;
-    g->scope->breakLabel = endLabel;
-
-    if (f.initializer) gen_stmt(g, f.initializer);
-
-    gprintfln(g, "@%.*s", strf(condLabel));
-    if (f.condition) {
-        String condVal = gen_expr(g, f.condition);
-        gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLabel), strf(endLabel));
-    }
-
-    gprintfln(g, "@%.*s", strf(bodyLabel));
-    gen_stmt(g, f.body);
-
-    gprintfln(g, "@%.*s", strf(incLabel));
-    if (f.increment) gen_expr(g, f.increment);
-    gprintfln(g, "jmp @%.*s", strf(condLabel));
-
-    gprintfln(g, "@%.*s", strf(endLabel));
-
-    g->scope->breakLabel = endLabel;
-    exit_scope(g);
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_break(Generator *g, Stmt *s) {
-    String breakLabel = {0};
-    for (Scope *scope = g->scope; scope; scope = scope->above) {
-        if (scope->breakLabel.len != 0) {
-            breakLabel = scope->breakLabel;
-            break;
-        }
-    }
-    if (breakLabel.len == 0) compile_error(g->unit->fileName, s->loc, "'continue' not in loop");
-
-    gprintfln(g, "jmp @%.*s", strf(breakLabel));
-
-    String after = get_label("after", s->loc);
-    gprintfln(g, "@%.*s", strf(after));
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_continue(Generator *g, Stmt *s) {
-    String contLabel = {0};
-    for (Scope *scope = g->scope; scope; scope = scope->above) {
-        if (scope->contLabel.len != 0) {
-            contLabel = scope->contLabel;
-            break;
-        }
-    }
-    if (contLabel.len == 0) compile_error(g->unit->fileName, s->loc, "'continue' not in loop");
-
-    gprintfln(g, "jmp @%.*s", strf(contLabel));
-
-    String after = get_label("after", s->loc);
-    gprintfln(g, "@%.*s", strf(after));
+    (void)g;
+    (void)s;
+    TODO("%s", __func__);
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
-        case STMT_NULL:                                   break;
-        case STMT_BLOCK:    gen_block(g, s);              break;
-        case STMT_FUNC:     gen_func(g, s);               break;
-        case STMT_RETURN:   gen_return(g, s);             break;
-        case STMT_VAR:      gen_var(g, s);                break;
+        case STMT_NULL:     break;
+        case STMT_BLOCK:    gen_block(g, s); break;
+        case STMT_FUNC:     gen_func(g, s); break;
+        case STMT_RETURN:   gen_return(g, s); break;
+        case STMT_VAR:      gen_var(g, s); break;
         case STMT_EXPR:     gen_expr(g, s->as.expr.expr); break;
-        case STMT_WHILE:    gen_while(g, s);              break;
-        case STMT_DO_WHILE: gen_do_while(g, s);           break;
-        case STMT_IF:       gen_if(g, s);                 break;
-        case STMT_FOR:      gen_for(g, s);                break;
-        case STMT_BREAK:    gen_break(g, s);              break;
-        case STMT_CONTINUE: gen_continue(g, s);           break;
+        case STMT_WHILE:    gen_while(g, s); break;
+        case STMT_DO_WHILE: gen_do_while(g, s); break;
+        case STMT_IF:       gen_if(g, s); break;
+        case STMT_FOR:      gen_for(g, s); break;
+        case STMT_BREAK:    gen_break(g, s); break;
+        case STMT_CONTINUE: gen_continue(g, s); break;
     }
 }
 
@@ -668,7 +200,6 @@ void codegen(TranslationUnit *unit, FILE *outf) {
     Generator g = (Generator){
         .outf = outf,
         .unit = unit,
-        .scope = &unit->globalSymbols,
     };
 
     for (size_t i = 0; i < unit->ast.len; i++) {
