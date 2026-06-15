@@ -38,6 +38,17 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
     return ret;
 }
 
+static void gprint_phi_zero_one(Generator *g, String out, String zero, String one, String end) {
+    gprintfln(g, "%.*s", strf(zero));
+    gprintfln(g, "jmp %.*s", strf(end));
+
+    gprintfln(g, "%.*s", strf(one));
+    gprintfln(g, "jmp %.*s", strf(end));
+
+    gprintfln(g, "%.*s", strf(end));
+    gprintfln(g, "%.*s =w phi %.*s 0, %.*s 1", strf(out), strf(zero), strf(one));
+}
+
 /******************************************************************************
  * Expression CodeGen
  *****************************************************************************/
