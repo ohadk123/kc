@@ -1,9 +1,10 @@
+#include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
 #include "sema.h"
 #include <unistd.h>
 
-int main(int argc, char *argv[]) {
+int main1(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: kc <file>\n");
         exit(1);
@@ -16,11 +17,12 @@ int main(int argc, char *argv[]) {
 
     scan_file(&unit);
     parse(&unit);
-    semantic_analysis(&unit);
+    if (!semantic_analysis(&unit)) return 1;
+    codegen(&unit, NULL);
     return 0;
 }
 
-int main1(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: kc <file>\n");
         exit(1);
@@ -45,9 +47,10 @@ int main1(int argc, char *argv[]) {
     //     print_stmt(unit.ast.arr[i], 1);
     //     printf("\n");
     // }
-    semantic_analysis(&unit);
+    if (!semantic_analysis(&unit)) return 1;
 
     if (argc > 2 && !strcmp(argv[2], "-q")) {
+        codegen(&unit, NULL);
         return 0;
     }
 
@@ -56,6 +59,7 @@ int main1(int argc, char *argv[]) {
     String asmFile = str_printf("%s.s", fileNameNoExt);
 
     FILE *outf = fopen(qbeFile.data, "w");
+    codegen(&unit, outf);
     fflush(outf);
     fclose(outf);
 
