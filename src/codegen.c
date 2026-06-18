@@ -291,9 +291,12 @@ static String gen_expr(Generator *g, Expr *e) {
 static void gen_stmt(Generator *g, Stmt *s);
 
 static void gen_block(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+	assert(s->kind == STMT_BLOCK);
+	StmtList block = s->as.block.block;
+
+	for (size_t i = 0; i < block.len; i++) {
+		gen_stmt(g, block.arr[i]);
+	}
 }
 
 static void gen_func(Generator *g, Stmt *s) {
