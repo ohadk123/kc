@@ -252,9 +252,34 @@ static String gen_unary_post(Generator *g, Expr *e) {
 
 
 static String gen_conditional(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_CONDITIONAL);
+    ConditionalExpr c = e->as.conditional;
+
+    String out = qbe_var(e->loc);
+    String cond = gen_expr(g, c.condition);
+    String iftLbl = qbe_label("ift", e->loc);
+    String iftEndLbl = qbe_label("iftEnd", e->loc);
+    String iffLbl = qbe_label("iff", e->loc);
+    String iffEndLbl = qbe_label("iftEnd", e->loc);
+    String end = qbe_label("end", e->loc);
+
+    gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(cond), strf(iftLbl), strf(iffLbl));
+
+    gprintfln(g, "%.*s", strf(iftLbl));
+    String iftVal = gen_expr(g, c.thenBranch);
+    gprintfln(g, "%.*s", strf(iftEndLbl));
+    gprintfln(g, "jmp %.*s", strf(end));
+
+    gprintfln(g, "%.*s", strf(iffLbl));
+    String iffVal = gen_expr(g, c.elseBranch);
+    gprintfln(g, "%.*s", strf(iffEndLbl));
+    gprintfln(g, "jmp %.*s", strf(end));
+
+    gprintfln(g, "%.*s", strf(end));
+    gprintfln(g, "%.*s =w phi %.*s %.*s, %.*s %.*s", strf(out), strf(iftEndLbl), strf(iftVal), strf(iffEndLbl),
+              strf(iffVal));
+
+    return out;
 }
 
 static String gen_func_call(Generator *g, Expr *e) {
@@ -349,24 +374,25 @@ static void gen_do_while(Generator *g, Stmt *s) {
 
 static void gen_if(Generator *g, Stmt *s) {
 	assert(s->kind == STMT_IF);
-	IfStmt ifS = s->as.ifS;
+	IfStmt ifStmt = s->as.ifS;
 
-	String ift = qbe_label("then", s->loc);
-	String end = qbe_label("end", s->loc);
-	String iff = ifS.elseBranch ? qbe_label("else", s->loc) : end;
+	String iftLbl = qbe_label("then", s->loc);
+	String endLbl = qbe_label("end", s->loc);
+	String iffLbl = ifStmt.elseBranch ? qbe_label("else", s->loc) : endLbl;
 
-	String cond = gen_expr(g, ifS.condition);
-	gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(cond), strf(ift), strf(iff));
-	gen_stmt(g, ifS.thenBranch);
-	gprintfln(g, "jmp %.*s", strf(end));
+	String condVal = gen_expr(g, ifStmt.condition);
+	gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(condVal), strf(iftLbl), strf(iffLbl));
+    gprintfln(g, "%.*s", strf(iftLbl));
+	gen_stmt(g, ifStmt.thenBranch);
+	gprintfln(g, "jmp %.*s", strf(endLbl));
 
-	if (ifS.elseBranch) {
-		gprintfln(g, "%.*s", strf(iff));
-		gen_stmt(g, ifS.elseBranch);
-		gprintfln(g, "jmp %.*s", strf(end));
+	if (ifStmt.elseBranch) {
+		gprintfln(g, "%.*s", strf(iffLbl));
+		gen_stmt(g, ifStmt.elseBranch);
+		gprintfln(g, "jmp %.*s", strf(endLbl));
 	}
 
-	gprintfln(g, "%.*s", strf(end));
+	gprintfln(g, "%.*s", strf(endLbl));
 }
 
 static void gen_for(Generator *g, Stmt *s) {
