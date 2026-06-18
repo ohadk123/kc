@@ -2,7 +2,7 @@ SRC_DIR=./src
 BUILD_DIR=./build
 
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -Werror -g -O3 -Wno-infinite-recursion
+CFLAGS=-Wall -Wextra -pedantic -Werror -g
 
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
