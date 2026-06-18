@@ -346,6 +346,9 @@ static void gen_return(Generator *g, Stmt *s) {
         String ret = gen_expr(g, retVal);
         gprintfln(g, "ret %.*s", strf(ret));
     }
+
+    String nextLbl = qbe_label("next", s->loc);
+    gprintfln(g, "%.*s", strf(nextLbl));
 }
 
 static void gen_var(Generator *g, Stmt *s) {
