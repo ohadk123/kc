@@ -241,7 +241,7 @@ static void check_if(Checker *c, Stmt *s) {
 
 	if (ifS.elseBranch) {
 		enter_scope(c);
-		check_stmt(c, ifS.thenBranch);
+		check_stmt(c, ifS.elseBranch);
 		exit_scope(c);
 	}
 }
