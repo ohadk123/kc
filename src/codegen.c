@@ -348,9 +348,25 @@ static void gen_do_while(Generator *g, Stmt *s) {
 }
 
 static void gen_if(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+	assert(s->kind == STMT_IF);
+	IfStmt ifS = s->as.ifS;
+
+	String ift = qbe_label("then", s->loc);
+	String end = qbe_label("end", s->loc);
+	String iff = ifS.elseBranch ? qbe_label("else", s->loc) : end;
+
+	String cond = gen_expr(g, ifS.condition);
+	gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(cond), strf(ift), strf(iff));
+	gen_stmt(g, ifS.thenBranch);
+	gprintfln(g, "jmp %.*s", strf(end));
+
+	if (ifS.elseBranch) {
+		gprintfln(g, "%.*s", strf(iff));
+		gen_stmt(g, ifS.elseBranch);
+		gprintfln(g, "jmp %.*s", strf(end));
+	}
+
+	gprintfln(g, "%.*s", strf(end));
 }
 
 static void gen_for(Generator *g, Stmt *s) {

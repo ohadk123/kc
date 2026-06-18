@@ -230,9 +230,20 @@ static void check_while(Checker *c, Stmt *s) {
 }
 
 static void check_if(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+	assert(s->kind == STMT_IF);
+	IfStmt ifS = s->as.ifS;
+
+	check_expr(c, ifS.condition);
+	
+	enter_scope(c);
+	check_stmt(c, ifS.thenBranch);
+	exit_scope(c);
+
+	if (ifS.elseBranch) {
+		enter_scope(c);
+		check_stmt(c, ifS.thenBranch);
+		exit_scope(c);
+	}
 }
 
 static void check_for(Checker *c, Stmt *s) {
