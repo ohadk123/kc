@@ -368,9 +368,23 @@ static void gen_var(Generator *g, Stmt *s) {
 }
 
 static void gen_while(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_WHILE);
+    WhileStmt whileStmt = s->as.whileS;
+
+    String condLbl = qbe_label("cond", s->loc);
+    String bodyLbl = qbe_label("loop", s->loc);
+    String endLbl = qbe_label("end", s->loc);
+
+    gprint_lbl(g, condLbl);
+    String condVal = gen_expr(g, whileStmt.condition);
+    gprintfln(g, "jnz %.*s, @%.*s, @%.*s", strf(condVal), strf(bodyLbl), strf(endLbl));
+
+    gprint_lbl(g, bodyLbl);
+    gen_stmt(g, whileStmt.body);
+    gprintfln(g, "jmp @%.*s", strf(condLbl));
+
+    gprint_lbl(g, endLbl);
+
 }
 
 static void gen_do_while(Generator *g, Stmt *s) {
