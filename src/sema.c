@@ -289,15 +289,19 @@ static void check_return(Checker *c, Stmt *s) {
 
 static void check_func(Checker *c, Stmt *s) {
     assert(s->kind == STMT_FUNC);
+    FuncStmt funcStmt = s->as.func;
+
 
     enter_scope(c);
     c->inFunc = true;
 
-    StmtList params = s->as.func.params;
+    StmtList params = funcStmt.params;
     for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
 
-    StmtList body = s->as.func.body;
-    for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
+    if (!funcStmt.isExtern) {
+        StmtList body = funcStmt.body;
+        for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
+    }
 
     exit_scope(c);
     c->inFunc = false;
