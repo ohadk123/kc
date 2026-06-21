@@ -31,13 +31,13 @@ typedef struct {
     LabelStack labels;
 } Generator;
 
-// static int gprintf(Generator *g, const char *fmt, ...) {
-//     va_list args;
-//     va_start(args, fmt);
-//     int ret = vfprintf(g->outf, fmt, args);
-//     va_end(args);
-//     return ret;
-// }
+static int gprintf(Generator *g, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = vfprintf(g->outf, fmt, args);
+    va_end(args);
+    return ret;
+}
 
 static int gprintfln(Generator *g, const char *fmt, ...) {
     va_list args;
@@ -356,7 +356,20 @@ static void gen_block(Generator *g, Stmt *s) {
 }
 
 static void gen_func(Generator *g, Stmt *s) {
-    gprintfln(g, "export function w $main() {");
+    assert(s->kind == STMT_FUNC);
+    FuncStmt funcStmt = s->as.func;
+
+    if (funcStmt.isPub) gprintf(g, "export ");
+    gprintf(g, "function w $main(");
+
+    StmtList params = funcStmt.params;
+    for (size_t i = 0; i < params.len; i++) {
+        String qvar = qbe_var(s->loc);
+        params.arr[i]->as.var.qbe_var = qvar;
+        gprintf(g, "w %.*s, ", strf(qvar));
+    }
+    gprintfln(g, ") {");
+
     gprintfln(g, "@start");
 
     StmtList body = s->as.func.body;

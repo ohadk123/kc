@@ -76,12 +76,13 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(Token name, StmtList params, StmtList block, bool isExtern, Location loc) {
+Stmt *stmt_make_func(Token name, StmtList params, StmtList block, bool isExtern, bool isPub, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.name = name;
     s->as.func.params = params;
     s->as.func.body = block;
     s->as.func.isExtern = isExtern;
+    s->as.func.isPub = isPub;
     return s;
 }
 
