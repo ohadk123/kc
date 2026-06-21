@@ -431,9 +431,10 @@ static void gen_do_while(Generator *g, Stmt *s) {
 
     gprint_lbl(g, condLbl);
     String condVal = gen_expr(g, w.condition);
-
     gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(condVal), strf(bodyLbl), strf(endLbl));
+
     gprint_lbl(g, endLbl);
+    pop_labels(g);
 }
 
 static void gen_if(Generator *g, Stmt *s) {
