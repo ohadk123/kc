@@ -91,6 +91,8 @@ static Stmt *expect_var(Checker *c, Token *nameTok) {
     assert(nameTok->kind == TOK_IDENTIFIER);
     Stmt *found = find_symbol(c->curr, nameTok->as.identifier);
     if (!found) checker_error(c, nameTok, "Unkown symbol '%.*s'", strf(nameTok->as.identifier));
+    if (found->kind != STMT_VAR)
+        checker_error(c, nameTok, "Cannot use symbol '%.*s' as a variable", nameTok->as.identifier);
     return found;
 }
 
