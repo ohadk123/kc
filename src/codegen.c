@@ -314,9 +314,30 @@ static String gen_conditional(Generator *g, Expr *e) {
 }
 
 static String gen_func_call(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_FUNC_CALL);
+    FuncCallExpr funcCallExpr = e->as.funcCall;
+
+    ExprList args = funcCallExpr.args;
+    struct { LIST_FIELDS(String); } argsNames = {0};
+    for (size_t i = 0; i < args.len; i++) {
+        String argName = gen_expr(g, args.arr[i]);
+        do {
+            if ((&argsNames)->len >= (&argsNames)->cap) {
+                (&argsNames)->cap = (&argsNames)->cap < 8 ? 8 : (&argsNames)->cap * 2;
+                (&argsNames)->arr = realloc((&argsNames)->arr, (&argsNames)->cap * sizeof(*(&argsNames)->arr));
+            }
+            (&argsNames)->arr[(&argsNames)->len++] = argName;
+        } while (0);
+    }
+
+    String out = qbe_var(e->loc);
+    gprintf(g, "%.*s =w call $%.*s(", strf(out), strf(funcCallExpr.func->as.primary.decl->as.func.name.as.identifier));
+    for (size_t i = 0; i < argsNames.len; i++) {
+        gprintf(g, "w %.*s, ", strf(argsNames.arr[i]));
+    }
+    gprintfln(g, ")");
+
+    return out;
 }
 
 static String gen_index(Generator *g, Expr *e) {
