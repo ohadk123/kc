@@ -21,16 +21,6 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
     return hadError;
 }
 
-// static Stmt *find_symbol(Scope *scope, String symbol) {
-//     while (scope) {
-//         Stmt *var = hm_find_val(&scope->symbols, symbol);
-//         if (var) return var;
-//         scope = scope->above;
-//     }
-//
-//     return 0;
-// }
-
 static bool is_lvalue(Expr *e) {
     if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER && e->as.primary.decl) {
         switch (e->as.primary.decl->kind) {
@@ -224,9 +214,18 @@ static void check_block(Checker *c, Stmt *s) {
 }
 
 static void check_while(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_WHILE || s->kind == STMT_DO_WHILE);
+    WhileStmt whileStmt = s->as.whileS;
+
+    check_expr(c, whileStmt.condition);
+
+    enter_scope(c);
+    c->loopCount++;
+
+    check_stmt(c, whileStmt.body);
+
+    exit_scope(c);
+    c->loopCount--;
 }
 
 static void check_if(Checker *c, Stmt *s) {
@@ -247,13 +246,23 @@ static void check_if(Checker *c, Stmt *s) {
 }
 
 static void check_for(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_FOR);
+    ForStmt forStmt = s->as.forS;
+
+    enter_scope(c);
+    c->loopCount++;
+
+    if (forStmt.initializer) check_stmt(c, forStmt.initializer);
+    if (forStmt.condition) check_expr(c, forStmt.condition);
+    if (forStmt.increment) check_expr(c, forStmt.increment);
+    check_stmt(c, forStmt.body);
+
+    exit_scope(c);
+    c->loopCount--;
 }
 
 static void check_return(Checker *c, Stmt *s) {
-    if (!c->inFunc) checker_error(c, s, "Return statement not in a function");
+    if (!c->inFunc) checker_error(c, s, "'return' statement not in a function");
     if (s->as.returnS.retVal) check_expr(c, s->as.returnS.retVal);
 }
 
@@ -274,15 +283,13 @@ static void check_func(Checker *c, Stmt *s) {
 }
 
 static void check_break(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_BREAK);
+    if (c->loopCount < 1) checker_error(c, s, "'break' statement not in a loop");
 }
 
 static void check_continue(Checker *c, Stmt *s) {
-    (void)c;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_CONTINUE);
+    if (c->loopCount < 1) checker_error(c, s, "'continue' statement not in a loop");
 }
 
 static void check_stmt(Checker *c, Stmt *s) {

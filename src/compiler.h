@@ -9,11 +9,6 @@ typedef struct _Scope Scope;
 struct _Scope {
     HashMap symbols;
     Scope *above;
-
-    bool inLoop;
-
-    String contLabel;
-    String breakLabel;
 };
 
 typedef struct {
