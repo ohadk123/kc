@@ -106,6 +106,15 @@ static void declare_var(Checker *c, Stmt *varStmt) {
     hm_insert(&c->curr->symbols, varName, varStmt);
 }
 
+static Stmt *expect_func(Checker *c, Token *nameTok) {
+    assert(nameTok->kind == TOK_IDENTIFIER);
+
+    String funcName = nameTok->as.identifier;
+    Stmt *found = hm_find_val(&c->unit->globalSymbols.symbols, funcName);
+    if (!found) checker_error(c, nameTok, "Call to undeclared function '%.*s'", strf(funcName));
+    return found;
+}
+
 /******************************************************************************
  * Expression Checking
  *****************************************************************************/
@@ -165,9 +174,21 @@ static void check_conditional(Checker *c, Expr *e) {
 }
 
 static void check_func_call(Checker *c, Expr *e) {
-    (void)c;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_FUNC_CALL);
+    FuncCallExpr funcCallExpr = e->as.funcCall;
+
+    assert(funcCallExpr.func->kind == EXPR_PRIMARY);
+    Stmt *funcStmt = expect_func(c, &funcCallExpr.func->as.primary.value);
+    if (!funcStmt) return;
+
+    size_t paramCount = funcStmt->as.func.params.len;
+    size_t argCount = funcCallExpr.args.len;
+    if (argCount > paramCount)
+        checker_error(c, e, "Too many arguments to function call expected %zu, got %zu", paramCount, argCount);
+    else if (argCount < paramCount)
+        checker_error(c, e, "Too few arguments to function call expected %zu, got %zu", paramCount, argCount);
+
+    funcCallExpr.func->as.primary.decl = funcStmt;
 }
 
 static void check_index(Checker *c, Expr *e) {

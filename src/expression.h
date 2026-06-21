@@ -78,6 +78,8 @@ typedef struct {
 typedef struct {
     Expr *func;
     ExprList args;
+
+    Stmt *decl;
 } FuncCallExpr;
 
 typedef struct {
