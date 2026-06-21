@@ -359,18 +359,24 @@ static void gen_func(Generator *g, Stmt *s) {
     assert(s->kind == STMT_FUNC);
     FuncStmt funcStmt = s->as.func;
 
+    if (funcStmt.isExtern) return;
+
     if (funcStmt.isPub) gprintf(g, "export ");
-    gprintf(g, "function w $main(");
+    gprintf(g, "function w $%.*s(", strf(funcStmt.name.as.identifier));
 
     StmtList params = funcStmt.params;
     for (size_t i = 0; i < params.len; i++) {
-        String qvar = qbe_var(s->loc);
-        params.arr[i]->as.var.qbe_var = qvar;
-        gprintf(g, "w %.*s, ", strf(qvar));
+        gprintf(g, "w %%%.*s, ", strf(params.arr[i]->as.var.name.as.identifier));
     }
     gprintfln(g, ") {");
-
     gprintfln(g, "@start");
+
+    for (size_t i = 0; i < params.len; i++) {
+        String qvar = qbe_var(s->loc);
+        gprintfln(g, "%.*s =l alloc4 1", strf(qvar));
+        gprintfln(g, "storew %%%.*s, %.*s", strf(params.arr[i]->as.var.name.as.identifier), strf(qvar));
+        params.arr[i]->as.var.qbe_var = qvar;
+    }
 
     StmtList body = s->as.func.body;
     for (size_t i = 0; i < body.len; i++) gen_stmt(g, body.arr[i]);
