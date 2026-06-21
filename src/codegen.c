@@ -403,9 +403,30 @@ static void gen_if(Generator *g, Stmt *s) {
 }
 
 static void gen_for(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_FOR);
+    ForStmt forStmt = s->as.forS;
+
+    String condLbl = qbe_label("cond", s->loc);
+    String bodyLbl = qbe_label("body", s->loc);
+    String incLbl = qbe_label("inc", s->loc);
+    String endLbl = qbe_label("end", s->loc);
+
+    if (forStmt.initializer) gen_stmt(g, forStmt.initializer);
+
+    gprint_lbl(g, condLbl);
+    if (forStmt.condition) {
+        String condVal = gen_expr(g, forStmt.condition);
+        gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(condVal), strf(bodyLbl), strf(endLbl));
+    }
+
+    gprint_lbl(g, bodyLbl);
+    gen_stmt(g, forStmt.body);
+
+    gprint_lbl(g, incLbl);
+    if (forStmt.increment) gen_expr(g, forStmt.increment);
+    gprintfln(g, "jmp %.*s", strf(condLbl));
+
+    gprint_lbl(g, endLbl);
 }
 
 static void gen_break(Generator *g, Stmt *s) {
