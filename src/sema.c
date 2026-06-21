@@ -189,6 +189,10 @@ static void check_func_call(Checker *c, Expr *e) {
         checker_error(c, e, "Too few arguments to function call expected %zu, got %zu", paramCount, argCount);
 
     funcCallExpr.func->as.primary.decl = funcStmt;
+
+    for (size_t i = 0; i < argCount; i++) {
+        check_expr(c, funcCallExpr.args.arr[i]);
+    }
 }
 
 static void check_index(Checker *c, Expr *e) {
