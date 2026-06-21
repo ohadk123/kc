@@ -17,8 +17,18 @@ static String qbe_label(const char *name, Location l) {
 }
 
 typedef struct {
+    String breakLbl;
+    String continueLbl;
+} LoopLabels;
+
+typedef struct {
+    LIST_FIELDS(LoopLabels);
+} LabelStack;
+
+typedef struct {
     FILE *outf;
     TranslationUnit *unit;
+    LabelStack labels;
 } Generator;
 
 // static int gprintf(Generator *g, const char *fmt, ...) {
@@ -40,6 +50,23 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
 
 static int gprint_lbl(Generator *g, String lbl) {
     return gprintfln(g, "%.*s", strf(lbl));
+}
+
+static void push_labels(Generator *g, String breakLbl, String contLbl) {
+    LoopLabels l = (LoopLabels) {breakLbl, contLbl};
+    list_append(&g->labels, l);
+}
+
+static void pop_labels(Generator *g) {
+    g->labels.len--;
+}
+
+static String get_break_lbl(Generator *g) {
+    return g->labels.arr[g->labels.len - 1].breakLbl;
+}
+
+static String get_cont_lbl(Generator *g) {
+    return g->labels.arr[g->labels.len - 1].continueLbl;
 }
 
 /******************************************************************************
@@ -375,6 +402,8 @@ static void gen_while(Generator *g, Stmt *s) {
     String bodyLbl = qbe_label("loop", s->loc);
     String endLbl = qbe_label("end", s->loc);
 
+    push_labels(g, endLbl, condLbl);
+
     gprint_lbl(g, condLbl);
     String condVal = gen_expr(g, whileStmt.condition);
     gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(condVal), strf(bodyLbl), strf(endLbl));
@@ -384,7 +413,7 @@ static void gen_while(Generator *g, Stmt *s) {
     gprintfln(g, "jmp %.*s", strf(condLbl));
 
     gprint_lbl(g, endLbl);
-
+    pop_labels(g);
 }
 
 static void gen_do_while(Generator *g, Stmt *s) {
@@ -394,6 +423,8 @@ static void gen_do_while(Generator *g, Stmt *s) {
     String condLbl = qbe_label("cond", s->loc);
     String bodyLbl = qbe_label("loop", s->loc);
     String endLbl = qbe_label("end", s->loc);
+
+    push_labels(g, endLbl, condLbl);
 
     gprint_lbl(g, bodyLbl);
     gen_stmt(g, w.body);
@@ -437,6 +468,8 @@ static void gen_for(Generator *g, Stmt *s) {
     String incLbl = qbe_label("inc", s->loc);
     String endLbl = qbe_label("end", s->loc);
 
+    push_labels(g, endLbl, incLbl);
+
     if (forStmt.initializer) gen_stmt(g, forStmt.initializer);
 
     gprint_lbl(g, condLbl);
@@ -453,18 +486,22 @@ static void gen_for(Generator *g, Stmt *s) {
     gprintfln(g, "jmp %.*s", strf(condLbl));
 
     gprint_lbl(g, endLbl);
+
+    pop_labels(g);
 }
 
 static void gen_break(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_BREAK);
+    String breakLbl = get_break_lbl(g);
+    gprintfln(g, "jmp %.*s", strf(breakLbl));
+    gprint_lbl(g, qbe_label("next", s->loc));
 }
 
 static void gen_continue(Generator *g, Stmt *s) {
-    (void)g;
-    (void)s;
-    TODO("%s", __func__);
+    assert(s->kind == STMT_CONTINUE);
+    String continueLbl = get_cont_lbl(g);
+    gprintfln(g, "jmp %.*s", strf(continueLbl));
+    gprint_lbl(g, qbe_label("next", s->loc));
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
