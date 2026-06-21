@@ -424,12 +424,18 @@ static void gen_return(Generator *g, Stmt *s) {
 
 static void gen_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
-    VarStmt var = s->as.var;
+    VarStmt varStmt = s->as.var;
+    bool isExtern = varStmt.isExtern;
+    if (isExtern) TODO("Extern variables");
+    bool isPub = varStmt.isPub;
+    if (isPub) TODO("Pub variables");
+    bool isStatic = varStmt.isStatic;
+    if (isStatic) TODO("Static variables");
 
     String qvar = qbe_var(s->loc);
     gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
-    assert(var.init);
-    String init = gen_expr(g, var.init);
+    assert(varStmt.init);
+    String init = gen_expr(g, varStmt.init);
     gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qvar));
     s->as.var.qbe_var = qvar;
 }

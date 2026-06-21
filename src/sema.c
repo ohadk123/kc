@@ -226,6 +226,13 @@ static void check_stmt(Checker *c, Stmt *s);
 
 static void check_var(Checker *c, Stmt *s) {
     assert(s->kind == STMT_VAR);
+    VarStmt varStmt = s->as.var;
+    bool isExtern = varStmt.isExtern;
+    if (isExtern) TODO("Extern variables");
+    bool isPub = varStmt.isPub;
+    if (isPub) TODO("Pub variables");
+    bool isStatic = varStmt.isStatic;
+    if (isStatic) TODO("Static variables");
 
     check_expr(c, s->as.var.init);
     declare_var(c, s);

@@ -12,10 +12,13 @@ Stmt *stmt_make_null(Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(Token name, Expr *initalizer, Location loc) {
+Stmt *stmt_make_var(Token name, Expr *initalizer, bool isExtern, bool isPub, bool isStatic, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.name = name;
     s->as.var.init = initalizer;
+    s->as.var.isExtern = isExtern;
+    s->as.var.isPub = isPub;
+    s->as.var.isStatic = isStatic;
     return s;
 }
 
@@ -211,7 +214,7 @@ Token get_top_level_name(Stmt *s) {
     switch (s->kind) {
         case STMT_FUNC: return s->as.func.name;
         case STMT_NULL:
-        case STMT_VAR:
+        case STMT_VAR: return s->as.var.name;
         case STMT_EXPR:
         case STMT_BLOCK:
         case STMT_WHILE:

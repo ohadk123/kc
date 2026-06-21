@@ -29,6 +29,10 @@ typedef struct {
     Token name;
     Expr *init;
     String qbe_var;
+
+    bool isExtern;
+    bool isPub;
+    bool isStatic;
 } VarStmt;
 
 typedef struct {
@@ -85,7 +89,7 @@ struct _Stmt {
 };
 
 Stmt *stmt_make_null(Location loc);
-Stmt *stmt_make_var(Token name, Expr *initalizer, Location loc);
+Stmt *stmt_make_var(Token name, Expr *initalizer, bool isExtern, bool isPub, bool isStatic, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
