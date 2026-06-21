@@ -75,7 +75,6 @@ struct _Stmt {
         ExprStmt expr;
         BlockStmt block;
         WhileStmt whileS;
-        WhileStmt doWhile;
         IfStmt ifS;
         ForStmt forS;
         ReturnStmt returnS;

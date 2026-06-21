@@ -40,8 +40,8 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc) {
 
 Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc) {
     Stmt *s = make_stmt(STMT_DO_WHILE, loc);
-    s->as.doWhile.condition = cond;
-    s->as.doWhile.body = body;
+    s->as.whileS.condition = cond;
+    s->as.whileS.body = body;
     return s;
 }
 
@@ -131,10 +131,10 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_DO_WHILE:
             printf("%*s\"kind\": \"do/while\",\n", i * 2, "");
             printf("%*s\"cond\": ", i * 2, "");
-            print_expr(stmt->as.doWhile.condition, i);
+            print_expr(stmt->as.whileS.condition, i);
             printf(",\n");
             printf("%*s\"body\": ", i * 2, "");
-            print_stmt(stmt->as.doWhile.body, i);
+            print_stmt(stmt->as.whileS.body, i);
             printf("\n");
             break;
         case STMT_IF:
