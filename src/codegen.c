@@ -373,7 +373,7 @@ static void gen_func(Generator *g, Stmt *s) {
 
     for (size_t i = 0; i < params.len; i++) {
         String qvar = qbe_var(s->loc);
-        gprintfln(g, "%.*s =l alloc4 1", strf(qvar));
+        gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
         gprintfln(g, "storew %%%.*s, %.*s", strf(params.arr[i]->as.var.name.as.identifier), strf(qvar));
         params.arr[i]->as.var.qbe_var = qvar;
     }
@@ -406,7 +406,7 @@ static void gen_var(Generator *g, Stmt *s) {
     VarStmt var = s->as.var;
 
     String qvar = qbe_var(s->loc);
-    gprintfln(g, "%.*s =l alloc4 1", strf(qvar));
+    gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
     assert(var.init);
     String init = gen_expr(g, var.init);
     gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qvar));
