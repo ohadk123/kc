@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     String asmCommand;
     if (object)
-        asmCommand = str_printf("gcc -c %.*s", strf(asmFile), fileNameNoExt);
+        asmCommand = str_printf("gcc -c %.*s -o %s.o", strf(asmFile), fileNameNoExt);
     else
         asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
 
