@@ -65,6 +65,7 @@ typedef struct {
     Token name;
     StmtList params;
     StmtList body;
+    bool isExtern;
 } FuncStmt;
 
 struct _Stmt {
@@ -91,7 +92,7 @@ Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(Token name, StmtList params, StmtList block, Location loc);
+Stmt *stmt_make_func(Token name, StmtList params, StmtList block, bool isExtern, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

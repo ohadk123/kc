@@ -448,21 +448,27 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-static Stmt *func_def_stmt(Parser *p) {
+static Stmt *func_def_stmt(Parser *p, bool isExtern) {
     parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
     expect(p, TOK_LEFT_PAREN, "Expectd '('");
     StmtList params = params_list(p);
 
-    expect(p, TOK_LEFT_BRACE, "Expected '{'");
-    StmtList body = stmt_list(p);
+    StmtList body = {0};
+    if (!isExtern) {
+        expect(p, TOK_LEFT_BRACE, "Expected '{'");
+        body = stmt_list(p);
+    } else {
+        expect(p, TOK_SEMICOLON, "Expected ';' after external function declaration");
+    }
 
-    return stmt_make_func(name, params, body, name.loc);
+    return stmt_make_func(name, params, body, isExtern, name.loc);
 }
 
 static Stmt *top_level_decl(Parser *p) {
-    if (match_types(p)) return func_def_stmt(p);
+    if (match_types(p)) return func_def_stmt(p, false);
+    if (match(p, TOK_EXTERN)) return func_def_stmt(p, true);
 
     parser_error(p, "Unkown top level declaration");
 }
