@@ -11,6 +11,11 @@ static String qbe_var(Location l) {
     return str_printf("%%_ktemp_%zu_%zu_%zu", i, l.line, l.col);
 }
 
+static String qbe_static(String name, Location l) {
+    uint64_t i = counter();
+    return str_printf("$_%s_%zu_%zu_%zu", name, i, l.line, l.col);
+}
+
 static String qbe_label(const char *name, Location l) {
     uint64_t i = counter();
     return str_printf("@_%s_%zu_%zu_%zu", name, i, l.line, l.col);
@@ -29,6 +34,7 @@ typedef struct {
     FILE *outf;
     TranslationUnit *unit;
     LabelStack labels;
+    StmtList globals;
 } Generator;
 
 static int gprintf(Generator *g, const char *fmt, ...) {
@@ -47,6 +53,10 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
     fprintf(g->outf, "\n");
     return ret;
 }
+
+/******************************************************************************
+ * Loop Labels Stack
+ *****************************************************************************/
 
 static int gprint_lbl(Generator *g, String lbl) {
     return gprintfln(g, "%.*s", strf(lbl));
@@ -425,7 +435,13 @@ static void gen_return(Generator *g, Stmt *s) {
 static void gen_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    if (varStmt.specifier != TOK_UNKNOWN) TODO("Storage specifier '%s'", tokenTypesStrings[varStmt.specifier]);
+    switch (varStmt.specifier) {
+        case TOK_UNKNOWN: break;
+        case TOK_EXTERN: s->as.var.qbe_var = varStmt.name.as.identifier; return;
+        case TOK_STATIC: return;
+        case TOK_PUB:    TODO("%s: TOK_PUB", __func__);
+        default: UNREACHABLE("%s: Not a valid storage specifier (%s)", __func__, tokenTypesStrings[varStmt.specifier]);
+    }
 
     String qvar = qbe_var(s->loc);
     gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
@@ -563,15 +579,78 @@ static void gen_stmt(Generator *g, Stmt *s) {
     }
 }
 
+void collect_statics(Generator *g, Stmt *s) {
+    StmtList block;
+
+    switch (s->kind) {
+        case STMT_NULL:   return;
+        case STMT_BLOCK:  block = s->as.block.block; break;
+        case STMT_RETURN: return;
+        case STMT_VAR:
+            if (s->as.var.specifier != TOK_STATIC) return;
+            // static variables
+            String qvar = qbe_static(s->as.var.name.as.identifier, s->loc);
+            gprintfln(g, "data %.*s = { w %d }", strf(qvar), (int32_t)s->as.var.initVal);
+            s->as.var.qbe_var = qvar;
+            return;
+        case STMT_EXPR:     return;
+        case STMT_WHILE:    collect_statics(g, s->as.whileS.body); return;
+        case STMT_DO_WHILE: collect_statics(g, s->as.whileS.body); return;
+        case STMT_IF:
+            collect_statics(g, s->as.ifS.thenBranch);
+            if (s->as.ifS.elseBranch) collect_statics(g, s->as.ifS.elseBranch);
+            return;
+        case STMT_FOR:      collect_statics(g, s->as.forS.body); return;
+        case STMT_BREAK:    return;
+        case STMT_CONTINUE: return;
+        default:            UNREACHABLE("Bad statement kind %d", s->kind);
+    }
+
+    for (size_t i = 0; i < block.len; i++) collect_statics(g, block.arr[i]);
+}
+
+void gen_data_var(Generator *g, Stmt *s) {
+    switch (s->kind) {
+        // global variable
+        case STMT_VAR: {
+            VarStmt varStmt = s->as.var;
+            assert(varStmt.name.kind == TOK_IDENTIFIER);
+            if (varStmt.specifier == TOK_PUB) gprintf(g, "export ");
+            String qvar = str_printf("$%.*s", strf(varStmt.name.as.identifier));
+            if (varStmt.specifier != TOK_EXTERN)
+                gprintfln(g, "data %.*s = { w %d }", strf(qvar), (int32_t)varStmt.initVal);
+            s->as.var.qbe_var = qvar;
+            return;
+        }
+
+        case STMT_FUNC: {
+            StmtList body = s->as.func.body;
+            for (size_t i = 0; i < body.len; i++) {
+                collect_statics(g, body.arr[i]);
+            }
+            break;
+        }
+
+        default: UNREACHABLE("Bad statement kind %d", s->kind);
+    }
+}
+
 void codegen(TranslationUnit *unit, FILE *outf) {
     if (!outf) outf = stdout;
 
     Generator g = (Generator){
         .outf = outf,
         .unit = unit,
+        .labels = {0},
+        .globals = {0},
     };
 
     for (size_t i = 0; i < unit->ast.len; i++) {
-        gen_stmt(&g, unit->ast.arr[i]);
+        gen_data_var(&g, unit->ast.arr[i]);
+    }
+
+    for (size_t i = 0; i < unit->ast.len; i++) {
+        Stmt *s = unit->ast.arr[i];
+        if (s->kind == STMT_FUNC) gen_stmt(&g, s);
     }
 }
