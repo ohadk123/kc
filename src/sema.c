@@ -199,8 +199,10 @@ static Stmt *expect_var(Checker *c, Token *nameTok) {
     assert(nameTok->kind == TOK_IDENTIFIER);
     Stmt *found = find_symbol(c->curr, nameTok->as.identifier);
     if (!found) checker_error(c, nameTok, "Unkown symbol '%.*s'", strf(nameTok->as.identifier));
-    if (found->kind != STMT_VAR)
+    if (found->kind != STMT_VAR) {
         checker_error(c, nameTok, "Cannot use symbol '%.*s' as a variable", nameTok->as.identifier);
+        return NULL;
+    }
     return found;
 }
 
@@ -334,15 +336,21 @@ static void check_stmt(Checker *c, Stmt *s);
 static void check_var(Checker *c, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    bool isExtern = varStmt.isExtern;
-    if (isExtern) TODO("Extern variables");
-    bool isPub = varStmt.isPub;
-    if (isPub) TODO("Pub variables");
-    bool isStatic = varStmt.isStatic;
-    if (isStatic) TODO("Static variables");
 
-    check_expr(c, s->as.var.init);
-    declare_var(c, s);
+    if (varStmt.specifier == TOK_EXTERN) return;
+
+    bool isGlobal = c->curr == &c->unit->globalSymbols;
+    bool isStatic = varStmt.specifier == TOK_STATIC;
+
+    if (isGlobal || isStatic) {
+        if (!eval_expr(varStmt.init, &varStmt.initVal))
+            checker_error(c, s, "Initalizer not a compile time constant");
+    } else {
+        assert (s->as.var.init);
+        check_expr(c, s->as.var.init);
+    }
+
+    if (!isGlobal) declare_var(c, s);
 }
 
 static void check_block(Checker *c, Stmt *s) {
@@ -418,7 +426,7 @@ static void check_func(Checker *c, Stmt *s) {
     StmtList params = funcStmt.params;
     for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
 
-    if (!funcStmt.isExtern) {
+    if (funcStmt.specifier != TOK_EXTERN) {
         StmtList body = funcStmt.body;
         for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
     }
