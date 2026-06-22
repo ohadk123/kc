@@ -127,7 +127,6 @@ static void check_primary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
     Token prim = e->as.primary.value;
 
-    (void)c;
     switch (prim.kind) {
         case TOK_IDENTIFIER:      e->as.primary.decl = expect_var(c, &prim); return;
         case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
