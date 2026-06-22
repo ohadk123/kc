@@ -31,6 +31,7 @@ typedef struct {
     String qbe_var;
 
     TokenKind specifier;
+    int64_t initVal;
 } VarStmt;
 
 typedef struct {
