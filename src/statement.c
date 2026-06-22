@@ -12,13 +12,11 @@ Stmt *stmt_make_null(Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(Token name, Expr *initalizer, bool isExtern, bool isPub, bool isStatic, Location loc) {
+Stmt *stmt_make_var(Token name, Expr *initalizer, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.name = name;
     s->as.var.init = initalizer;
-    s->as.var.isExtern = isExtern;
-    s->as.var.isPub = isPub;
-    s->as.var.isStatic = isStatic;
+    s->as.var.spec = storage;
     return s;
 }
 
@@ -79,13 +77,12 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(Token name, StmtList params, StmtList block, bool isExtern, bool isPub, Location loc) {
+Stmt *stmt_make_func(Token name, StmtList params, StmtList block, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.name = name;
     s->as.func.params = params;
     s->as.func.body = block;
-    s->as.func.isExtern = isExtern;
-    s->as.func.isPub = isPub;
+    s->as.var.spec = storage;
     return s;
 }
 

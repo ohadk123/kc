@@ -285,27 +285,34 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 
 Stmt *statement(Parser *p);
 
-Stmt *var_stmt_ext(Parser *p, Token name, bool isExtern, bool isPub, bool isStatic) {
+Stmt *var_stmt_ext(Parser *p, Token name, TokenKind storage) {
     Expr *init = NULL;
 
-    if (!isExtern && match(p, TOK_EQUALS)) init = expression(p);
-    else init = expr_make_primary((Token) {
+    if (match(p, TOK_EQUALS)) {
+        if (storage == TOK_EXTERN)
+            parser_error(p, "Cannot assign an external variable");
+        else
+            init = expression(p);
+    } else {
+        init = expr_make_primary((Token) {
             .kind = TOK_INTEGER_LITERAL,
             .loc = name.loc,
             .as.integerLiteral = 0,
-    }, name.loc);
+        }, name.loc);
+    }
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
-    return stmt_make_var(name, init, isExtern, isPub, isStatic, name.loc);
+    return stmt_make_var(name, init, storage, name.loc);
 }
 
-Stmt *var_stmt(Parser *p, bool isStatic) {
-    if (isStatic && !match_types(p)) parser_error(p, "Expected variable type");
+Stmt *var_stmt(Parser *p) {
+    TokenKind storage = previous(p).kind == TOK_STATIC ? TOK_STATIC : TOK_UNKNOWN;
+    if (storage == TOK_STATIC && !match_types(p)) parser_error(p, "Expected variable type");
     parse_type(p);
 
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
-    return var_stmt_ext(p, name, false, false, isStatic);
+    return var_stmt_ext(p, name, storage);
 }
 
 Stmt *for_stmt(Parser *p) {
@@ -314,7 +321,7 @@ Stmt *for_stmt(Parser *p) {
 
     Stmt *init = NULL;
     if (match_types(p))
-        init = var_stmt(p, false);
+        init = var_stmt(p);
     else if (!match(p, TOK_SEMICOLON)) {
         init = stmt_make_expr(expression(p), previous(p).loc);
         expect(p, TOK_SEMICOLON, "Expected ';' after expression");
@@ -417,8 +424,8 @@ Stmt *do_while_stmt(Parser *p) {
 }
 
 Stmt *statement(Parser *p) {
-    if (match_types(p))           return var_stmt(p, false);
-    if (match(p, TOK_STATIC))     return var_stmt(p, true);
+    if (match_types(p))           return var_stmt(p);
+    if (match(p, TOK_STATIC))     return var_stmt(p);
     if (match(p, TOK_FOR))        return for_stmt(p);
     if (match(p, TOK_WHILE))      return while_stmt(p);
     if (match(p, TOK_IF))         return if_stmt(p);
@@ -445,7 +452,7 @@ StmtList params_list(Parser *p) {
         parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token name = previous(p);
-        Stmt *param = stmt_make_var(name, NULL, false, false, false, name.loc);
+        Stmt *param = stmt_make_var(name, NULL, TOK_UNKNOWN, name.loc);
         list_append(&params, param);
         if (!match(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
@@ -456,35 +463,35 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-static Stmt *func_def_stmt(Parser *p, Token name, bool isExtern, bool isPub) {
+static Stmt *func_def_stmt(Parser *p, Token name, TokenKind storage) {
     StmtList params = params_list(p);
 
     StmtList body = {0};
-    if (!isExtern) {
+    if (storage != TOK_EXTERN) {
         expect(p, TOK_LEFT_BRACE, "Expected '{'");
         body = stmt_list(p);
     } else {
         expect(p, TOK_SEMICOLON, "Expected ';' after external function declaration");
     }
 
-    return stmt_make_func(name, params, body, isExtern, isPub, name.loc);
+    return stmt_make_func(name, params, body, storage, name.loc);
 }
 
 static Stmt *top_level_decl(Parser *p) {
-    bool isExtern = false, isPub = false;
+    TokenKind storage = TOK_UNKNOWN;
     if (!match_types(p)) {
-        if (match(p, TOK_EXTERN)) isExtern = true;
-        else if (match(p, TOK_PUB)) isPub = true;
-        else parser_error(p, "Unkown top level specifier '%.*s'", tokenTypesStrings[previous(p).kind]);
+        if (!match(p, TOK_EXTERN, TOK_PUB))
+            parser_error(p, "Unkown top level specifier '%.*s'", tokenTypesStrings[previous(p).kind]);
 
+        storage = previous(p).kind;
         if (!match_types(p)) parser_error(p, "Expected type");
     }
 
     parse_type(p);
     Token name = expect(p, TOK_IDENTIFIER, "Expected function name");
 
-    if (match(p, TOK_LEFT_PAREN)) return func_def_stmt(p, name, isExtern, isPub);
-    else return var_stmt_ext(p, name, isExtern, isPub, false);
+    if (match(p, TOK_LEFT_PAREN)) return func_def_stmt(p, name, storage);
+    else return var_stmt_ext(p, name, storage);
 
     parser_error(p, "Unkown top level declaration");
 }
