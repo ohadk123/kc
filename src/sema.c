@@ -44,6 +44,114 @@ static bool is_lvalue(Expr *e) {
     return false;
 }
 
+/******************************************************************************
+ * Evaluating Expressions
+ *****************************************************************************/
+
+static bool eval_expr(Expr *e, int64_t *out);
+
+static bool eval_primary(Expr *e, int64_t *out) {
+    assert(e->kind == EXPR_PRIMARY);
+    Token prim = e->as.primary.value;
+
+    switch (prim.kind) {
+        case TOK_IDENTIFIER:      return false;
+        case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
+        case TOK_CHAR_LITERAL:    *out = prim.as.charLiteral; return true;
+        case TOK_INTEGER_LITERAL: *out = prim.as.integerLiteral; return true;
+        case TOK_FLOAT_LITERAL:   *out = (int64_t) prim.as.floatLiteral; return true;
+        case TOK_TRUE:            *out = 1; return true;
+        case TOK_FALSE:           *out = 0; return true;
+        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[prim.kind]);
+    }
+}
+
+static bool eval_binary(Expr *e, int64_t *out) {
+    assert (e->kind == EXPR_BINARY);
+    BinaryExpr binExpr = e->as.binary;
+
+    int64_t lhs, rhs;
+    if (!eval_expr(binExpr.lhs, &lhs)) return false;
+    if (!eval_expr(binExpr.rhs, &rhs)) return false;
+
+    if ((binExpr.op == TOK_SLASH || binExpr.op == TOK_PERCENT) && rhs == 0) return false;
+
+    switch (binExpr.op) {
+        case TOK_PLUS:                *out = lhs +  rhs; break;
+        case TOK_MINUS:               *out = lhs -  rhs; break;
+        case TOK_STAR:                *out = lhs *  rhs; break;
+        case TOK_SLASH:               *out = lhs /  rhs; break;
+        case TOK_PERCENT:             *out = lhs %  rhs; break;
+        case TOK_CARET:               *out = lhs ^  rhs; break;
+        case TOK_LESS_LESS:           *out = lhs << rhs; break;
+        case TOK_GREATER_GREATER:     *out = lhs >> rhs; break;
+        case TOK_AMPERSAND:           *out = lhs &  rhs; break;
+        case TOK_PIPE:                *out = lhs |  rhs; break;
+        case TOK_EQUALS_EQUALS:       *out = lhs == rhs; break;
+        case TOK_BANG_EQUALS:         *out = lhs != rhs; break;
+        case TOK_GREATER:             *out = lhs >  rhs; break;
+        case TOK_GREATER_EQUALS:      *out = lhs >= rhs; break;
+        case TOK_LESS:                *out = lhs <  rhs; break;
+        case TOK_LESS_EQUALS:         *out = lhs <= rhs; break;
+        case TOK_AMPERSAND_AMPERSAND: *out = lhs && rhs; break;
+        case TOK_PIPE_PIPE:           *out = lhs || rhs; break;
+        default:                      UNREACHABLE("Not an binary operator (%s)", tokenTypesStrings[binExpr.op]);
+    }
+
+    return true;
+}
+
+static bool eval_unary(Expr *e, int64_t *out) {
+    assert(e->kind == EXPR_UNARY);
+    UnaryExpr unExpr = e->as.unary;
+
+    int64_t inner;
+    if (!eval_expr(unExpr.inner, &inner)) return false;
+
+    switch (unExpr.op) {
+        case TOK_PLUS:        *out =  inner; break;
+        case TOK_MINUS:       *out = -inner; break;
+        case TOK_TILDE:       *out = ~inner; break;
+        case TOK_BANG:        *out = !inner; break;
+
+        case TOK_PLUS_PLUS:
+        case TOK_MINUS_MINUS:
+        case TOK_STAR:
+        case TOK_AMPERSAND: return false;
+
+        default: UNREACHABLE("%s: Not an unary operator (%s)", __func__, tokenTypesStrings[unExpr.op]);
+    }
+
+    return true;
+}
+
+static bool eval_cond(Expr *e, int64_t *out) {
+    assert(e->kind == EXPR_CONDITIONAL);
+    ConditionalExpr c = e->as.conditional;
+
+    int64_t condVal, thenVal, elseVal;
+    if (!eval_expr(c.condition, &condVal)) return false;
+    if (!eval_expr(c.thenBranch, &thenVal)) return false;
+    if (!eval_expr(c.elseBranch, &elseVal)) return false;
+
+    *out = condVal ? thenVal : elseVal;
+    return true;
+}
+
+static bool eval_expr(Expr *e, int64_t *out) {
+    switch (e->kind) {
+        case EXPR_PRIMARY:     return eval_primary(e, out);
+        case EXPR_GROUPING:    return eval_expr(e->as.grouping.inner, out);
+        case EXPR_BINARY:      return eval_binary(e, out);
+        case EXPR_UNARY:       return eval_unary(e, out);
+        case EXPR_ASSIGN:      return false;
+        case EXPR_UNARY_POST:  return false;
+        case EXPR_CONDITIONAL: return eval_cond(e, out);
+        case EXPR_FUNC_CALL:   return false;
+        case EXPR_INDEX:       return false;
+    }
+}
+
 typedef struct {
     TranslationUnit *unit;
     Scope *curr;
