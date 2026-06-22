@@ -380,9 +380,9 @@ static void gen_func(Generator *g, Stmt *s) {
     assert(s->kind == STMT_FUNC);
     FuncStmt funcStmt = s->as.func;
 
-    if (funcStmt.isExtern) return;
+    if (funcStmt.specifier == TOK_EXTERN) return;
 
-    if (funcStmt.isPub) gprintf(g, "export ");
+    if (funcStmt.specifier == TOK_PUB) gprintf(g, "export ");
     gprintf(g, "function w $%.*s(", strf(funcStmt.name.as.identifier));
 
     StmtList params = funcStmt.params;
@@ -425,12 +425,7 @@ static void gen_return(Generator *g, Stmt *s) {
 static void gen_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    bool isExtern = varStmt.isExtern;
-    if (isExtern) TODO("Extern variables");
-    bool isPub = varStmt.isPub;
-    if (isPub) TODO("Pub variables");
-    bool isStatic = varStmt.isStatic;
-    if (isStatic) TODO("Static variables");
+    if (varStmt.specifier != TOK_UNKNOWN) TODO("Storage specifier '%s'", tokenTypesStrings[varStmt.specifier]);
 
     String qvar = qbe_var(s->loc);
     gprintfln(g, "%.*s =l alloc4 4", strf(qvar));

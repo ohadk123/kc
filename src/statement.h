@@ -30,7 +30,7 @@ typedef struct {
     Expr *init;
     String qbe_var;
 
-    TokenKind spec;
+    TokenKind specifier;
 } VarStmt;
 
 typedef struct {
@@ -68,7 +68,7 @@ typedef struct {
     StmtList params;
     StmtList body;
 
-    TokenKind spec;
+    TokenKind specifier;
 } FuncStmt;
 
 struct _Stmt {

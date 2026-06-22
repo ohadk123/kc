@@ -16,7 +16,7 @@ Stmt *stmt_make_var(Token name, Expr *initalizer, TokenKind storage, Location lo
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.name = name;
     s->as.var.init = initalizer;
-    s->as.var.spec = storage;
+    s->as.var.specifier = storage;
     return s;
 }
 
@@ -82,7 +82,7 @@ Stmt *stmt_make_func(Token name, StmtList params, StmtList block, TokenKind stor
     s->as.func.name = name;
     s->as.func.params = params;
     s->as.func.body = block;
-    s->as.var.spec = storage;
+    s->as.func.specifier = storage;
     return s;
 }
 

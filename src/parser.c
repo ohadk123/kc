@@ -293,7 +293,7 @@ Stmt *var_stmt_ext(Parser *p, Token name, TokenKind storage) {
             parser_error(p, "Cannot assign an external variable");
         else
             init = expression(p);
-    } else {
+    } else if (storage != TOK_EXTERN) {
         init = expr_make_primary((Token) {
             .kind = TOK_INTEGER_LITERAL,
             .loc = name.loc,
