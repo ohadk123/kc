@@ -9,12 +9,6 @@ typedef struct _Scope Scope;
 struct _Scope {
     HashMap symbols;
     Scope *above;
-
-    Type *retType;
-    bool inLoop;
-
-    String contLabel;
-    String breakLabel;
 };
 
 typedef struct {
@@ -26,5 +20,6 @@ typedef struct {
 } TranslationUnit;
 
 __attribute__((__noreturn__)) void compile_error(String fileName, Location place, const char *fmt, ...);
+bool compile_err_no_abort(String fileName, Location place, const char *fmt, ...);
 
 #endif // COMPILER_H

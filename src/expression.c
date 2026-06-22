@@ -1,5 +1,4 @@
 #include "expression.h"
-#include "type.h"
 
 static Expr *make_expr(ExprKind kind, Location loc) {
     Expr *e = calloc(1, sizeof(Expr));
@@ -11,6 +10,7 @@ static Expr *make_expr(ExprKind kind, Location loc) {
 Expr *expr_make_primary(Token val, Location loc) {
     Expr *e = make_expr(EXPR_PRIMARY, loc);
     e->as.primary.value = val;
+    e->as.primary.decl = NULL;
     return e;
 }
 
@@ -118,11 +118,6 @@ void print_expr(Expr *expr, int indent) {
     }
     printf("{\n");
     int i = indent + 1;
-
-    if (expr->type) {
-        String ts = type_to_string(expr->type);
-        printf("%*s\"type\": \"%.*s\",\n", i * 2, "", strf(ts));
-    }
 
     switch (expr->kind) {
         case EXPR_PRIMARY: {

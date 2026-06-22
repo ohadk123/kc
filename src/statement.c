@@ -1,5 +1,4 @@
 #include "statement.h"
-#include "type.h"
 
 static Stmt *make_stmt(StmtKind kind, Location loc) {
     Stmt *s = calloc(1, sizeof(Stmt));
@@ -13,11 +12,11 @@ Stmt *stmt_make_null(Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(Type *type, Token name, Expr *initalizer, Location loc) {
+Stmt *stmt_make_var(Token name, Expr *initalizer, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
-    s->as.var.type = type;
     s->as.var.name = name;
     s->as.var.init = initalizer;
+    s->as.var.specifier = storage;
     return s;
 }
 
@@ -42,8 +41,8 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc) {
 
 Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc) {
     Stmt *s = make_stmt(STMT_DO_WHILE, loc);
-    s->as.doWhile.condition = cond;
-    s->as.doWhile.body = body;
+    s->as.whileS.condition = cond;
+    s->as.whileS.body = body;
     return s;
 }
 
@@ -78,11 +77,12 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(Type *funcType, Token name, StmtList block, Location loc) {
+Stmt *stmt_make_func(Token name, StmtList params, StmtList block, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
-    s->as.func.funcType = funcType;
     s->as.func.name = name;
-    s->as.func.block = block;
+    s->as.func.params = params;
+    s->as.func.body = block;
+    s->as.func.specifier = storage;
     return s;
 }
 
@@ -97,8 +97,6 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_NULL: break;
         case STMT_VAR:
             printf("%*s\"kind\": \"var\",\n", i * 2, "");
-            String typeStr = type_to_string(stmt->as.var.type);
-            printf("%*s\"type\": \"%.*s\",\n", i * 2, "", strf(typeStr));
             printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(stmt->as.var.name.as.identifier));
             printf("%*s\"init\": ", i * 2, "");
             print_expr(stmt->as.var.init, i);
@@ -135,10 +133,10 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_DO_WHILE:
             printf("%*s\"kind\": \"do/while\",\n", i * 2, "");
             printf("%*s\"cond\": ", i * 2, "");
-            print_expr(stmt->as.doWhile.condition, i);
+            print_expr(stmt->as.whileS.condition, i);
             printf(",\n");
             printf("%*s\"body\": ", i * 2, "");
-            print_stmt(stmt->as.doWhile.body, i);
+            print_stmt(stmt->as.whileS.body, i);
             printf("\n");
             break;
         case STMT_IF:
@@ -185,25 +183,21 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_FUNC: {
             FuncStmt *fn = &stmt->as.func;
             printf("%*s\"kind\": \"func\",\n", i * 2, "");
-            FuncType *funcType = &fn->funcType->as.func;
-            String typeStr = type_to_string(funcType->retType);
-            printf("%*s\"ret\": \"%.*s\",\n", i * 2, "", strf(typeStr));
             printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(fn->name.as.identifier));
             printf("%*s\"params\": [", i * 2, "");
-            for (size_t j = 0; j < funcType->params.len; j++) {
-                VarStmt *par = &funcType->params.arr[j]->as.var;
-                String paramTypeStr = type_to_string(par->type);
-                printf("\n%*s{ \"type\": \"%.*s\", \"name\": \"%.*s\" }", (i + 1) * 2, "",
-                       strf(paramTypeStr), strf(par->name.as.identifier));
-                if (j + 1 < funcType->params.len) printf(",");
+            for (size_t j = 0; j < fn->params.len; j++) {
+                VarStmt *par = &fn->params.arr[j]->as.var;
+                printf("\n%*s{ \"name\": \"%.*s\" }", (i + 1) * 2, "",
+                       strf(par->name.as.identifier));
+                if (j + 1 < fn->params.len) printf(",");
             }
-            if (funcType->params.len > 0) printf("\n%*s", i * 2, "");
+            if (fn->params.len > 0) printf("\n%*s", i * 2, "");
             printf("],\n");
             printf("%*s\"body\": [\n", i * 2, "");
-            for (size_t j = 0; j < fn->block.len; j++) {
+            for (size_t j = 0; j < fn->body.len; j++) {
                 printf("%*s", (i + 1) * 2, "");
-                print_stmt(fn->block.arr[j], i + 1);
-                if (j + 1 < fn->block.len) printf(",");
+                print_stmt(fn->body.arr[j], i + 1);
+                if (j + 1 < fn->body.len) printf(",");
                 printf("\n");
             }
             printf("%*s]\n", i * 2, "");
@@ -217,7 +211,7 @@ Token get_top_level_name(Stmt *s) {
     switch (s->kind) {
         case STMT_FUNC: return s->as.func.name;
         case STMT_NULL:
-        case STMT_VAR:
+        case STMT_VAR: return s->as.var.name;
         case STMT_EXPR:
         case STMT_BLOCK:
         case STMT_WHILE:

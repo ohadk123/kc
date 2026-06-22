@@ -5,56 +5,52 @@
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
+    const char *source = NULL;
+    bool object = false;
+    bool dump_qbe = false;
+
     if (argc < 2) {
-        fprintf(stderr, "Usage: kc <file>\n");
+        fprintf(stderr, "Usage: kc [-qc] <file>\n");
         exit(1);
-    };
-
-    TranslationUnit unit = (TranslationUnit){
-        .fileName = str_from_cstr(argv[1]),
-        .input = str_from_file(argv[1]),
-    };
-
-    scan_file(&unit);
-    parse(&unit);
-    semantic_analysis(&unit);
-    codegen(&unit, stdout);
-    return 0;
-}
-
-int main1(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: kc <file>\n");
-        exit(1);
-    };
-
-    TranslationUnit unit = (TranslationUnit){
-        .fileName = str_from_cstr(argv[1]),
-        .input = str_from_file(argv[1]),
-    };
-
-    if (!scan_file(&unit)) {
-        printf("LEXER ERROR");
     }
 
-    // for (size_t i = 0; i < unit.tokens.len; i++) {
-    //     print_tok(unit.tokens.arr[i]);
-    // }
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
 
+        if (arg[0] != '-') {
+            if (source) {
+                fprintf(stderr, "Cannot compile multiple files");
+                return 1;
+            } else {
+                source = arg;
+            }
+        } else {
+            if (!strcmp(arg, "-c")) {
+                object = true;
+            } else if (!strcmp(arg, "-q")) {
+                dump_qbe = true;
+            } else {
+                fprintf(stderr, "Unkown flag '%s'", arg);
+                return 1;
+            }
+        }
+    }
+
+    TranslationUnit unit = (TranslationUnit){
+        .fileName = str_from_cstr(source),
+        .input = str_from_file(source),
+    };
+
+    if (!scan_file(&unit)) return 1;
     parse(&unit);
+    if (!semantic_analysis(&unit)) return 1;
 
-    // for (size_t i = 0; i < unit.ast.len; i++) {
-    //     print_stmt(unit.ast.arr[i], 1);
-    //     printf("\n");
-    // }
-    semantic_analysis(&unit);
-
-    if (argc > 2 && !strcmp(argv[2], "-q")) {
-        codegen(&unit, stdout);
+    if (dump_qbe) {
+        codegen(&unit, NULL);
         return 0;
     }
 
-    const char *fileNameNoExt = strtok(argv[1], ".");
+    const char *fileNameNoExt = strtok((char *)source, ".");
     String qbeFile = str_printf("%s.ssa", fileNameNoExt);
     String asmFile = str_printf("%s.s", fileNameNoExt);
 
@@ -69,78 +65,17 @@ int main1(int argc, char *argv[]) {
     remove(qbeFile.data);
     if (ret != 0) exit(1);
 
-    String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
+    String asmCommand;
+    if (object)
+        asmCommand = str_printf("gcc -c %.*s -o %s.o", strf(asmFile), fileNameNoExt);
+    else
+        asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
+
     ret = system(asmCommand.data);
     printf("gcc done with code %d\n", ret);
     remove(asmFile.data);
     if (ret != 0) exit(2);
 
-    // printf("compiling done!\n");
-    return 0;
-}
-
-int main2(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: kc <file> [flags]\n\n");
-        fprintf(stderr, "FLAGS:\n");
-        fprintf(stderr, "    -q        dump qbe output\n");
-        fprintf(stderr, "    -g        compile into executable\n");
-        exit(1);
-    }
-
-    bool qbe = false;
-    bool gcc = false;
-    if (argc > 2) {
-        if (!strcmp(argv[2], "-q")) qbe = true;
-        if (!strcmp(argv[2], "-g")) gcc = qbe = true;
-    }
-
-    TranslationUnit unit = (TranslationUnit){
-        .fileName = str_from_cstr(argv[1]),
-        .input = str_from_file(argv[1]),
-    };
-
-    if (!scan_file(&unit)) {
-        printf("LEXER ERROR");
-    }
-
-    // for (size_t i = 0; i < unit.tokens.len; i++) {
-    //     print_tok(unit.tokens.arr[i]);
-    // }
-
-    parse(&unit);
-
-    // for (size_t i = 0; i < unit.ast.len; i++) {
-    //     print_stmt(unit.ast.arr[i], 1);
-    //     printf("\n");
-    // }
-    semantic_analysis(&unit);
-
-    const char *fileNameNoExt = strtok(argv[1], ".");
-    String qbeFile = str_printf("%s.ssa", fileNameNoExt);
-    String asmFile = str_printf("%s.s", fileNameNoExt);
-
-    FILE *outf = stdout;
-    if (qbe) outf = fopen(qbeFile.data, "w");
-    codegen(&unit, outf);
-    fflush(outf);
-    if (qbe) fclose(outf);
-
-    if (qbe) {
-        String qbeCommand = str_printf("qbe %.*s", strf(qbeFile));
-        if (gcc) qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
-        int ret = system(qbeCommand.data);
-        printf("qbe done with code %d\n", ret);
-        // remove(qbeFile.data);
-    }
-
-    if (gcc) {
-        String asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
-        int ret = system(asmCommand.data);
-        printf("gcc done with code %d\n", ret);
-        // remove(asmFile.data);
-    }
-
-    // printf("compiling done!\n");
+    printf("Compilation finished successfully!\n");
     return 0;
 }

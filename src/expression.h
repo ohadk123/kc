@@ -24,7 +24,7 @@
 
 #include "token.h"
 
-typedef struct _Type Type;
+typedef struct _Stmt Stmt;
 
 typedef struct _Expr Expr;
 typedef struct {
@@ -45,6 +45,7 @@ typedef enum {
 
 typedef struct {
     Token value;
+    Stmt *decl;
 } PrimaryExpr;
 
 typedef struct {
@@ -87,7 +88,6 @@ typedef struct {
 struct _Expr {
     ExprKind kind;
     Location loc;
-    Type *type;
     union {
         PrimaryExpr primary;
         GroupingExpr grouping;

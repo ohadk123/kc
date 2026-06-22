@@ -1,10 +1,11 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
+#include "statement.h"
 #include "string.h"
 #include <stddef.h>
 
-typedef void *Val;
+typedef Stmt *Val;
 
 typedef struct {
     String key;
