@@ -149,6 +149,7 @@ static bool eval_expr(Expr *e, int64_t *out) {
         case EXPR_CONDITIONAL: return eval_cond(e, out);
         case EXPR_FUNC_CALL:   return false;
         case EXPR_INDEX:       return false;
+        default: UNREACHABLE("Not a valid expression kind (%d)", e->kind);
     }
 }
 
@@ -343,7 +344,7 @@ static void check_var(Checker *c, Stmt *s) {
     bool isStatic = varStmt.specifier == TOK_STATIC;
 
     if (isGlobal || isStatic) {
-        if (!eval_expr(varStmt.init, &varStmt.initVal))
+        if (!eval_expr(varStmt.init, &s->as.var.initVal))
             checker_error(c, s, "Initalizer not a compile time constant");
     } else {
         assert (s->as.var.init);
