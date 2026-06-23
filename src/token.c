@@ -121,7 +121,7 @@ Token tok_make_string_lit(String strLit, size_t line, size_t col) {
     };
 }
 
-Token tok_make_int_lit(uint64_t value, size_t line, size_t col) {
+Token tok_make_int_lit(uint32_t value, size_t line, size_t col) {
     return (Token){
         .kind = TOK_INTEGER_LITERAL,
         .as.integerLiteral = value,
@@ -130,10 +130,28 @@ Token tok_make_int_lit(uint64_t value, size_t line, size_t col) {
     };
 }
 
-Token tok_make_float_lit(double value, size_t line, size_t col) {
+Token tok_make_long_lit(uint64_t value, size_t line, size_t col) {
+    return (Token){
+        .kind = TOK_LONG_LITERAL,
+        .as.longLiteral = value,
+        .loc.line = line,
+        .loc.col = col,
+    };
+}
+
+Token tok_make_float_lit(float value, size_t line, size_t col) {
     return (Token){
         .kind = TOK_FLOAT_LITERAL,
         .as.floatLiteral = value,
+        .loc.line = line,
+        .loc.col = col,
+    };
+}
+
+Token tok_make_double_lit(double value, size_t line, size_t col) {
+    return (Token){
+        .kind = TOK_FLOAT_LITERAL,
+        .as.doubleLiteral = value,
         .loc.line = line,
         .loc.col = col,
     };
@@ -165,8 +183,10 @@ void print_tok(Token token) {
             else
                 printf(", \"value\": \"0x%02x\"", token.as.charLiteral);
             break;
-        case TOK_INTEGER_LITERAL: printf(", \"value\": %zu", token.as.integerLiteral); break;
+        case TOK_INTEGER_LITERAL: printf(", \"value\": %u", token.as.integerLiteral); break;
+        case TOK_LONG_LITERAL: printf(", \"value\": %lu", token.as.longLiteral); break;
         case TOK_FLOAT_LITERAL:   printf(", \"value\": %f", token.as.floatLiteral); break;
+        case TOK_DOUBLE_LITERAL:   printf(", \"value\": %f", token.as.doubleLiteral); break;
         case TOK_UNKNOWN:
             if (is_printable_char(token.as.unknown))
                 printf(", \"value\": \"%c\"", token.as.unknown);

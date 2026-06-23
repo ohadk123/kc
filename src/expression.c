@@ -132,8 +132,10 @@ void print_expr(Expr *expr, int indent) {
             printf("%*s\"kind\": \"primary\",\n", i * 2, "");
             printf("%*s\"value\": ", i * 2, "");
             switch (v.kind) {
-                case TOK_INTEGER_LITERAL: printf("%zu", v.as.integerLiteral); break;
-                case TOK_FLOAT_LITERAL:   printf("%g", v.as.floatLiteral); break;
+                case TOK_INTEGER_LITERAL: printf("%u", v.as.integerLiteral); break;
+                case TOK_LONG_LITERAL:    printf("%lu", v.as.longLiteral); break;
+                case TOK_FLOAT_LITERAL:   printf("%f", v.as.floatLiteral); break;
+                case TOK_DOUBLE_LITERAL:  printf("%f", v.as.doubleLiteral); break;
                 case TOK_STRING_LITERAL:  printf("\"%.*s\"", (int)v.as.stringLiteral.len, v.as.stringLiteral.data); break;
                 case TOK_CHAR_LITERAL:    printf("'%c'", v.as.charLiteral); break;
                 case TOK_IDENTIFIER:      printf("\"%.*s\"", (int)v.as.identifier.len, v.as.identifier.data); break;

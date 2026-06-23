@@ -30,8 +30,7 @@ typedef struct {
 } Lexer;
 
 #define lexer_error(l, fmt, ...) \
-    (l)->hadError = compile_err_no_abort((l)->unit->fileName, (Location){(l)->line, (l)->col}, fmt, ##__VA_ARGS__); \
-    list_append(&(l)->unit->tokens, tok_make_unknown(c, (l)->line, (l)->col))
+    ((l)->hadError = compile_err_no_abort((l)->unit->fileName, (Location){(l)->line, (l)->col}, fmt, ##__VA_ARGS__), (Token){0})
 
 static inline void add_tok(Lexer *l, Token token) { list_append(&l->unit->tokens, token); }
 
@@ -82,25 +81,21 @@ static Token make_ident_keyword(Lexer *l) {
 }
 
 static Token make_number(Lexer *l) {
-    bool isFloat = l->unit->input.data[l->index - 1] == '.';
     size_t start = l->index - 1;
-    size_t col = l->col;
+    size_t col   = l->col;
+    const char *nptr = l->unit->input.data + start;
 
-    while (isdigit(peek(l)) || (peek(l) == '.' && !isFloat)) {
-        advance(l);
-        if (l->unit->input.data[l->index - 1] == '.') isFloat = true;
-    }
-    size_t end = l->index;
+    char *end;
+    uint64_t val = strtoull(nptr, &end, 0);
+    if (end <= nptr) return lexer_error(l, "Invalid number");
+    l->index += end - nptr - 1;
+    l->col += end - nptr - 1;
 
-    String number = str_from_slice(l->unit->input, start, end);
+    bool isLong = match(l, 'L');
+    if (!isLong && val > INT32_MAX) return lexer_error(l, "Integer literal does not fit in i32");
+    if (isLong && val > INT64_MAX) return lexer_error(l, "Integer literal does not fit in i64");
 
-    if (isFloat) {
-        double fval = atof(number.data);
-        return tok_make_float_lit(fval, l->line, col);
-    } else {
-        uint64_t ival = atoll(number.data);
-        return tok_make_int_lit(ival, l->line, col);
-    }
+    return isLong ? tok_make_long_lit(val, l->line, col) : tok_make_int_lit(val, l->line, col);
 }
 
 static uint8_t consume_escape_char(Lexer *l) {

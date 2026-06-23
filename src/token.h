@@ -66,7 +66,9 @@
     X(TOK_STRING_LITERAL)                   \
     X(TOK_CHAR_LITERAL)                     \
     X(TOK_INTEGER_LITERAL)                  \
+    X(TOK_LONG_LITERAL)                     \
     X(TOK_FLOAT_LITERAL)                    \
+    X(TOK_DOUBLE_LITERAL)                   \
                                             \
     X(TOK_CAST)     /* cast     */          \
     X(TOK_BREAK)    /* break    */          \
@@ -128,8 +130,10 @@ typedef struct {
         String identifier;
         String stringLiteral;
         uint8_t charLiteral;
-        uint64_t integerLiteral;
-        double floatLiteral;
+        uint32_t integerLiteral;
+        uint64_t longLiteral;
+        float floatLiteral;
+        double doubleLiteral;
         char unknown;
     } as;
 } Token;
@@ -144,8 +148,10 @@ Token tok_make_simple(TokenKind type, size_t line, size_t col);
 Token tok_make_unknown(char c, size_t line, size_t col);
 Token tok_make_ident(String ident, size_t line, size_t col);
 Token tok_make_string_lit(String strLit, size_t line, size_t col);
-Token tok_make_int_lit(uint64_t value, size_t line, size_t col);
-Token tok_make_float_lit(double value, size_t line, size_t col);
+Token tok_make_int_lit(uint32_t value, size_t line, size_t col);
+Token tok_make_float_lit(float value, size_t line, size_t col);
+Token tok_make_long_lit(uint64_t value, size_t line, size_t col);
+Token tok_make_double_lit(double value, size_t line, size_t col);
 Token tok_make_char_lit(uint8_t value, size_t line, size_t col);
 
 TokenKind match_keyword_or_ident(String keyword);

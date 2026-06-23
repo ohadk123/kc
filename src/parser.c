@@ -55,8 +55,8 @@ static Expr *expression(Parser *p);
 // primary := INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | STRING_LITERAL | TRUE | FALSE | IDENTIFIER |
 // '(' expression ')'
 static Expr *primary_expr(Parser *p) {
-    if (match(p, TOK_INTEGER_LITERAL, TOK_FLOAT_LITERAL, TOK_CHAR_LITERAL, TOK_STRING_LITERAL, TOK_TRUE, TOK_FALSE,
-              TOK_IDENTIFIER)) {
+    if (match(p, TOK_INTEGER_LITERAL, TOK_LONG_LITERAL, TOK_FLOAT_LITERAL, TOK_DOUBLE_LITERAL, TOK_CHAR_LITERAL,
+              TOK_STRING_LITERAL, TOK_TRUE, TOK_FALSE, TOK_IDENTIFIER)) {
         Token primary = previous(p);
         return expr_make_primary(primary, primary.loc);
     } else if (match(p, TOK_LEFT_PAREN)) {
