@@ -69,10 +69,29 @@ static Expr *primary_expr(Parser *p) {
     parser_error(p, "Expected expression");
 }
 
-// postfix := primary { '++' | '--' }*
+// cast := 'cast' '<' IDENTIFIER '>' '(' expression ')'
+static Expr *cast_expr(Parser *p) {
+    if (match(p, TOK_CAST)) {
+        Location loc = previous(p).loc;
+        expect(p, TOK_LESS, "Cast is used as: \"cast<T>(expression)\"");
+        if (!match_types(p)) parser_error(p, "Cast is used as: \"cast<T>(expression)\"");
+        // parse_type(p);
+        TokenKind type = previous(p).kind;
+        expect(p, TOK_GREATER, "Cast is used as: \"cast<T>(expression)\"");
+        expect(p, TOK_LEFT_PAREN, "Cast is used as: \"cast<T>(expression)\"");
+        Expr *inner = expression(p);
+        expect(p, TOK_RIGHT_PAREN, "Cast is used as: \"cast<T>(expression)\"");
+
+        return expr_make_cast(type, inner, loc);
+    }
+
+    return primary_expr(p);
+}
+
+// postfix := cast { '++' | '--' }*
 //          | postfix_expr '(' argument_list ')'
 static Expr *postfix_expr(Parser *p) {
-    Expr *expr = primary_expr(p);
+    Expr *expr = cast_expr(p);
 
     while (true) {
         if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {

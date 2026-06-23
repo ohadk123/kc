@@ -314,6 +314,12 @@ static void check_index(Checker *c, Expr *e) {
     check_expr(c, e->as.index.array);
 }
 
+static void check_cast(Checker *c, Expr *e) {
+    (void) c;
+    (void) e;
+    TODO("%s", __func__);
+}
+
 static void check_expr(Checker *c, Expr *e) {
     switch (e->kind) {
         case EXPR_PRIMARY:     check_primary(c, e);                 return;
@@ -325,6 +331,7 @@ static void check_expr(Checker *c, Expr *e) {
         case EXPR_CONDITIONAL: check_conditional(c, e);             return;
         case EXPR_FUNC_CALL:   check_func_call(c, e);               return;
         case EXPR_INDEX:       check_index(c, e);                   return;
+        case EXPR_CAST:        check_cast(c, e);                    return;
     }
 }
 

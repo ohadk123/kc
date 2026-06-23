@@ -356,6 +356,12 @@ static String gen_index(Generator *g, Expr *e) {
     TODO("%s", __func__);
 }
 
+static String gen_cast(Generator *g, Expr *e) {
+    (void)g;
+    (void)e;
+    TODO("%s", __func__);
+}
+
 static String gen_expr(Generator *g, Expr *e) {
     switch (e->kind) {
         case EXPR_PRIMARY:     return gen_primary(g, e);
@@ -367,6 +373,7 @@ static String gen_expr(Generator *g, Expr *e) {
         case EXPR_CONDITIONAL: return gen_conditional(g, e);
         case EXPR_FUNC_CALL:   return gen_func_call(g, e);
         case EXPR_INDEX:       return gen_index(g, e);
+        case EXPR_CAST:        return gen_cast(g, e);
     }
     UNREACHABLE("Error on expr kind (%d)", e->kind);
 }
