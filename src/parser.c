@@ -9,7 +9,7 @@ typedef struct {
 
 static bool is_at_end(Parser *p) { return p->unit->tokens.arr[p->index].kind == TOK_EOF; }
 
-static Token previous(Parser *p) { return p->unit->tokens.arr[p->index - 1]; }
+static Token previous(Parser *p) { assert(p->index > 0); return p->unit->tokens.arr[p->index - 1]; }
 
 static bool match_arr(Parser *p, size_t count, const TokenKind *tokens) {
     if (is_at_end(p)) return false;
@@ -481,7 +481,7 @@ static Stmt *top_level_decl(Parser *p) {
     TokenKind storage = TOK_UNKNOWN;
     if (!match_types(p)) {
         if (!match(p, TOK_EXTERN, TOK_PUB))
-            parser_error(p, "Unkown top level specifier '%.*s'", tokenTypesStrings[previous(p).kind]);
+            parser_error(p, "Unkown top level specifier '%s'", tokenTypesStrings[peek(p).kind]);
 
         storage = previous(p).kind;
         if (!match_types(p)) parser_error(p, "Expected type");
