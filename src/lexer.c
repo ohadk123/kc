@@ -10,15 +10,15 @@ static inline char hex_to_val(char c) {
     if ('a' <= c && c <= 'f') return c - 'a' + 0xa;
     if ('A' <= c && c <= 'F') return c - 'A' + 0xA;
 
-    ERROR("[%X] is not a hex character", c);
+    return -1;
 }
 
 static inline bool is_oct(char c) { return '0' <= c && c <= '7'; }
 
 static inline char oct_to_val(char c) {
-    if ('0' <= c && c <= '7') return c - '0';
+    if (is_oct(c)) return c - '0';
 
-    ERROR("[%X] is not an oct character", c);
+    return -1;
 }
 
 typedef struct {
@@ -26,8 +26,12 @@ typedef struct {
     size_t line;
     size_t col;
     size_t index;
-    bool hasErrors;
+    bool hadError;
 } Lexer;
+
+#define lexer_error(l, fmt, ...) \
+    (l)->hadError = compile_err_no_abort((l)->unit->fileName, (Location){(l)->line, (l)->col}, fmt, ##__VA_ARGS__); \
+    list_append(&(l)->unit->tokens, tok_make_unknown(c, (l)->line, (l)->col))
 
 static inline void add_tok(Lexer *l, Token token) { list_append(&l->unit->tokens, token); }
 
@@ -121,14 +125,24 @@ static uint8_t consume_escape_char(Lexer *l) {
             while (is_hex(peek(l))) {
                 char c = advance(l);
                 val *= 16;
-                val += hex_to_val(c);
+                char o = hex_to_val(c);
+                if (o == -1) {
+                    lexer_error(l, "'%c' is Not a hex character", c);
+                    o = 0;
+                }
+                val += o;
             }
             break;
         case '0':
             while (is_oct(peek(l))) {
                 char c = advance(l);
                 val *= 8;
-                val += oct_to_val(c);
+                char o = oct_to_val(c);
+                if (o == -1) {
+                    lexer_error(l, "'%c' Not an octal val", c);
+                    o = 0;
+                }
+                val += o;
             }
             break;
     }
@@ -182,7 +196,7 @@ bool scan_file(TranslationUnit *unit) {
         .index = 0,
         .line = 1,
         .col = 0,
-        .hasErrors = false,
+        .hadError = false,
     };
 
     while (!is_at_end(&l)) {
@@ -395,7 +409,7 @@ bool scan_file(TranslationUnit *unit) {
             // TOK_AT
             case '@': ADD_SIMPLE(TOK_AT); break;
 
-            default:  list_append(&l.unit->tokens, tok_make_unknown(c, l.line, l.col)); break;
+            default: lexer_error(&l, "Unknown character '%c'", c); break;
         }
     }
 
@@ -403,7 +417,7 @@ bool scan_file(TranslationUnit *unit) {
 
     free((void *)l.unit->input.data);
 
-    return !l.hasErrors;
+    return !l.hadError;
 }
 
 void free_token_list(TokensList *tokens) {
