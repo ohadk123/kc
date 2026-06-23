@@ -102,6 +102,6 @@ Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);
 
 void print_stmt(Stmt *stmt, int indent);
-Token get_top_level_name(Stmt *s);
+String get_top_level_name(Stmt *s);
 
 #endif // !STATEMENT_H

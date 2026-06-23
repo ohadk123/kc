@@ -11,9 +11,11 @@ static String qbe_var(Location l) {
     return str_printf("%%_ktemp_%zu_%zu_%zu", i, l.line, l.col);
 }
 
-static String qbe_static(String name, Location l) {
+static String qbe_data(Stmt *s, bool mangle) {
+    String name = get_top_level_name(s);
     uint64_t i = counter();
-    return str_printf("$_%s_%zu_%zu_%zu", name, i, l.line, l.col);
+    return mangle ? str_printf("$_%s_%zu_%zu_%zu", name, i, s->loc.line, s->loc.col)
+                  : str_printf("$%.*s", strf(name));
 }
 
 static String qbe_label(const char *name, Location l) {
@@ -34,8 +36,15 @@ typedef struct {
     FILE *outf;
     TranslationUnit *unit;
     LabelStack labels;
-    StmtList globals;
+    StmtList data;
+
+    bool inFunc;
 } Generator;
+
+static inline void accumulate_data(Generator *g, Stmt *s, bool mangle) {
+    list_append(&g->data, s);
+    s->as.var.qbe_var = qbe_data(s, mangle);
+}
 
 static int gprintf(Generator *g, const char *fmt, ...) {
     va_list args;
@@ -50,7 +59,7 @@ static int gprintfln(Generator *g, const char *fmt, ...) {
     va_start(args, fmt);
     int ret = vfprintf(g->outf, fmt, args);
     va_end(args);
-    fprintf(g->outf, "\n");
+    fprintf(g->outf, "\n%*s", g->inFunc ? 4 : 0, " ");
     return ret;
 }
 
@@ -407,6 +416,8 @@ static void gen_func(Generator *g, Stmt *s) {
         gprintf(g, "w %%%.*s, ", strf(params.arr[i]->as.var.name.as.identifier));
     }
     gprintfln(g, ") {");
+
+    g->inFunc = true;
     gprintfln(g, "@start");
 
     for (size_t i = 0; i < params.len; i++) {
@@ -420,6 +431,8 @@ static void gen_func(Generator *g, Stmt *s) {
     for (size_t i = 0; i < body.len; i++) gen_stmt(g, body.arr[i]);
 
     gprintfln(g, "@end");
+
+    g->inFunc = false;
     gprintfln(g, "ret 0");
     gprintfln(g, "}\n");
 }
@@ -442,13 +455,12 @@ static void gen_return(Generator *g, Stmt *s) {
 static void gen_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    switch (varStmt.specifier) {
-        case TOK_UNKNOWN: break;
-        case TOK_EXTERN: s->as.var.qbe_var = varStmt.name.as.identifier; return;
-        case TOK_STATIC: return;
-        case TOK_PUB:    TODO("%s: TOK_PUB", __func__);
-        default: UNREACHABLE("%s: Not a valid storage specifier (%s)", __func__, tokenTypesStrings[varStmt.specifier]);
+    if (varStmt.specifier == TOK_STATIC) {
+        accumulate_data(g, s, true);
+        return;
     }
+
+    if (!g->inFunc) return;
 
     String qvar = qbe_var(s->loc);
     gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
@@ -586,60 +598,14 @@ static void gen_stmt(Generator *g, Stmt *s) {
     }
 }
 
-void collect_statics(Generator *g, Stmt *s) {
-    StmtList block;
-
-    switch (s->kind) {
-        case STMT_NULL:   return;
-        case STMT_BLOCK:  block = s->as.block.block; break;
-        case STMT_RETURN: return;
-        case STMT_VAR:
-            if (s->as.var.specifier != TOK_STATIC) return;
-            // static variables
-            String qvar = qbe_static(s->as.var.name.as.identifier, s->loc);
-            gprintfln(g, "data %.*s = { w %d }", strf(qvar), (int32_t)s->as.var.initVal);
-            s->as.var.qbe_var = qvar;
-            return;
-        case STMT_EXPR:     return;
-        case STMT_WHILE:    collect_statics(g, s->as.whileS.body); return;
-        case STMT_DO_WHILE: collect_statics(g, s->as.whileS.body); return;
-        case STMT_IF:
-            collect_statics(g, s->as.ifS.thenBranch);
-            if (s->as.ifS.elseBranch) collect_statics(g, s->as.ifS.elseBranch);
-            return;
-        case STMT_FOR:      collect_statics(g, s->as.forS.body); return;
-        case STMT_BREAK:    return;
-        case STMT_CONTINUE: return;
-        default:            UNREACHABLE("Bad statement kind %d", s->kind);
-    }
-
-    for (size_t i = 0; i < block.len; i++) collect_statics(g, block.arr[i]);
-}
-
 void gen_data_var(Generator *g, Stmt *s) {
-    switch (s->kind) {
-        // global variable
-        case STMT_VAR: {
-            VarStmt varStmt = s->as.var;
-            assert(varStmt.name.kind == TOK_IDENTIFIER);
-            if (varStmt.specifier == TOK_PUB) gprintf(g, "export ");
-            String qvar = str_printf("$%.*s", strf(varStmt.name.as.identifier));
-            if (varStmt.specifier != TOK_EXTERN)
-                gprintfln(g, "data %.*s = { w %d }", strf(qvar), (int32_t)varStmt.initVal);
-            s->as.var.qbe_var = qvar;
-            return;
-        }
-
-        case STMT_FUNC: {
-            StmtList body = s->as.func.body;
-            for (size_t i = 0; i < body.len; i++) {
-                collect_statics(g, body.arr[i]);
-            }
-            break;
-        }
-
-        default: UNREACHABLE("Bad statement kind %d", s->kind);
-    }
+    assert(s->kind == STMT_VAR);
+    VarStmt varStmt = s->as.var;
+    assert(varStmt.name.kind == TOK_IDENTIFIER);
+    if (varStmt.specifier == TOK_PUB) gprintf(g, "export ");
+    if (varStmt.specifier != TOK_EXTERN)
+        gprintfln(g, "data %.*s = { w %d }", strf(varStmt.qbe_var), (int32_t)varStmt.initVal);
+    return;
 }
 
 void codegen(TranslationUnit *unit, FILE *outf) {
@@ -649,15 +615,21 @@ void codegen(TranslationUnit *unit, FILE *outf) {
         .outf = outf,
         .unit = unit,
         .labels = {0},
-        .globals = {0},
+        .data = {0},
+        .inFunc = false,
     };
 
-    for (size_t i = 0; i < unit->ast.len; i++) {
-        gen_data_var(&g, unit->ast.arr[i]);
+    FOR_EACH(&unit->ast, Stmt *, s) {
+        if ((*s)->kind == STMT_VAR) {
+            accumulate_data(&g, *s, false);
+        }
     }
 
-    for (size_t i = 0; i < unit->ast.len; i++) {
-        Stmt *s = unit->ast.arr[i];
-        if (s->kind == STMT_FUNC) gen_stmt(&g, s);
+    FOR_EACH(&unit->ast, Stmt *, s) {
+         gen_stmt(&g, *s);
+    }
+
+    FOR_EACH(&g.data, Stmt *, s) {
+        gen_data_var(&g, *s);
     }
 }

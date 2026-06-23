@@ -70,7 +70,6 @@
     } while (0)
 
 #define FOR_EACH(l, T, v) \
-    size_t i; T v = (l)->arr[0]; \
-    for (i = 0; i < (l)->len; i++, v = (l)->arr[i])
+    for (T *v = (l)->arr; v < (l)->arr + (l)->len; v++)
 
 #endif // UTILS_H

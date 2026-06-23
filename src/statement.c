@@ -207,11 +207,11 @@ void print_stmt(Stmt *stmt, int indent) {
     printf("%*s}", indent * 2, "");
 }
 
-Token get_top_level_name(Stmt *s) {
+String get_top_level_name(Stmt *s) {
     switch (s->kind) {
-        case STMT_FUNC: return s->as.func.name;
+        case STMT_FUNC: return s->as.func.name.as.identifier;
         case STMT_NULL:
-        case STMT_VAR: return s->as.var.name;
+        case STMT_VAR: return s->as.var.name.as.identifier;
         case STMT_EXPR:
         case STMT_BLOCK:
         case STMT_WHILE:
