@@ -358,7 +358,7 @@ static String gen_func_call(Generator *g, Expr *e) {
     }
 
     String out = qbe_var(e->loc);
-    gprintf(g, "%.*s =w call $%.*s(", strf(out), strf(funcCallExpr.func->as.primary.decl->as.func.name.as.identifier));
+    gprintf(g, "%.*s =w call $%.*s(", strf(out), strf(funcCallExpr.func->as.primary.decl->as.func.name));
     for (size_t i = 0; i < argsNames.len; i++) {
         gprintf(g, "w %.*s, ", strf(argsNames.arr[i]));
     }
@@ -417,11 +417,11 @@ static void gen_func(Generator *g, Stmt *s) {
     if (funcStmt.specifier == TOK_EXTERN) return;
 
     if (funcStmt.specifier == TOK_PUB) gprintf(g, "export ");
-    gprintf(g, "function w $%.*s(", strf(funcStmt.name.as.identifier));
+    gprintf(g, "function w $%.*s(", strf(funcStmt.name));
 
     StmtList params = funcStmt.params;
     for (size_t i = 0; i < params.len; i++) {
-        gprintf(g, "w %%%.*s, ", strf(params.arr[i]->as.var.name.as.identifier));
+        gprintf(g, "w %%%.*s, ", strf(params.arr[i]->as.var.name));
     }
     gprintfln(g, ") {");
 
@@ -431,7 +431,7 @@ static void gen_func(Generator *g, Stmt *s) {
     for (size_t i = 0; i < params.len; i++) {
         String qvar = qbe_var(s->loc);
         gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
-        gprintfln(g, "storew %%%.*s, %.*s", strf(params.arr[i]->as.var.name.as.identifier), strf(qvar));
+        gprintfln(g, "storew %%%.*s, %.*s", strf(params.arr[i]->as.var.name), strf(qvar));
         params.arr[i]->as.var.qbe_var = qvar;
     }
 
@@ -609,7 +609,7 @@ static void gen_stmt(Generator *g, Stmt *s) {
 void gen_data_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    assert(varStmt.name.kind == TOK_IDENTIFIER);
+
     if (varStmt.specifier == TOK_PUB) gprintf(g, "export ");
     if (varStmt.specifier != TOK_EXTERN)
         gprintfln(g, "data %.*s = { w %d }", strf(varStmt.qbe_var), (int32_t)varStmt.initVal);

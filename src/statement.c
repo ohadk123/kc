@@ -12,7 +12,7 @@ Stmt *stmt_make_null(Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(Token name, Expr *initalizer, TokenKind storage, Location loc) {
+Stmt *stmt_make_var(String name, Expr *initalizer, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
     s->as.var.name = name;
     s->as.var.init = initalizer;
@@ -77,7 +77,7 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(Token name, StmtList params, StmtList block, TokenKind storage, Location loc) {
+Stmt *stmt_make_func(String name, StmtList params, StmtList block, TokenKind storage, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
     s->as.func.name = name;
     s->as.func.params = params;
@@ -97,7 +97,7 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_NULL: break;
         case STMT_VAR:
             printf("%*s\"kind\": \"var\",\n", i * 2, "");
-            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(stmt->as.var.name.as.identifier));
+            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(stmt->as.var.name));
             printf("%*s\"init\": ", i * 2, "");
             print_expr(stmt->as.var.init, i);
             printf("\n");
@@ -183,12 +183,11 @@ void print_stmt(Stmt *stmt, int indent) {
         case STMT_FUNC: {
             FuncStmt *fn = &stmt->as.func;
             printf("%*s\"kind\": \"func\",\n", i * 2, "");
-            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(fn->name.as.identifier));
+            printf("%*s\"name\": \"%.*s\",\n", i * 2, "", strf(fn->name));
             printf("%*s\"params\": [", i * 2, "");
             for (size_t j = 0; j < fn->params.len; j++) {
                 VarStmt *par = &fn->params.arr[j]->as.var;
-                printf("\n%*s{ \"name\": \"%.*s\" }", (i + 1) * 2, "",
-                       strf(par->name.as.identifier));
+                printf("\n%*s{ \"name\": \"%.*s\" }", (i + 1) * 2, "", strf(par->name));
                 if (j + 1 < fn->params.len) printf(",");
             }
             if (fn->params.len > 0) printf("\n%*s", i * 2, "");
@@ -209,9 +208,9 @@ void print_stmt(Stmt *stmt, int indent) {
 
 String get_top_level_name(Stmt *s) {
     switch (s->kind) {
-        case STMT_FUNC: return s->as.func.name.as.identifier;
+        case STMT_FUNC: return s->as.func.name;
         case STMT_NULL:
-        case STMT_VAR: return s->as.var.name.as.identifier;
+        case STMT_VAR: return s->as.var.name;
         case STMT_EXPR:
         case STMT_BLOCK:
         case STMT_WHILE:

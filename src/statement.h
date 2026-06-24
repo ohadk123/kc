@@ -26,7 +26,7 @@ typedef enum {
 } StmtKind;
 
 typedef struct {
-    Token name;
+    String name;
     Expr *init;
     String qbe_var;
 
@@ -65,7 +65,7 @@ typedef struct {
 } ReturnStmt;
 
 typedef struct {
-    Token name;
+    String name;
     StmtList params;
     StmtList body;
 
@@ -88,7 +88,7 @@ struct _Stmt {
 };
 
 Stmt *stmt_make_null(Location loc);
-Stmt *stmt_make_var(Token name, Expr *initalizer, TokenKind storage, Location loc);
+Stmt *stmt_make_var(String name, Expr *initalizer, TokenKind storage, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
@@ -96,7 +96,7 @@ Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(Token name, StmtList params, StmtList block, TokenKind storage, Location loc);
+Stmt *stmt_make_func(String name, StmtList params, StmtList block, TokenKind storage, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

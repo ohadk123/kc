@@ -210,9 +210,8 @@ static Stmt *expect_var(Checker *c, String name, Location loc) {
 
 static void declare_var(Checker *c, Stmt *varStmt) {
     assert(varStmt->kind == STMT_VAR);
-    assert(varStmt->as.var.name.kind == TOK_IDENTIFIER);
 
-    String name = varStmt->as.var.name.as.identifier;
+    String name = varStmt->as.var.name;
     Stmt *found = hm_find_val(&c->curr->symbols, name);
     if (found)
         checker_error(c, varStmt->loc, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]", strf(name),
@@ -224,6 +223,7 @@ static void declare_var(Checker *c, Stmt *varStmt) {
 static Stmt *expect_func(Checker *c, String name, Location loc) {
     Stmt *found = hm_find_val(&c->unit->globalSymbols.symbols, name);
     if (!found) checker_error(c, loc, "Call to undeclared function '%.*s'", strf(name));
+    if (found->kind != STMT_FUNC) checker_error(c, loc, "Symbol cannot be called");
     return found;
 }
 

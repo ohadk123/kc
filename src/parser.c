@@ -304,8 +304,10 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 
 Stmt *statement(Parser *p);
 
-Stmt *var_stmt_ext(Parser *p, Token name, TokenKind storage) {
+Stmt *var_stmt_ext(Parser *p, Token nameTok, TokenKind storage) {
     Expr *init = NULL;
+    assert(nameTok.kind == TOK_IDENTIFIER);
+    String name = nameTok.as.identifier;
 
     if (match(p, TOK_EQUALS)) {
         if (storage == TOK_EXTERN)
@@ -313,16 +315,12 @@ Stmt *var_stmt_ext(Parser *p, Token name, TokenKind storage) {
         else
             init = expression(p);
     } else if (storage != TOK_EXTERN) {
-        init = expr_make_primary((Token) {
-            .kind = TOK_INTEGER_LITERAL,
-            .loc = name.loc,
-            .as.integerLiteral = 0,
-        }, name.loc);
+        init = expr_make_primary(tok_make_simple(TOK_FALSE, nameTok.loc.line, nameTok.loc.col), nameTok.loc);
     }
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
-    return stmt_make_var(name, init, storage, name.loc);
+    return stmt_make_var(name, init, storage, nameTok.loc);
 }
 
 Stmt *var_stmt(Parser *p) {
@@ -470,8 +468,8 @@ StmtList params_list(Parser *p) {
         if (!match_types(p)) parser_error(p, "Expected parameter type");
         parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
-        Token name = previous(p);
-        Stmt *param = stmt_make_var(name, NULL, TOK_UNKNOWN, name.loc);
+        Token t = previous(p);
+        Stmt *param = stmt_make_var(t.as.identifier, NULL, TOK_UNKNOWN, t.loc);
         list_append(&params, param);
         if (!match(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
@@ -482,7 +480,7 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-static Stmt *func_def_stmt(Parser *p, Token name, TokenKind storage) {
+static Stmt *func_def_stmt(Parser *p, Token nameTok, TokenKind storage) {
     StmtList params = params_list(p);
 
     StmtList body = {0};
@@ -493,7 +491,7 @@ static Stmt *func_def_stmt(Parser *p, Token name, TokenKind storage) {
         expect(p, TOK_SEMICOLON, "Expected ';' after external function declaration");
     }
 
-    return stmt_make_func(name, params, body, storage, name.loc);
+    return stmt_make_func(nameTok.as.identifier, params, body, storage, nameTok.loc);
 }
 
 static Stmt *top_level_decl(Parser *p) {
