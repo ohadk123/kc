@@ -81,14 +81,7 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
 Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
 
-    TypeList paramsTypes = {0};
-    FOR_EACH(&params, Stmt *, s) {
-        assert((*s)->kind == STMT_VAR);
-        Type *t = (*s)->as.var.type;
-        list_append(&paramsTypes, t);
-    }
-
-    s->as.func.type = type_make_func(ret, paramsTypes);
+    s->as.func.ret = ret;
     s->as.func.name = name;
     s->as.func.params = params;
     s->as.func.body = block;

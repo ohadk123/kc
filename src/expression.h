@@ -167,6 +167,7 @@ typedef struct {
 
 struct _Expr {
     ExprKind kind;
+    Type *type;
     Location loc;
     union {
         PrimaryExpr primary;

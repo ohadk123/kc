@@ -74,7 +74,7 @@ typedef struct {
 } ReturnStmt;
 
 typedef struct {
-    Type *type;
+    Type *ret;
     String name;
     StmtList params;
     StmtList body;

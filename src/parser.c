@@ -536,7 +536,7 @@ static Stmt *top_level_decl(Parser *p) {
     StorageSpecifier storage = parse_storage_global(p);
     Type *type = parse_type(p);
     if (!type) {
-        if (previous(p).kind == TOK_STATIC) parser_error(p, "'static' is not allowed here");
+        if (peek(p).kind == TOK_STATIC) parser_error(p, "'static' is not allowed here");
         else parser_error(p, "Expected type");
     }
 
