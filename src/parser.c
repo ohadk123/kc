@@ -304,17 +304,17 @@ static Expr *expression(Parser *p) { return assignment_expr(p); }
 
 Stmt *statement(Parser *p);
 
-Stmt *var_stmt_ext(Parser *p, Token nameTok, TokenKind storage) {
+Stmt *var_stmt_ext(Parser *p, Token nameTok, StorageSpecifier storage) {
     Expr *init = NULL;
     assert(nameTok.kind == TOK_IDENTIFIER);
     String name = nameTok.as.identifier;
 
     if (match(p, TOK_EQUALS)) {
-        if (storage == TOK_EXTERN)
+        if (storage == SPEC_EXTERN)
             parser_error(p, "Cannot assign an external variable");
         else
             init = expression(p);
-    } else if (storage != TOK_EXTERN) {
+    } else if (storage != SPEC_EXTERN) {
         init = expr_make_primary(tok_make_simple(TOK_FALSE, nameTok.loc.line, nameTok.loc.col), nameTok.loc);
     }
 
@@ -324,8 +324,8 @@ Stmt *var_stmt_ext(Parser *p, Token nameTok, TokenKind storage) {
 }
 
 Stmt *var_stmt(Parser *p) {
-    TokenKind storage = previous(p).kind == TOK_STATIC ? TOK_STATIC : TOK_UNKNOWN;
-    if (storage == TOK_STATIC && !match_types(p)) parser_error(p, "Expected variable type");
+    StorageSpecifier storage = previous(p).kind == TOK_STATIC ? SPEC_STATIC : SPEC_NONE;
+    if (storage == SPEC_STATIC && !match_types(p)) parser_error(p, "Expected variable type");
     parse_type(p);
 
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
@@ -480,27 +480,27 @@ StmtList params_list(Parser *p) {
     return params;
 }
 
-static Stmt *func_def_stmt(Parser *p, Token nameTok, TokenKind storage) {
+static Stmt *func_def_stmt(Parser *p, Token nameTok, StorageSpecifier storage) {
     StmtList params = params_list(p);
 
     StmtList body = {0};
-    if (storage != TOK_EXTERN) {
+    if (storage != SPEC_EXTERN) {
         expect(p, TOK_LEFT_BRACE, "Expected '{'");
         body = stmt_list(p);
     } else {
         expect(p, TOK_SEMICOLON, "Expected ';' after external function declaration");
     }
 
-    return stmt_make_func(nameTok.as.identifier, params, body, (StorageSpecifier) storage, nameTok.loc);
+    return stmt_make_func(nameTok.as.identifier, params, body, storage, nameTok.loc);
 }
 
 static Stmt *top_level_decl(Parser *p) {
-    TokenKind storage = TOK_UNKNOWN;
+    StorageSpecifier storage = SPEC_NONE;
     if (!match_types(p)) {
         if (!match(p, TOK_EXTERN, TOK_PUB))
             parser_error(p, "Unkown top level specifier '%s'", tokenTypesStrings[peek(p).kind]);
 
-        storage = previous(p).kind;
+        storage = (StorageSpecifier) previous(p).kind;
         if (!match_types(p)) parser_error(p, "Expected type");
     }
 

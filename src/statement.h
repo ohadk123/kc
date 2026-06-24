@@ -26,7 +26,7 @@ typedef enum {
 } StmtKind;
 
 typedef enum {
-    SPEC_NONE   = 0,
+    SPEC_NONE  = 0,
     SPEC_PUB    = TOK_PUB,
     SPEC_EXTERN = TOK_EXTERN,
     SPEC_STATIC = TOK_STATIC,
