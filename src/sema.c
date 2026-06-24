@@ -21,7 +21,7 @@ bool fill_global_symbol_table(TranslationUnit *unit) {
 }
 
 static bool is_lvalue(Expr *e) {
-    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == TOK_IDENTIFIER && e->as.primary.decl) {
+    if (e->kind == EXPR_PRIMARY && e->as.primary.value.kind == PRIM_IDENTIFIER && e->as.primary.decl) {
         switch (e->as.primary.decl->kind) {
             case STMT_VAR:      return true;
             case STMT_NULL:
@@ -51,18 +51,21 @@ static bool eval_expr(Expr *e, int64_t *out);
 
 static bool eval_primary(Expr *e, int64_t *out) {
     assert(e->kind == EXPR_PRIMARY);
-    Token prim = e->as.primary.value;
+    PrimaryValue prim = e->as.primary.value;
 
     switch (prim.kind) {
-        case TOK_IDENTIFIER:      return false;
-        case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case TOK_CHAR_LITERAL:    *out = prim.as.charLiteral; return true;
-        case TOK_INTEGER_LITERAL: *out = prim.as.integerLiteral; return true;
-        case TOK_FLOAT_LITERAL:   *out = (int64_t) prim.as.floatLiteral; return true;
-        case TOK_TRUE:            *out = 1; return true;
-        case TOK_FALSE:           *out = 0; return true;
-        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[prim.kind]);
+        case PRIM_IDENTIFIER:      return false;
+        case PRIM_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
+        case PRIM_CHAR_LITERAL:    *out = prim.as.charLiteral; return true;
+        case PRIM_INTEGER_LITERAL:
+        case PRIM_LONG_LITERAL:    *out = prim.as.longLiteral; return true;
+        case PRIM_FLOAT_LITERAL:
+        case PRIM_DOUBLE_LITERAL:  *out = (int64_t) prim.as.floatLiteral; return true;
+        case PRIM_TRUE:            *out = 1; return true;
+        case PRIM_FALSE:           *out = 0; return true;
     }
+
+    UNREACHABLE("Invalid Primary Kind (%s)", tokenTypesStrings[prim.kind]);
 }
 
 static bool eval_binary(Expr *e, int64_t *out) {
@@ -148,8 +151,10 @@ static bool eval_expr(Expr *e, int64_t *out) {
         case EXPR_CONDITIONAL: return eval_cond(e, out);
         case EXPR_FUNC_CALL:   return false;
         case EXPR_INDEX:       return false;
-        default: UNREACHABLE("Not a valid expression kind (%d)", e->kind);
+        case EXPR_CAST:        TODO("Evaluate cast expressions");
     }
+
+    UNREACHABLE("Not a valid expression kind (%d)", e->kind);
 }
 
 typedef struct {
@@ -161,8 +166,8 @@ typedef struct {
     int loopCount;
 } Checker;
 
-#define checker_error(c, o, fmt, ...) \
-    c->hadError = compile_err_no_abort((c)->unit->fileName, (o)->loc, fmt, ##__VA_ARGS__)
+#define checker_error(c, l, fmt, ...) \
+    c->hadError = compile_err_no_abort((c)->unit->fileName, l, fmt, ##__VA_ARGS__)
 
 /******************************************************************************
  * Scope Helpers
@@ -195,12 +200,11 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
     return NULL;
 }
 
-static Stmt *expect_var(Checker *c, Token *nameTok) {
-    assert(nameTok->kind == TOK_IDENTIFIER);
-    Stmt *found = find_symbol(c->curr, nameTok->as.identifier);
-    if (!found) checker_error(c, nameTok, "Unkown symbol '%.*s'", strf(nameTok->as.identifier));
+static Stmt *expect_var(Checker *c, String name, Location loc) {
+    Stmt *found = find_symbol(c->curr, name);
+    if (!found) checker_error(c, loc, "Unkown symbol '%.*s'", strf(name));
     if (found->kind != STMT_VAR) {
-        checker_error(c, nameTok, "Cannot use symbol '%.*s' as a variable", nameTok->as.identifier);
+        checker_error(c, loc, "Cannot use symbol '%.*s' as a variable", strf(name));
         return NULL;
     }
     return found;
@@ -208,22 +212,20 @@ static Stmt *expect_var(Checker *c, Token *nameTok) {
 
 static void declare_var(Checker *c, Stmt *varStmt) {
     assert(varStmt->kind == STMT_VAR);
+    assert(varStmt->as.var.name.kind == TOK_IDENTIFIER);
 
-    String varName = varStmt->as.var.name.as.identifier;
-    Stmt *found = hm_find_val(&c->curr->symbols, varName);
+    String name = varStmt->as.var.name.as.identifier;
+    Stmt *found = hm_find_val(&c->curr->symbols, name);
     if (found)
-        checker_error(c, varStmt, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]", strf(varName),
+        checker_error(c, varStmt->loc, "Symbol '%.*s' already delcared before at [%.*s:%zu:%zu]", strf(name),
                       strf(c->unit->fileName), varStmt->loc.line, varStmt->loc.col);
 
-    hm_insert(&c->curr->symbols, varName, varStmt);
+    hm_insert(&c->curr->symbols, name, varStmt);
 }
 
-static Stmt *expect_func(Checker *c, Token *nameTok) {
-    assert(nameTok->kind == TOK_IDENTIFIER);
-
-    String funcName = nameTok->as.identifier;
-    Stmt *found = hm_find_val(&c->unit->globalSymbols.symbols, funcName);
-    if (!found) checker_error(c, nameTok, "Call to undeclared function '%.*s'", strf(funcName));
+static Stmt *expect_func(Checker *c, String name, Location loc) {
+    Stmt *found = hm_find_val(&c->unit->globalSymbols.symbols, name);
+    if (!found) checker_error(c, loc, "Call to undeclared function '%.*s'", strf(name));
     return found;
 }
 
@@ -235,17 +237,18 @@ static void check_expr(Checker *c, Expr *e);
 
 static void check_primary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
-    Token prim = e->as.primary.value;
+    PrimaryValue prim = e->as.primary.value;
 
     switch (prim.kind) {
-        case TOK_IDENTIFIER:      e->as.primary.decl = expect_var(c, &prim); return;
-        case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case TOK_CHAR_LITERAL:    return;
-        case TOK_INTEGER_LITERAL: return;
-        case TOK_FLOAT_LITERAL:   return;
-        case TOK_TRUE:            return;
-        case TOK_FALSE:           return;
-        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[prim.kind]);
+        case PRIM_IDENTIFIER:      e->as.primary.decl = expect_var(c, prim.as.identifier, e->loc); return;
+        case PRIM_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
+        case PRIM_CHAR_LITERAL:    return;
+        case PRIM_INTEGER_LITERAL: return;
+        case PRIM_LONG_LITERAL:    return;
+        case PRIM_FLOAT_LITERAL:   return;
+        case PRIM_DOUBLE_LITERAL:  return;
+        case PRIM_TRUE:            return;
+        case PRIM_FALSE:           return;
     }
 }
 
@@ -263,7 +266,7 @@ static void check_unary(Checker *c, Expr *e) {
     check_expr(c, un.inner);
 
     if ((un.op == TOK_PLUS_PLUS || un.op == TOK_MINUS_MINUS) && !is_lvalue(un.inner))
-        checker_error(c, e, "Expression is not assignable");
+        checker_error(c, e->loc, "Expression is not assignable");
 }
 
 static void check_assign(Checker *c, Expr *e) {
@@ -273,7 +276,7 @@ static void check_assign(Checker *c, Expr *e) {
     check_expr(c, assign.lhs);
     check_expr(c, assign.rhs);
 
-    if (!is_lvalue(assign.lhs)) checker_error(c, e, "Expression is not assignable");
+    if (!is_lvalue(assign.lhs)) checker_error(c, e->loc, "Expression is not assignable");
 }
 
 static void check_conditional(Checker *c, Expr *e) {
@@ -289,15 +292,15 @@ static void check_func_call(Checker *c, Expr *e) {
     FuncCallExpr funcCallExpr = e->as.funcCall;
 
     assert(funcCallExpr.func->kind == EXPR_PRIMARY);
-    Stmt *funcStmt = expect_func(c, &funcCallExpr.func->as.primary.value);
+    Stmt *funcStmt = expect_func(c, funcCallExpr.func->as.primary.value.as.identifier, e->loc);
     if (!funcStmt) return;
 
     size_t paramCount = funcStmt->as.func.params.len;
     size_t argCount = funcCallExpr.args.len;
     if (argCount > paramCount)
-        checker_error(c, e, "Too many arguments to function call expected %zu, got %zu", paramCount, argCount);
+        checker_error(c, e->loc, "Too many arguments to function call expected %zu, got %zu", paramCount, argCount);
     else if (argCount < paramCount)
-        checker_error(c, e, "Too few arguments to function call expected %zu, got %zu", paramCount, argCount);
+        checker_error(c, e->loc, "Too few arguments to function call expected %zu, got %zu", paramCount, argCount);
 
     funcCallExpr.func->as.primary.decl = funcStmt;
 
@@ -351,7 +354,7 @@ static void check_var(Checker *c, Stmt *s) {
 
     if (isGlobal || isStatic) {
         if (!eval_expr(varStmt.init, &s->as.var.initVal))
-            checker_error(c, s, "Initalizer not a compile time constant");
+            checker_error(c, s->loc, "Initalizer not a compile time constant");
     } else {
         assert (s->as.var.init);
         check_expr(c, s->as.var.init);
@@ -418,7 +421,7 @@ static void check_for(Checker *c, Stmt *s) {
 }
 
 static void check_return(Checker *c, Stmt *s) {
-    if (!c->inFunc) checker_error(c, s, "'return' statement not in a function");
+    if (!c->inFunc) checker_error(c, s->loc, "'return' statement not in a function");
     if (s->as.returnS.retVal) check_expr(c, s->as.returnS.retVal);
 }
 
@@ -444,12 +447,12 @@ static void check_func(Checker *c, Stmt *s) {
 
 static void check_break(Checker *c, Stmt *s) {
     assert(s->kind == STMT_BREAK);
-    if (c->loopCount < 1) checker_error(c, s, "'break' statement not in a loop");
+    if (c->loopCount < 1) checker_error(c, s->loc, "'break' statement not in a loop");
 }
 
 static void check_continue(Checker *c, Stmt *s) {
     assert(s->kind == STMT_CONTINUE);
-    if (c->loopCount < 1) checker_error(c, s, "'continue' statement not in a loop");
+    if (c->loopCount < 1) checker_error(c, s->loc, "'continue' statement not in a loop");
 }
 
 static void check_stmt(Checker *c, Stmt *s) {

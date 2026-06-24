@@ -105,23 +105,26 @@ static String get_lvalue(Generator *g, Expr *e) {
 
 static String gen_primary(Generator *g, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
-    Token val = e->as.primary.value;
+    PrimaryValue val = e->as.primary.value;
 
     switch (val.kind) {
-        case TOK_IDENTIFIER: {
+        case PRIM_IDENTIFIER: {
             String out = qbe_var(e->loc);
             String qvar = get_lvalue(g, e);
             gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(qvar));
             return out;
         }
-        case TOK_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case TOK_CHAR_LITERAL:    return str_printf("%u", val.as.charLiteral);
-        case TOK_INTEGER_LITERAL: return str_printf("%zu", val.as.integerLiteral);
-        case TOK_FLOAT_LITERAL:   TODO("%s: TOK_FLOAT_LITERAL", __func__);
-        case TOK_TRUE:            return str_from_cstr("1");
-        case TOK_FALSE:           return str_from_cstr("0");
-        default:                  UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[val.kind]);
+        case PRIM_STRING_LITERAL:  TODO("%s: PRIM_STRING_LITERAL", __func__);
+        case PRIM_CHAR_LITERAL:    return str_printf("%u", val.as.charLiteral);
+        case PRIM_INTEGER_LITERAL: return str_printf("%u", val.as.integerLiteral);
+        case PRIM_LONG_LITERAL:    return str_printf("%llu", val.as.longLiteral);
+        case PRIM_FLOAT_LITERAL:   TODO("%s: PRIM_FLOAT_LITERAL", __func__);
+        case PRIM_DOUBLE_LITERAL:  TODO("%s: PRIM_DOUBLE_LITERAL", __func__);
+        case PRIM_TRUE:            return str_from_cstr("1");
+        case PRIM_FALSE:           return str_from_cstr("0");
     }
+
+    UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[val.kind]);
 }
 static const char *get_bin_op(TokenKind op) {
     switch (op) {

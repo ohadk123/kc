@@ -7,9 +7,28 @@ static Expr *make_expr(ExprKind kind, Location loc) {
     return e;
 }
 
+static PrimaryValue token_to_primary(Token token) {
+    PrimaryValue p = {0};
+    p.kind = (PrimaryKind) token.kind;
+
+    switch (p.kind) {
+        case PRIM_IDENTIFIER: p.as.identifier = token.as.identifier; return p;
+        case PRIM_STRING_LITERAL: p.as.stringLiteral = token.as.stringLiteral; return p;
+        case PRIM_CHAR_LITERAL: p.as.charLiteral = token.as.charLiteral; return p;
+        case PRIM_INTEGER_LITERAL: p.as.integerLiteral = token.as.integerLiteral; return p;
+        case PRIM_LONG_LITERAL: p.as.longLiteral = token.as.longLiteral; return p;
+        case PRIM_FLOAT_LITERAL: p.as.floatLiteral = token.as.floatLiteral; return p;
+        case PRIM_DOUBLE_LITERAL: p.as.doubleLiteral = token.as.doubleLiteral; return p;
+        case PRIM_TRUE:
+        case PRIM_FALSE: return p; // Do Nothing
+    }
+
+    UNREACHABLE("Invalid Primary Kind (%s)", tokenTypesStrings[token.kind]);
+}
+
 Expr *expr_make_primary(Token val, Location loc) {
     Expr *e = make_expr(EXPR_PRIMARY, loc);
-    e->as.primary.value = val;
+    e->as.primary.value = token_to_primary(val);
     e->as.primary.decl = NULL;
     return e;
 }
@@ -128,19 +147,19 @@ void print_expr(Expr *expr, int indent) {
 
     switch (expr->kind) {
         case EXPR_PRIMARY: {
-            Token v = expr->as.primary.value;
+            PrimaryValue v = expr->as.primary.value;
             printf("%*s\"kind\": \"primary\",\n", i * 2, "");
             printf("%*s\"value\": ", i * 2, "");
             switch (v.kind) {
-                case TOK_INTEGER_LITERAL: printf("%u", v.as.integerLiteral); break;
-                case TOK_LONG_LITERAL:    printf("%lu", v.as.longLiteral); break;
-                case TOK_FLOAT_LITERAL:   printf("%f", v.as.floatLiteral); break;
-                case TOK_DOUBLE_LITERAL:  printf("%f", v.as.doubleLiteral); break;
-                case TOK_STRING_LITERAL:  printf("\"%.*s\"", (int)v.as.stringLiteral.len, v.as.stringLiteral.data); break;
-                case TOK_CHAR_LITERAL:    printf("'%c'", v.as.charLiteral); break;
-                case TOK_IDENTIFIER:      printf("\"%.*s\"", (int)v.as.identifier.len, v.as.identifier.data); break;
-                case TOK_TRUE:            printf("true"); break;
-                case TOK_FALSE:           printf("false"); break;
+                case PRIM_INTEGER_LITERAL: printf("%u", v.as.integerLiteral); break;
+                case PRIM_LONG_LITERAL:    printf("%lu", v.as.longLiteral); break;
+                case PRIM_FLOAT_LITERAL:   printf("%f", v.as.floatLiteral); break;
+                case PRIM_DOUBLE_LITERAL:  printf("%f", v.as.doubleLiteral); break;
+                case PRIM_STRING_LITERAL:  printf("\"%.*s\"", (int)v.as.stringLiteral.len, v.as.stringLiteral.data); break;
+                case PRIM_CHAR_LITERAL:    printf("'%c'", v.as.charLiteral); break;
+                case PRIM_IDENTIFIER:      printf("\"%.*s\"", (int)v.as.identifier.len, v.as.identifier.data); break;
+                case PRIM_TRUE:            printf("true"); break;
+                case PRIM_FALSE:           printf("false"); break;
                 default:                  printf("\"?\""); break;
             }
             printf("\n");

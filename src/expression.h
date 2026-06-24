@@ -45,8 +45,34 @@ typedef enum {
     EXPR_CAST,
 } ExprKind;
 
+typedef enum {
+    PRIM_IDENTIFIER      = TOK_IDENTIFIER,
+    PRIM_STRING_LITERAL  = TOK_STRING_LITERAL,
+    PRIM_CHAR_LITERAL    = TOK_CHAR_LITERAL,
+    PRIM_INTEGER_LITERAL = TOK_INTEGER_LITERAL,
+    PRIM_LONG_LITERAL    = TOK_LONG_LITERAL,
+    PRIM_FLOAT_LITERAL   = TOK_FLOAT_LITERAL,
+    PRIM_DOUBLE_LITERAL  = TOK_DOUBLE_LITERAL,
+    PRIM_TRUE            = TOK_TRUE,
+    PRIM_FALSE           = TOK_FALSE,
+} PrimaryKind;
+
 typedef struct {
-    Token value;
+    PrimaryKind kind;
+    union {
+        String identifier;
+        String stringLiteral;
+        uint8_t charLiteral;
+        uint32_t integerLiteral;
+        uint64_t longLiteral;
+        float floatLiteral;
+        double doubleLiteral;
+        char unknown;
+    } as;
+} PrimaryValue;
+
+typedef struct {
+    PrimaryValue value;
     Stmt *decl;
 } PrimaryExpr;
 
