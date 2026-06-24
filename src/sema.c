@@ -76,31 +76,29 @@ static bool eval_binary(Expr *e, int64_t *out) {
     if (!eval_expr(binExpr.lhs, &lhs)) return false;
     if (!eval_expr(binExpr.rhs, &rhs)) return false;
 
-    if ((binExpr.op == TOK_SLASH || binExpr.op == TOK_PERCENT) && rhs == 0) return false;
+    if ((binExpr.op == BIN_SLASH || binExpr.op == BIN_PERCENT) && rhs == 0) return false;
 
     switch (binExpr.op) {
-        case TOK_PLUS:                *out = lhs +  rhs; break;
-        case TOK_MINUS:               *out = lhs -  rhs; break;
-        case TOK_STAR:                *out = lhs *  rhs; break;
-        case TOK_SLASH:               *out = lhs /  rhs; break;
-        case TOK_PERCENT:             *out = lhs %  rhs; break;
-        case TOK_CARET:               *out = lhs ^  rhs; break;
-        case TOK_LESS_LESS:           *out = lhs << rhs; break;
-        case TOK_GREATER_GREATER:     *out = lhs >> rhs; break;
-        case TOK_AMPERSAND:           *out = lhs &  rhs; break;
-        case TOK_PIPE:                *out = lhs |  rhs; break;
-        case TOK_EQUALS_EQUALS:       *out = lhs == rhs; break;
-        case TOK_BANG_EQUALS:         *out = lhs != rhs; break;
-        case TOK_GREATER:             *out = lhs >  rhs; break;
-        case TOK_GREATER_EQUALS:      *out = lhs >= rhs; break;
-        case TOK_LESS:                *out = lhs <  rhs; break;
-        case TOK_LESS_EQUALS:         *out = lhs <= rhs; break;
-        case TOK_AMPERSAND_AMPERSAND: *out = lhs && rhs; break;
-        case TOK_PIPE_PIPE:           *out = lhs || rhs; break;
-        default:                      UNREACHABLE("Not an binary operator (%s)", tokenTypesStrings[binExpr.op]);
+        case BIN_PLUS:                *out = lhs +  rhs; return true;
+        case BIN_MINUS:               *out = lhs -  rhs; return true;
+        case BIN_STAR:                *out = lhs *  rhs; return true;
+        case BIN_SLASH:               *out = lhs /  rhs; return true;
+        case BIN_PERCENT:             *out = lhs %  rhs; return true;
+        case BIN_CARET:               *out = lhs ^  rhs; return true;
+        case BIN_LESS_LESS:           *out = lhs << rhs; return true;
+        case BIN_GREATER_GREATER:     *out = lhs >> rhs; return true;
+        case BIN_AMPERSAND:           *out = lhs &  rhs; return true;
+        case BIN_PIPE:                *out = lhs |  rhs; return true;
+        case BIN_EQUALS_EQUALS:       *out = lhs == rhs; return true;
+        case BIN_BANG_EQUALS:         *out = lhs != rhs; return true;
+        case BIN_GREATER:             *out = lhs >  rhs; return true;
+        case BIN_GREATER_EQUALS:      *out = lhs >= rhs; return true;
+        case BIN_LESS:                *out = lhs <  rhs; return true;
+        case BIN_LESS_EQUALS:         *out = lhs <= rhs; return true;
+        case BIN_AMPERSAND_AMPERSAND: *out = lhs && rhs; return true;
+        case BIN_PIPE_PIPE:           *out = lhs || rhs; return true;
     }
-
-    return true;
+    UNREACHABLE("Not an binary operator (%s)", tokenTypesStrings[binExpr.op]);
 }
 
 static bool eval_unary(Expr *e, int64_t *out) {

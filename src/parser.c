@@ -143,7 +143,7 @@ static Expr *multiplicative_expr(Parser *p) {
     while (match(p, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
         Token op = previous(p);
         Expr *rhs = unary_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -156,7 +156,7 @@ static Expr *additive_expr(Parser *p) {
     while (match(p, TOK_PLUS, TOK_MINUS)) {
         Token op = previous(p);
         Expr *rhs = multiplicative_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -169,7 +169,7 @@ static Expr *shift_expr(Parser *p) {
     while (match(p, TOK_LESS_LESS, TOK_GREATER_GREATER)) {
         Token op = previous(p);
         Expr *rhs = additive_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -182,7 +182,7 @@ static Expr *relational_expr(Parser *p) {
     while (match(p, TOK_LESS, TOK_GREATER, TOK_LESS_EQUALS, TOK_GREATER_EQUALS)) {
         Token op = previous(p);
         Expr *rhs = shift_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -195,7 +195,7 @@ static Expr *equality_expr(Parser *p) {
     while (match(p, TOK_EQUALS_EQUALS, TOK_BANG_EQUALS)) {
         Token op = previous(p);
         Expr *rhs = relational_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -208,7 +208,7 @@ static Expr *bitwise_and_expr(Parser *p) {
     while (match(p, TOK_AMPERSAND)) {
         Token op = previous(p);
         Expr *rhs = equality_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -221,7 +221,7 @@ static Expr *bitwise_xor_expr(Parser *p) {
     while (match(p, TOK_CARET)) {
         Token op = previous(p);
         Expr *rhs = bitwise_and_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -234,7 +234,7 @@ static Expr *bitwise_or_expr(Parser *p) {
     while (match(p, TOK_PIPE)) {
         Token op = previous(p);
         Expr *rhs = bitwise_xor_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -247,7 +247,7 @@ static Expr *logical_and_expr(Parser *p) {
     while (match(p, TOK_AMPERSAND_AMPERSAND)) {
         Token op = previous(p);
         Expr *rhs = bitwise_or_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -260,7 +260,7 @@ static Expr *logical_or_expr(Parser *p) {
     while (match(p, TOK_PIPE_PIPE)) {
         Token op = previous(p);
         Expr *rhs = logical_and_expr(p);
-        expr = expr_make_binary(op.kind, expr, rhs, op.loc);
+        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;

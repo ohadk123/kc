@@ -39,7 +39,7 @@ Expr *expr_make_grouping(Expr *inner, Location loc) {
     return e;
 }
 
-Expr *expr_make_binary(TokenKind op, Expr *lhs, Expr *rhs, Location loc) {
+Expr *expr_make_binary(BinOp op, Expr *lhs, Expr *rhs, Location loc) {
     Expr *e = make_expr(EXPR_BINARY, loc);
     e->as.binary.op = op;
     e->as.binary.lhs = lhs;
@@ -63,9 +63,9 @@ Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc) {
 
 Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc) {
     Expr *e = make_expr(EXPR_ASSIGN, loc);
-    e->as.binary.op = op;
-    e->as.binary.lhs = lhs;
-    e->as.binary.rhs = rhs;
+    e->as.assignment.op = op;
+    e->as.assignment.lhs = lhs;
+    e->as.assignment.rhs = rhs;
     return e;
 }
 
@@ -173,7 +173,7 @@ void print_expr(Expr *expr, int indent) {
             break;
         case EXPR_BINARY:
             printf("%*s\"kind\": \"binary\",\n", i * 2, "");
-            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.binary.op));
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str((TokenKind) expr->as.binary.op));
             printf("%*s\"lhs\": ", i * 2, "");
             print_expr(expr->as.binary.lhs, i);
             printf(",\n");
