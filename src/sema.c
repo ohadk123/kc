@@ -345,10 +345,10 @@ static void check_var(Checker *c, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
 
-    if (varStmt.specifier == TOK_EXTERN) return;
+    if (varStmt.specifier == SPEC_EXTERN) return;
 
     bool isGlobal = c->curr == &c->unit->globalSymbols;
-    bool isStatic = varStmt.specifier == TOK_STATIC;
+    bool isStatic = varStmt.specifier == SPEC_STATIC;
 
     if (isGlobal || isStatic) {
         if (!eval_expr(varStmt.init, &s->as.var.initVal))
@@ -434,7 +434,7 @@ static void check_func(Checker *c, Stmt *s) {
     StmtList params = funcStmt.params;
     for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
 
-    if (funcStmt.specifier != TOK_EXTERN) {
+    if (funcStmt.specifier != SPEC_EXTERN) {
         StmtList body = funcStmt.body;
         for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
     }

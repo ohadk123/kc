@@ -414,9 +414,9 @@ static void gen_func(Generator *g, Stmt *s) {
     assert(s->kind == STMT_FUNC);
     FuncStmt funcStmt = s->as.func;
 
-    if (funcStmt.specifier == TOK_EXTERN) return;
+    if (funcStmt.specifier == SPEC_EXTERN) return;
 
-    if (funcStmt.specifier == TOK_PUB) gprintf(g, "export ");
+    if (funcStmt.specifier == SPEC_PUB) gprintf(g, "export ");
     gprintf(g, "function w $%.*s(", strf(funcStmt.name));
 
     StmtList params = funcStmt.params;
@@ -463,7 +463,7 @@ static void gen_return(Generator *g, Stmt *s) {
 static void gen_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
-    if (varStmt.specifier == TOK_STATIC) {
+    if (varStmt.specifier == SPEC_STATIC) {
         accumulate_data(g, s, true);
         return;
     }
@@ -610,8 +610,8 @@ void gen_data_var(Generator *g, Stmt *s) {
     assert(s->kind == STMT_VAR);
     VarStmt varStmt = s->as.var;
 
-    if (varStmt.specifier == TOK_PUB) gprintf(g, "export ");
-    if (varStmt.specifier != TOK_EXTERN)
+    if (varStmt.specifier == SPEC_PUB) gprintf(g, "export ");
+    if (varStmt.specifier != SPEC_EXTERN)
         gprintfln(g, "data %.*s = { w %d }", strf(varStmt.qbe_var), (int32_t)varStmt.initVal);
     return;
 }

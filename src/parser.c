@@ -320,7 +320,7 @@ Stmt *var_stmt_ext(Parser *p, Token nameTok, TokenKind storage) {
 
     expect(p, TOK_SEMICOLON, "Expected ';' after declaration");
 
-    return stmt_make_var(name, init, storage, nameTok.loc);
+    return stmt_make_var(name, init, (StorageSpecifier) storage, nameTok.loc);
 }
 
 Stmt *var_stmt(Parser *p) {
@@ -469,7 +469,7 @@ StmtList params_list(Parser *p) {
         parse_type(p);
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token t = previous(p);
-        Stmt *param = stmt_make_var(t.as.identifier, NULL, TOK_UNKNOWN, t.loc);
+        Stmt *param = stmt_make_var(t.as.identifier, NULL, SPEC_NONE, t.loc);
         list_append(&params, param);
         if (!match(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
@@ -491,7 +491,7 @@ static Stmt *func_def_stmt(Parser *p, Token nameTok, TokenKind storage) {
         expect(p, TOK_SEMICOLON, "Expected ';' after external function declaration");
     }
 
-    return stmt_make_func(nameTok.as.identifier, params, body, storage, nameTok.loc);
+    return stmt_make_func(nameTok.as.identifier, params, body, (StorageSpecifier) storage, nameTok.loc);
 }
 
 static Stmt *top_level_decl(Parser *p) {

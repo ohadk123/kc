@@ -25,12 +25,19 @@ typedef enum {
     STMT_CONTINUE,
 } StmtKind;
 
+typedef enum {
+    SPEC_NONE   = 0,
+    SPEC_PUB    = TOK_PUB,
+    SPEC_EXTERN = TOK_EXTERN,
+    SPEC_STATIC = TOK_STATIC,
+} StorageSpecifier;
+
 typedef struct {
     String name;
     Expr *init;
     String qbe_var;
 
-    TokenKind specifier;
+    StorageSpecifier specifier;
     int64_t initVal;
 } VarStmt;
 
@@ -69,7 +76,7 @@ typedef struct {
     StmtList params;
     StmtList body;
 
-    TokenKind specifier;
+    StorageSpecifier specifier;
 } FuncStmt;
 
 struct _Stmt {
@@ -88,7 +95,7 @@ struct _Stmt {
 };
 
 Stmt *stmt_make_null(Location loc);
-Stmt *stmt_make_var(String name, Expr *initalizer, TokenKind storage, Location loc);
+Stmt *stmt_make_var(String name, Expr *initalizer, StorageSpecifier storage, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
@@ -96,7 +103,7 @@ Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(String name, StmtList params, StmtList block, TokenKind storage, Location loc);
+Stmt *stmt_make_func(String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);
