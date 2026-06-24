@@ -91,9 +91,9 @@ Expr *expr_make_index(Expr *array, Expr *index, Location loc) {
     return e;
 }
 
-Expr *expr_make_cast(TokenKind type, Expr *inner, Location loc) {
+Expr *expr_make_cast(Type *target, Expr *inner, Location loc) {
     Expr *e = make_expr(EXPR_CAST, loc);
-    e->as.cast.type = type;
+    e->as.cast.target = target;
     e->as.cast.inner = inner;
     return e;
 }
@@ -248,7 +248,7 @@ void print_expr(Expr *expr, int indent) {
         case EXPR_CAST: {
             CastExpr *c = &expr->as.cast;
             printf("%*s\"kind\": \"cast\",\n", i * 2, "");
-            printf("%*s\"type\": \"%s\"", i * 2, "", tokenTypesStrings[c->type]);
+            printf("%*s\"type\": \"%s\"", i * 2, "", type_name(c->target));
             printf(",\n");
             printf("%*s\"inner\": ", i * 2, "");
             print_expr(c->inner, i);

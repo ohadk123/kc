@@ -2,6 +2,7 @@
 #define STATEMENT_H
 
 #include "expression.h"
+#include "type.h"
 
 typedef struct _Stmt Stmt;
 typedef struct {
@@ -33,6 +34,7 @@ typedef enum {
 } StorageSpecifier;
 
 typedef struct {
+    Type *type;
     String name;
     Expr *init;
     String qbe_var;
@@ -72,6 +74,7 @@ typedef struct {
 } ReturnStmt;
 
 typedef struct {
+    Type *type;
     String name;
     StmtList params;
     StmtList body;
@@ -95,7 +98,7 @@ struct _Stmt {
 };
 
 Stmt *stmt_make_null(Location loc);
-Stmt *stmt_make_var(String name, Expr *initalizer, StorageSpecifier storage, Location loc);
+Stmt *stmt_make_var(Type *type, String name, Expr *initalizer, StorageSpecifier storage, Location loc);
 Stmt *stmt_make_expr(Expr *inner, Location loc);
 Stmt *stmt_make_block(StmtList block, Location loc);
 Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
@@ -103,7 +106,7 @@ Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
 Stmt *stmt_make_return(Expr *ret_val, Location loc);
-Stmt *stmt_make_func(String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc);
+Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

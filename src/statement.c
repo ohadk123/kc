@@ -12,8 +12,9 @@ Stmt *stmt_make_null(Location loc) {
     return s;
 }
 
-Stmt *stmt_make_var(String name, Expr *initalizer, StorageSpecifier storage, Location loc) {
+Stmt *stmt_make_var(Type *type, String name, Expr *initalizer, StorageSpecifier storage, Location loc) {
     Stmt *s = make_stmt(STMT_VAR, loc);
+    s->as.var.type = type;
     s->as.var.name = name;
     s->as.var.init = initalizer;
     s->as.var.specifier = storage;
@@ -77,8 +78,17 @@ Stmt *stmt_make_return(Expr *ret_val, Location loc) {
     return s;
 }
 
-Stmt *stmt_make_func(String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc) {
+Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc) {
     Stmt *s = make_stmt(STMT_FUNC, loc);
+
+    TypeList paramsTypes = {0};
+    FOR_EACH(&params, Stmt *, s) {
+        assert((*s)->kind == STMT_VAR);
+        Type *t = (*s)->as.var.type;
+        list_append(&paramsTypes, t);
+    }
+
+    s->as.func.type = type_make_func(ret, paramsTypes);
     s->as.func.name = name;
     s->as.func.params = params;
     s->as.func.body = block;

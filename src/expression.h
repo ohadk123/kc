@@ -24,6 +24,7 @@
  */
 
 #include "token.h"
+#include "type.h"
 
 typedef struct _Stmt Stmt;
 
@@ -160,7 +161,7 @@ typedef struct {
 } IndexExpr;
 
 typedef struct {
-    TokenKind type;
+    Type *target;
     Expr *inner;
 } CastExpr;
 
@@ -189,7 +190,7 @@ Expr *expr_make_assign(AssignOp op, Expr *lhs, Expr *rhs, Location loc);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc);
 Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);
 Expr *expr_make_index(Expr *array, Expr *index, Location loc);
-Expr *expr_make_cast(TokenKind type, Expr *inner, Location loc);
+Expr *expr_make_cast(Type *type, Expr *inner, Location loc);
 
 void print_expr(Expr *expr, int indent);
 
