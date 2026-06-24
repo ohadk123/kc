@@ -61,7 +61,7 @@ Expr *expr_make_unary_post(UnaryOp op, Expr *inner, Location loc) {
     return e;
 }
 
-Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc) {
+Expr *expr_make_assign(AssignOp op, Expr *lhs, Expr *rhs, Location loc) {
     Expr *e = make_expr(EXPR_ASSIGN, loc);
     e->as.assignment.op = op;
     e->as.assignment.lhs = lhs;
@@ -190,7 +190,7 @@ void print_expr(Expr *expr, int indent) {
             break;
         case EXPR_ASSIGN:
             printf("%*s\"kind\": \"assignment\",\n", i * 2, "");
-            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.assignment.op));
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str((TokenKind) expr->as.assignment.op));
             printf("%*s\"lhs\": ", i * 2, "");
             print_expr(expr->as.assignment.lhs, i);
             printf(",\n");

@@ -290,7 +290,7 @@ static Expr *assignment_expr(Parser *p) {
               TOK_GREATER_GREATER_EQUALS)) {
         Token op = previous(p);
         Expr *rhs = assignment_expr(p);
-        expr = expr_make_assign(op.kind, expr, rhs, op.loc);
+        expr = expr_make_assign((AssignOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;

@@ -253,20 +253,22 @@ static String gen_unary(Generator *g, Expr *e) {
     return out;
 }
 
-static const char *get_assign_op(TokenKind op) {
-    switch (op) {
-        case TOK_PLUS_EQUALS:            return "add";
-        case TOK_MINUS_EQUALS:           return "sub";
-        case TOK_STAR_EQUALS:            return "mul";
-        case TOK_SLASH_EQUALS:           return "div";
-        case TOK_PERCENT_EQUALS:         return "rem";
-        case TOK_AMPERSAND_EQUALS:       return "and";
-        case TOK_PIPE_EQUALS:            return "or";
-        case TOK_CARET_EQUALS:           return "xor";
-        case TOK_LESS_LESS_EQUALS:       return "shl";
-        case TOK_GREATER_GREATER_EQUALS: return "sar";
-        default: UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
-    }
+static const char *get_assign_op(AssignOp op) {
+   switch (op) {
+        case ASS_PLUS_EQUALS:            return "add";
+        case ASS_MINUS_EQUALS:           return "sub";
+        case ASS_STAR_EQUALS:            return "mul";
+        case ASS_SLASH_EQUALS:           return "div";
+        case ASS_PERCENT_EQUALS:         return "rem";
+        case ASS_AMPERSAND_EQUALS:       return "and";
+        case ASS_PIPE_EQUALS:            return "or";
+        case ASS_CARET_EQUALS:           return "xor";
+        case ASS_LESS_LESS_EQUALS:       return "shl";
+        case ASS_GREATER_GREATER_EQUALS: return "sar";
+        case ASS_EQUALS:                 break;
+   }
+
+    UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
 }
 
 
@@ -278,7 +280,7 @@ static String gen_assign(Generator *g, Expr *e) {
     String rhs = gen_expr(g, assign.rhs);
     String out = qbe_var(e->loc);
 
-    if (assign.op == TOK_EQUALS) {
+    if (assign.op == ASS_EQUALS) {
         gprintfln(g, "%.*s =w copy %.*s", strf(out), strf(rhs));
     } else {
         String old = qbe_var(e->loc);

@@ -123,8 +123,22 @@ typedef struct {
     Expr *inner;
 } UnaryExpr;
 
+typedef enum {
+    ASS_EQUALS = TOK_EQUALS,
+    ASS_PLUS_EQUALS = TOK_PLUS_EQUALS,
+    ASS_MINUS_EQUALS = TOK_MINUS_EQUALS,
+    ASS_STAR_EQUALS = TOK_STAR_EQUALS,
+    ASS_SLASH_EQUALS = TOK_SLASH_EQUALS,
+    ASS_PERCENT_EQUALS = TOK_PERCENT_EQUALS,
+    ASS_AMPERSAND_EQUALS = TOK_AMPERSAND_EQUALS,
+    ASS_CARET_EQUALS = TOK_CARET_EQUALS,
+    ASS_PIPE_EQUALS = TOK_PIPE_EQUALS,
+    ASS_LESS_LESS_EQUALS = TOK_LESS_LESS_EQUALS,
+    ASS_GREATER_GREATER_EQUALS = TOK_GREATER_GREATER_EQUALS,
+} AssignOp;
+
 typedef struct {
-    TokenKind op;
+    AssignOp op;
     Expr *lhs;
     Expr *rhs;
 } AssignExpr;
@@ -171,7 +185,7 @@ Expr *expr_make_grouping(Expr *inner, Location loc);
 Expr *expr_make_binary(BinOp op, Expr *lhs, Expr *rhs, Location loc);
 Expr *expr_make_unary(UnaryOp op, Expr *inner, Location loc);
 Expr *expr_make_unary_post(UnaryOp op, Expr *inner, Location loc);
-Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc);
+Expr *expr_make_assign(AssignOp op, Expr *lhs, Expr *rhs, Location loc);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc);
 Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);
 Expr *expr_make_index(Expr *array, Expr *index, Location loc);
