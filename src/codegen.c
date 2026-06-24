@@ -239,7 +239,7 @@ static String gen_unary(Generator *g, Expr *e) {
         case TOK_MINUS_MINUS: {
             String inner = get_lvalue(g, un.inner);
             String loadTemp = qbe_var(e->loc);
-            const char *op = un.op == TOK_PLUS_PLUS ? "add" : "sub";
+            const char *op = un.op == UN_PLUS_PLUS ? "add" : "sub";
 
             gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
             gprintfln(g, "%.*s =w %s %.*s, 1", strf(out), op, strf(loadTemp));
@@ -297,7 +297,7 @@ static String gen_unary_post(Generator *g, Expr *e) {
     String out = qbe_var(e->loc);
     String temp = qbe_var(e->loc);
     String inner = get_lvalue(g, un.inner);
-    const char *op = un.op == TOK_PLUS_PLUS ? "add" : "sub";
+    const char *op = un.op == UN_PLUS_PLUS ? "add" : "sub";
 
     gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(inner));
     gprintfln(g, "%.*s =w %s %.*s, 1", strf(temp), op, strf(out));

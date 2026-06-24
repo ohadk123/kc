@@ -47,14 +47,14 @@ Expr *expr_make_binary(BinOp op, Expr *lhs, Expr *rhs, Location loc) {
     return e;
 }
 
-Expr *expr_make_unary(TokenKind op, Expr *inner, Location loc) {
+Expr *expr_make_unary(UnaryOp op, Expr *inner, Location loc) {
     Expr *e = make_expr(EXPR_UNARY, loc);
     e->as.unary.op = op;
     e->as.unary.inner = inner;
     return e;
 }
 
-Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc) {
+Expr *expr_make_unary_post(UnaryOp op, Expr *inner, Location loc) {
     Expr *e = make_expr(EXPR_UNARY_POST, loc);
     e->as.unary.op = op;
     e->as.unary.inner = inner;
@@ -183,7 +183,7 @@ void print_expr(Expr *expr, int indent) {
             break;
         case EXPR_UNARY:
             printf("%*s\"kind\": \"unary\",\n", i * 2, "");
-            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.unary.op));
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str((TokenKind) expr->as.unary.op));
             printf("%*s\"inner\": ", i * 2, "");
             print_expr(expr->as.unary.inner, i);
             printf("\n");
@@ -200,7 +200,7 @@ void print_expr(Expr *expr, int indent) {
             break;
         case EXPR_UNARY_POST:
             printf("%*s\"kind\": \"unary_post\",\n", i * 2, "");
-            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str(expr->as.unary.op));
+            printf("%*s\"op\": \"%s\",\n", i * 2, "", op_str((TokenKind) expr->as.unary.op));
             printf("%*s\"inner\": ", i * 2, "");
             print_expr(expr->as.unary.inner, i);
             printf("\n");

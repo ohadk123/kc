@@ -81,24 +81,24 @@ typedef struct {
 } GroupingExpr;
 
 typedef enum {
-    BIN_PLUS = TOK_PLUS,
-    BIN_MINUS = TOK_MINUS,
-    BIN_STAR = TOK_STAR,
-    BIN_SLASH = TOK_SLASH,
-    BIN_PERCENT = TOK_PERCENT,
-    BIN_CARET = TOK_CARET,
-    BIN_LESS_LESS = TOK_LESS_LESS,
-    BIN_GREATER_GREATER = TOK_GREATER_GREATER,
-    BIN_AMPERSAND = TOK_AMPERSAND,
-    BIN_PIPE = TOK_PIPE,
-    BIN_EQUALS_EQUALS = TOK_EQUALS_EQUALS,
-    BIN_BANG_EQUALS = TOK_BANG_EQUALS,
-    BIN_GREATER = TOK_GREATER,
-    BIN_GREATER_EQUALS = TOK_GREATER_EQUALS,
-    BIN_LESS = TOK_LESS,
-    BIN_LESS_EQUALS = TOK_LESS_EQUALS,
+    BIN_PLUS                = TOK_PLUS,
+    BIN_MINUS               = TOK_MINUS,
+    BIN_STAR                = TOK_STAR,
+    BIN_SLASH               = TOK_SLASH,
+    BIN_PERCENT             = TOK_PERCENT,
+    BIN_CARET               = TOK_CARET,
+    BIN_LESS_LESS           = TOK_LESS_LESS,
+    BIN_GREATER_GREATER     = TOK_GREATER_GREATER,
+    BIN_AMPERSAND           = TOK_AMPERSAND,
+    BIN_PIPE                = TOK_PIPE,
+    BIN_EQUALS_EQUALS       = TOK_EQUALS_EQUALS,
+    BIN_BANG_EQUALS         = TOK_BANG_EQUALS,
+    BIN_GREATER             = TOK_GREATER,
+    BIN_GREATER_EQUALS      = TOK_GREATER_EQUALS,
+    BIN_LESS                = TOK_LESS,
+    BIN_LESS_EQUALS         = TOK_LESS_EQUALS,
     BIN_AMPERSAND_AMPERSAND = TOK_AMPERSAND_AMPERSAND,
-    BIN_PIPE_PIPE = TOK_PIPE_PIPE,
+    BIN_PIPE_PIPE           = TOK_PIPE_PIPE,
 } BinOp;
 
 typedef struct {
@@ -107,8 +107,19 @@ typedef struct {
     Expr *rhs;
 } BinaryExpr;
 
+typedef enum {
+    UN_PLUS_PLUS   = TOK_PLUS_PLUS,
+    UN_MINUS_MINUS = TOK_MINUS_MINUS,
+    UN_AMPERSAND   = TOK_AMPERSAND,
+    UN_STAR        = TOK_STAR,
+    UN_PLUS        = TOK_PLUS,
+    UN_MINUS       = TOK_MINUS,
+    UN_TILDE       = TOK_TILDE,
+    UN_BANG        = TOK_BANG
+} UnaryOp;
+
 typedef struct {
-    TokenKind op;
+    UnaryOp op;
     Expr *inner;
 } UnaryExpr;
 
@@ -158,8 +169,8 @@ struct _Expr {
 Expr *expr_make_primary(Token val, Location loc);
 Expr *expr_make_grouping(Expr *inner, Location loc);
 Expr *expr_make_binary(BinOp op, Expr *lhs, Expr *rhs, Location loc);
-Expr *expr_make_unary(TokenKind op, Expr *inner, Location loc);
-Expr *expr_make_unary_post(TokenKind op, Expr *inner, Location loc);
+Expr *expr_make_unary(UnaryOp op, Expr *inner, Location loc);
+Expr *expr_make_unary_post(UnaryOp op, Expr *inner, Location loc);
 Expr *expr_make_assign(TokenKind op, Expr *lhs, Expr *rhs, Location loc);
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc);
 Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);

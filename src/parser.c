@@ -96,7 +96,7 @@ static Expr *postfix_expr(Parser *p) {
     while (true) {
         if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
             Token op = previous(p);
-            expr = expr_make_unary_post(op.kind, expr, op.loc);
+            expr = expr_make_unary_post((UnaryOp) op.kind, expr, op.loc);
         } else if (match(p, TOK_LEFT_PAREN)) {
             ExprList args = {0};
             if (!match(p, TOK_RIGHT_PAREN)) {
@@ -130,7 +130,7 @@ static Expr *unary_expr(Parser *p) {
     if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS, TOK_AMPERSAND, TOK_STAR, TOK_PLUS, TOK_MINUS, TOK_TILDE, TOK_BANG)) {
         Token op = previous(p);
         Expr *inner = unary_expr(p);
-        return expr_make_unary(op.kind, inner, op.loc);
+        return expr_make_unary((UnaryOp) op.kind, inner, op.loc);
     }
 
     return postfix_expr(p);

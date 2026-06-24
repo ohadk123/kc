@@ -38,7 +38,7 @@ static bool is_lvalue(Expr *e) {
         }
     }
     if (e->kind == EXPR_GROUPING) return is_lvalue(e->as.grouping.inner); // inner expression is lvalue? (x)++
-    if (e->kind == EXPR_UNARY && e->as.unary.op == TOK_STAR) return true; // pointer dereference
+    if (e->kind == EXPR_UNARY && e->as.unary.op == UN_STAR) return true; // pointer dereference
 
     return false;
 }
@@ -98,7 +98,7 @@ static bool eval_binary(Expr *e, int64_t *out) {
         case BIN_AMPERSAND_AMPERSAND: *out = lhs && rhs; return true;
         case BIN_PIPE_PIPE:           *out = lhs || rhs; return true;
     }
-    UNREACHABLE("Not an binary operator (%s)", tokenTypesStrings[binExpr.op]);
+    UNREACHABLE("Invalid Binary Operator (%s)", tokenTypesStrings[binExpr.op]);
 }
 
 static bool eval_unary(Expr *e, int64_t *out) {
@@ -119,7 +119,7 @@ static bool eval_unary(Expr *e, int64_t *out) {
         case TOK_STAR:
         case TOK_AMPERSAND: return false;
 
-        default: UNREACHABLE("%s: Not an unary operator (%s)", __func__, tokenTypesStrings[unExpr.op]);
+        default: UNREACHABLE("Invalid Unary Operator (%s)", tokenTypesStrings[unExpr.op]);
     }
 
     return true;
@@ -263,7 +263,7 @@ static void check_unary(Checker *c, Expr *e) {
     UnaryExpr un = e->as.unary;
     check_expr(c, un.inner);
 
-    if ((un.op == TOK_PLUS_PLUS || un.op == TOK_MINUS_MINUS) && !is_lvalue(un.inner))
+    if ((un.op == UN_PLUS_PLUS || un.op == UN_MINUS_MINUS) && !is_lvalue(un.inner))
         checker_error(c, e->loc, "Expression is not assignable");
 }
 
