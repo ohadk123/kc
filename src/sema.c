@@ -1,7 +1,7 @@
 #include "sema.h"
 #include "compiler.h"
 
-bool fill_global_symbol_table(TranslationUnit *unit) {
+static bool fill_global_symbol_table(TranslationUnit *unit) {
     bool hadError = false;
 
     for (size_t i = 0; i < unit->ast.len; i++) {
@@ -51,34 +51,32 @@ static bool eval_expr(Expr *e, int64_t *out);
 
 static bool eval_primary(Expr *e, int64_t *out) {
     assert(e->kind == EXPR_PRIMARY);
-    PrimaryValue prim = e->as.primary.value;
 
-    switch (prim.kind) {
+    switch (e->as.primary.value.kind) {
         case PRIM_IDENTIFIER:      return false;
         case PRIM_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case PRIM_CHAR_LITERAL:    *out = prim.as.charLiteral; return true;
+        case PRIM_CHAR_LITERAL:    *out = e->as.primary.value.as.charLiteral; return true;
         case PRIM_INTEGER_LITERAL:
-        case PRIM_LONG_LITERAL:    *out = prim.as.longLiteral; return true;
+        case PRIM_LONG_LITERAL:    *out = e->as.primary.value.as.longLiteral; return true;
         case PRIM_FLOAT_LITERAL:
-        case PRIM_DOUBLE_LITERAL:  *out = (int64_t) prim.as.floatLiteral; return true;
+        case PRIM_DOUBLE_LITERAL:  *out = (int64_t) e->as.primary.value.as.floatLiteral; return true;
         case PRIM_TRUE:            *out = 1; return true;
         case PRIM_FALSE:           *out = 0; return true;
     }
 
-    UNREACHABLE("Invalid Primary Kind (%s)", tokenTypesStrings[prim.kind]);
+    UNREACHABLE("Invalid Primary Kind (%s)", tokenTypesStrings[e->as.primary.value.kind]);
 }
 
 static bool eval_binary(Expr *e, int64_t *out) {
     assert (e->kind == EXPR_BINARY);
-    BinaryExpr binExpr = e->as.binary;
 
     int64_t lhs, rhs;
-    if (!eval_expr(binExpr.lhs, &lhs)) return false;
-    if (!eval_expr(binExpr.rhs, &rhs)) return false;
+    if (!eval_expr(e->as.binary.lhs, &lhs)) return false;
+    if (!eval_expr(e->as.binary.rhs, &rhs)) return false;
 
-    if ((binExpr.op == BIN_SLASH || binExpr.op == BIN_PERCENT) && rhs == 0) return false;
+    if ((e->as.binary.op == BIN_SLASH || e->as.binary.op == BIN_PERCENT) && rhs == 0) return false;
 
-    switch (binExpr.op) {
+    switch (e->as.binary.op) {
         case BIN_PLUS:                *out = lhs +  rhs; return true;
         case BIN_MINUS:               *out = lhs -  rhs; return true;
         case BIN_STAR:                *out = lhs *  rhs; return true;
@@ -98,17 +96,16 @@ static bool eval_binary(Expr *e, int64_t *out) {
         case BIN_AMPERSAND_AMPERSAND: *out = lhs && rhs; return true;
         case BIN_PIPE_PIPE:           *out = lhs || rhs; return true;
     }
-    UNREACHABLE("Invalid Binary Operator (%s)", tokenTypesStrings[binExpr.op]);
+    UNREACHABLE("Invalid Binary Operator (%s)", tokenTypesStrings[e->as.binary.op]);
 }
 
 static bool eval_unary(Expr *e, int64_t *out) {
     assert(e->kind == EXPR_UNARY);
-    UnaryExpr unExpr = e->as.unary;
 
     int64_t inner;
-    if (!eval_expr(unExpr.inner, &inner)) return false;
+    if (!eval_expr(e->as.unary.inner, &inner)) return false;
 
-    switch (unExpr.op) {
+    switch (e->as.unary.op) {
         case TOK_PLUS:        *out =  inner; break;
         case TOK_MINUS:       *out = -inner; break;
         case TOK_TILDE:       *out = ~inner; break;
@@ -119,7 +116,7 @@ static bool eval_unary(Expr *e, int64_t *out) {
         case TOK_STAR:
         case TOK_AMPERSAND: return false;
 
-        default: UNREACHABLE("Invalid Unary Operator (%s)", tokenTypesStrings[unExpr.op]);
+        default: UNREACHABLE("Invalid Unary Operator (%s)", tokenTypesStrings[e->as.unary.op]);
     }
 
     return true;
@@ -127,12 +124,11 @@ static bool eval_unary(Expr *e, int64_t *out) {
 
 static bool eval_cond(Expr *e, int64_t *out) {
     assert(e->kind == EXPR_CONDITIONAL);
-    ConditionalExpr c = e->as.conditional;
 
     int64_t condVal, thenVal, elseVal;
-    if (!eval_expr(c.condition, &condVal)) return false;
-    if (!eval_expr(c.thenBranch, &thenVal)) return false;
-    if (!eval_expr(c.elseBranch, &elseVal)) return false;
+    if (!eval_expr(e->as.conditional.condition, &condVal)) return false;
+    if (!eval_expr(e->as.conditional.thenBranch, &thenVal)) return false;
+    if (!eval_expr(e->as.conditional.elseBranch, &elseVal)) return false;
 
     *out = condVal ? thenVal : elseVal;
     return true;
@@ -155,12 +151,16 @@ static bool eval_expr(Expr *e, int64_t *out) {
     UNREACHABLE("Not a valid expression kind (%d)", e->kind);
 }
 
+/******************************************************************************
+ * Sematic Analysis Checker
+ *****************************************************************************/
+
 typedef struct {
     TranslationUnit *unit;
     Scope *curr;
     bool hadError;
 
-    bool inFunc;
+    Type *ret;
     int loopCount;
 } Checker;
 
@@ -201,7 +201,7 @@ static Stmt *find_symbol(Scope *scope, String symbol) {
 static Stmt *expect_var(Checker *c, String name, Location loc) {
     Stmt *found = find_symbol(c->curr, name);
     if (!found) checker_error(c, loc, "Unkown symbol '%.*s'", strf(name));
-    if (found->kind != STMT_VAR) {
+    else if (found->kind != STMT_VAR) {
         checker_error(c, loc, "Cannot use symbol '%.*s' as a variable", strf(name));
         return NULL;
     }
@@ -223,116 +223,201 @@ static void declare_var(Checker *c, Stmt *varStmt) {
 static Stmt *expect_func(Checker *c, String name, Location loc) {
     Stmt *found = hm_find_val(&c->unit->globalSymbols.symbols, name);
     if (!found) checker_error(c, loc, "Call to undeclared function '%.*s'", strf(name));
-    if (found->kind != STMT_FUNC) checker_error(c, loc, "Symbol cannot be called");
+    else if (found->kind != STMT_FUNC) checker_error(c, loc, "Symbol cannot be called");
     return found;
+}
+
+static bool fits_in_type(int64_t v, const Type *t) {
+      if (t->size >= 8) return true;                 // i64 holds any int64_t
+      int64_t bits = (int64_t)t->size * 8;
+      int64_t min  = -(INT64_C(1) << (bits - 1));
+      int64_t max  =  (INT64_C(1) << (bits - 1)) - 1;
+      return v >= min && v <= max;
+  }
+
+static void convert_expr_type(Checker *c, Expr **slot, Type *target, Location loc) {
+    Type *src = (*slot)->type;
+    if (type_equal(src, target)) return; // same type - no problem
+
+    if (target->size >= src->size) { // widening - make it explicit
+        *slot = expr_make_cast(target, *slot, loc);
+        (*slot)->type = target;
+        return;
+    }
+
+    int64_t v;
+    if (eval_expr(*slot, &v) && fits_in_type(v, target)) {
+        *slot = expr_make_cast(target, *slot, loc);
+        return;
+    }
+
+    // narrowing - force explicit cast
+    checker_error(c, loc, "Implicit narrowing from %s to %s is not allowed, use cast<%s>(x)", type_name(src),
+                  type_name(target), type_name(target));
 }
 
 /******************************************************************************
  * Expression Checking
  *****************************************************************************/
 
-static void check_expr(Checker *c, Expr *e);
+static Type *check_expr(Checker *c, Expr *e);
 
-static void check_primary(Checker *c, Expr *e) {
+static Type *check_primary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_PRIMARY);
-    PrimaryValue prim = e->as.primary.value;
 
-    switch (prim.kind) {
-        case PRIM_IDENTIFIER:      e->as.primary.decl = expect_var(c, prim.as.identifier, e->loc); return;
+    switch (e->as.primary.value.kind) {
+        case PRIM_IDENTIFIER: {
+            Stmt *decl = expect_var(c, e->as.primary.value.as.identifier, e->loc);
+            e->as.primary.decl = decl;
+            return decl ? decl->as.var.type : type_i32;
+        }
         case PRIM_STRING_LITERAL:  TODO("%s: TOK_STRING_LITERAL", __func__);
-        case PRIM_CHAR_LITERAL:    return;
-        case PRIM_INTEGER_LITERAL: return;
-        case PRIM_LONG_LITERAL:    return;
-        case PRIM_FLOAT_LITERAL:   return;
-        case PRIM_DOUBLE_LITERAL:  return;
-        case PRIM_TRUE:            return;
-        case PRIM_FALSE:           return;
+        case PRIM_TRUE:
+        case PRIM_FALSE:
+        case PRIM_CHAR_LITERAL:
+        case PRIM_INTEGER_LITERAL: return type_i32;
+        case PRIM_LONG_LITERAL:    return type_i64;
+        case PRIM_FLOAT_LITERAL:   TODO("%s: PRIM_FLOAT_LITERAL", __func__);
+        case PRIM_DOUBLE_LITERAL:  TODO("%s: PRIM_DOUBLE_LITERAL", __func__);
     }
+
+    UNREACHABLE("Invalid PrimaryKind (%s)", tokenTypesStrings[e->as.primary.value.kind]);
 }
 
-static void check_binary(Checker *c, Expr *e) {
+static Type *check_binary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_BINARY);
 
     check_expr(c, e->as.binary.lhs);
     check_expr(c, e->as.binary.rhs);
+
+    switch (e->as.binary.op) {
+        // arithemtic - return common type
+        case BIN_PLUS:
+        case BIN_MINUS:
+        case BIN_STAR:
+        case BIN_SLASH:
+        case BIN_PERCENT:
+        case BIN_CARET:
+        case BIN_PIPE:
+        case BIN_AMPERSAND: break;
+
+        // shifts - return lhs type
+        case BIN_LESS_LESS:
+        case BIN_GREATER_GREATER: {
+            int64_t v;
+            if (eval_expr(e->as.binary.rhs, &v) && v >= e->as.binary.lhs->type->size * 8)
+                checker_error(c, e->loc, "Shift amount %ld out of range for type %s (%zu)", v,
+                              type_name(e->as.binary.lhs->type), e->as.binary.lhs->type->size * 8);
+            return e->as.binary.lhs->type;
+        }
+
+        // comparison - return bool
+        case BIN_EQUALS_EQUALS:
+        case BIN_BANG_EQUALS:
+        case BIN_GREATER:
+        case BIN_GREATER_EQUALS:
+        case BIN_LESS:
+        case BIN_LESS_EQUALS:
+        case BIN_AMPERSAND_AMPERSAND:
+        case BIN_PIPE_PIPE: return type_i32;
+    }
+
+    Type *target = type_common(e->as.binary.lhs->type, e->as.binary.rhs->type);
+    convert_expr_type(c, &e->as.binary.lhs, target, e->as.binary.lhs->loc);
+    convert_expr_type(c, &e->as.binary.rhs, target, e->as.binary.rhs->loc);
+    return target;
 }
 
-static void check_unary(Checker *c, Expr *e) {
+static Type *check_unary(Checker *c, Expr *e) {
     assert(e->kind == EXPR_UNARY || e->kind == EXPR_UNARY_POST);
 
-    UnaryExpr un = e->as.unary;
-    check_expr(c, un.inner);
+    check_expr(c, e->as.unary.inner);
 
-    if ((un.op == UN_PLUS_PLUS || un.op == UN_MINUS_MINUS) && !is_lvalue(un.inner))
+    if ((e->as.unary.op == UN_PLUS_PLUS || e->as.unary.op == UN_MINUS_MINUS) && !is_lvalue(e->as.unary.inner))
         checker_error(c, e->loc, "Expression is not assignable");
+
+    return e->as.unary.op == UN_BANG ? type_i32 : e->as.unary.inner->type;
 }
 
-static void check_assign(Checker *c, Expr *e) {
+static Type *check_assign(Checker *c, Expr *e) {
     assert(e->kind == EXPR_ASSIGN);
 
-    AssignExpr assign = e->as.assignment;
-    check_expr(c, assign.lhs);
-    check_expr(c, assign.rhs);
+    check_expr(c, e->as.assignment.lhs);
+    check_expr(c, e->as.assignment.rhs);
 
-    if (!is_lvalue(assign.lhs)) checker_error(c, e->loc, "Expression is not assignable");
+    if (!is_lvalue(e->as.assignment.lhs)) checker_error(c, e->loc, "Expression is not assignable");
+
+    convert_expr_type(c, &e->as.assignment.rhs, e->as.assignment.lhs->type, e->loc);
+    return e->as.assignment.lhs->type;
 }
 
-static void check_conditional(Checker *c, Expr *e) {
+static Type *check_conditional(Checker *c, Expr *e) {
     assert(e->kind == EXPR_CONDITIONAL);
 
     check_expr(c, e->as.conditional.condition);
     check_expr(c, e->as.conditional.elseBranch);
     check_expr(c, e->as.conditional.thenBranch);
+
+    return type_common(e->as.conditional.thenBranch->type, e->as.conditional.elseBranch->type);
 }
 
-static void check_func_call(Checker *c, Expr *e) {
+static Type *check_func_call(Checker *c, Expr *e) {
     assert(e->kind == EXPR_FUNC_CALL);
-    FuncCallExpr funcCallExpr = e->as.funcCall;
 
-    assert(funcCallExpr.func->kind == EXPR_PRIMARY);
-    Stmt *funcStmt = expect_func(c, funcCallExpr.func->as.primary.value.as.identifier, e->loc);
-    if (!funcStmt) return;
+    assert(e->as.funcCall.func->kind == EXPR_PRIMARY);
+    Stmt *funcStmt = expect_func(c, e->as.funcCall.func->as.primary.value.as.identifier, e->loc);
+    if (!funcStmt) return type_i32;
 
     size_t paramCount = funcStmt->as.func.params.len;
-    size_t argCount = funcCallExpr.args.len;
-    if (argCount > paramCount)
-        checker_error(c, e->loc, "Too many arguments to function call expected %zu, got %zu", paramCount, argCount);
-    else if (argCount < paramCount)
-        checker_error(c, e->loc, "Too few arguments to function call expected %zu, got %zu", paramCount, argCount);
-
-    funcCallExpr.func->as.primary.decl = funcStmt;
-
-    for (size_t i = 0; i < argCount; i++) {
-        check_expr(c, funcCallExpr.args.arr[i]);
+    size_t argsCount = e->as.funcCall.args.len;
+    if (argsCount != paramCount) {
+        if (argsCount > paramCount)
+            checker_error(c, e->loc, "Too many arguments to function call expected %zu, got %zu", paramCount, argsCount);
+        else if (argsCount < paramCount)
+            checker_error(c, e->loc, "Too few arguments to function call expected %zu, got %zu", paramCount, argsCount);
+        return type_i32;
     }
+
+    e->as.funcCall.func->as.primary.decl = funcStmt;
+
+    for (size_t i = 0; i < argsCount; i++) {
+        Expr **arg = &e->as.funcCall.args.arr[i];
+        check_expr(c, *arg);
+        convert_expr_type(c, arg, funcStmt->as.func.params.arr[i]->as.var.type, (*arg)->loc);
+    }
+
+    return funcStmt->as.func.ret;
 }
 
-static void check_index(Checker *c, Expr *e) {
-    assert(e->kind == EXPR_INDEX);
+static Type *check_index(Checker *c, Expr *e) {
+    (void)c;
+    (void)e;
 
-    check_expr(c, e->as.index.index);
-    check_expr(c, e->as.index.array);
+    TODO("%s", __func__);
 }
 
-static void check_cast(Checker *c, Expr *e) {
+static Type *check_cast(Checker *c, Expr *e) {
     (void) c;
     (void) e;
     TODO("%s", __func__);
 }
 
-static void check_expr(Checker *c, Expr *e) {
+static Type *check_expr(Checker *c, Expr *e) {
+    Type *t;
     switch (e->kind) {
-        case EXPR_PRIMARY:     check_primary(c, e);                 return;
-        case EXPR_GROUPING:    check_expr(c, e->as.grouping.inner); return;
-        case EXPR_BINARY:      check_binary(c, e);                  return;
-        case EXPR_UNARY:       check_unary(c, e);                   return;
-        case EXPR_ASSIGN:      check_assign(c, e);                  return;
-        case EXPR_UNARY_POST:  check_unary(c, e);                   return;
-        case EXPR_CONDITIONAL: check_conditional(c, e);             return;
-        case EXPR_FUNC_CALL:   check_func_call(c, e);               return;
-        case EXPR_INDEX:       check_index(c, e);                   return;
-        case EXPR_CAST:        check_cast(c, e);                    return;
+        case EXPR_PRIMARY:     t = check_primary(c, e);                 break;
+        case EXPR_GROUPING:    t = check_expr(c, e->as.grouping.inner); break;
+        case EXPR_BINARY:      t = check_binary(c, e);                  break;
+        case EXPR_UNARY:       t = check_unary(c, e);                   break;
+        case EXPR_ASSIGN:      t = check_assign(c, e);                  break;
+        case EXPR_UNARY_POST:  t = check_unary(c, e);                   break;
+        case EXPR_CONDITIONAL: t = check_conditional(c, e);             break;
+        case EXPR_FUNC_CALL:   t = check_func_call(c, e);               break;
+        case EXPR_INDEX:       t = check_index(c, e);                   break;
+        case EXPR_CAST:        t = check_cast(c, e);                    break;
     }
+
+    return e->type = t;
 }
 
 /******************************************************************************
@@ -343,19 +428,17 @@ static void check_stmt(Checker *c, Stmt *s);
 
 static void check_var(Checker *c, Stmt *s) {
     assert(s->kind == STMT_VAR);
-    VarStmt varStmt = s->as.var;
 
-    if (varStmt.specifier == SPEC_EXTERN) return;
+    if (s->as.var.specifier == SPEC_EXTERN) return;
 
     bool isGlobal = c->curr == &c->unit->globalSymbols;
-    bool isStatic = varStmt.specifier == SPEC_STATIC;
+    bool isStatic = s->as.var.specifier == SPEC_STATIC;
 
-    if (isGlobal || isStatic) {
-        if (!eval_expr(varStmt.init, &s->as.var.initVal))
+    if (s->as.var.init) {
+        if (!eval_expr(s->as.var.init, &s->as.var.initVal) && (isGlobal || isStatic))
             checker_error(c, s->loc, "Initalizer not a compile time constant");
-    } else {
-        assert (s->as.var.init);
         check_expr(c, s->as.var.init);
+        convert_expr_type(c, &s->as.var.init, s->as.var.type, s->loc);
     }
 
     if (!isGlobal) declare_var(c, s);
@@ -419,28 +502,29 @@ static void check_for(Checker *c, Stmt *s) {
 }
 
 static void check_return(Checker *c, Stmt *s) {
-    if (!c->inFunc) checker_error(c, s->loc, "'return' statement not in a function");
-    if (s->as.returnS.retVal) check_expr(c, s->as.returnS.retVal);
+    if (!c->ret) checker_error(c, s->loc, "'return' statement not in a function");
+    if (s->as.returnS.retVal) {
+        check_expr(c, s->as.returnS.retVal);
+        convert_expr_type(c, &s->as.returnS.retVal, c->ret, s->as.returnS.retVal->loc);
+    }
 }
 
 static void check_func(Checker *c, Stmt *s) {
     assert(s->kind == STMT_FUNC);
-    FuncStmt funcStmt = s->as.func;
-
 
     enter_scope(c);
-    c->inFunc = true;
+    c->ret = s->as.func.ret;
 
-    StmtList params = funcStmt.params;
+    StmtList params = s->as.func.params;
     for (size_t i = 0; i < params.len; i++) declare_var(c, params.arr[i]);
 
-    if (funcStmt.specifier != SPEC_EXTERN) {
-        StmtList body = funcStmt.body;
+    if (s->as.func.specifier != SPEC_EXTERN) {
+        StmtList body = s->as.func.body;
         for (size_t i = 0; i < body.len; i++) check_stmt(c, body.arr[i]);
     }
 
     exit_scope(c);
-    c->inFunc = false;
+    c->ret = NULL;
 }
 
 static void check_break(Checker *c, Stmt *s) {
@@ -475,7 +559,7 @@ bool semantic_analysis(TranslationUnit *unit) {
         .unit = unit,
         .curr = &unit->globalSymbols,
         .hadError = false,
-        .inFunc = false,
+        .ret = NULL,
         .loopCount = 0,
     };
 

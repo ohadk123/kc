@@ -193,6 +193,8 @@ Expr *expr_make_func_call(Expr *func, ExprList args, Location loc);
 Expr *expr_make_index(Expr *array, Expr *index, Location loc);
 Expr *expr_make_cast(Type *type, Expr *inner, Location loc);
 
+Expr *cast_expr_type(Expr *e, Type *t);
+
 void print_expr(Expr *expr, int indent);
 
 #endif // EXPRESSION_H

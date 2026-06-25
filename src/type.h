@@ -3,14 +3,18 @@
 
 #include "token.h"
 
+typedef struct Type Type;
+
+extern Type *type_err;
+extern Type *type_i32;
+extern Type *type_i64;
+
 typedef enum {
+    TYPE_ERR = 0,
+
     TYPE_I32 = TOK_I32,
     TYPE_I64 = TOK_I64,
-
-    TYPE_FUNC,
 } TypeKind;
-
-typedef struct Type Type;
 
 typedef struct {
     LIST_FIELDS(Type *);
@@ -23,12 +27,17 @@ typedef struct {
 
 struct Type {
     TypeKind kind;
-    size_t size;
-    size_t align;
-    union {
-        FuncType func;
-    } as;
+    uint32_t size;
+    uint32_t align;
 };
 
 Type *type_make_primitive(TokenKind kind);
-Type *type_make_func(Type *ret, TypeList params);
+
+bool type_equal(const Type *a, const Type *b);
+
+bool type_is_integer(const Type *t);
+Type *type_common(Type *a, Type *b);
+
+const char *type_name(const Type *t);
+
+#endif // TYPE_H

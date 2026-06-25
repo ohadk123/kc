@@ -98,6 +98,10 @@ Expr *expr_make_cast(Type *target, Expr *inner, Location loc) {
     return e;
 }
 
+Expr *cast_expr_type(Expr *e, Type *t) {
+    return e->type == t ? e : expr_make_cast(t, e, e->loc);
+}
+
 static const char *op_str(TokenKind op) {
     switch (op) {
         case TOK_PLUS:                   return "+";

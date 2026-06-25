@@ -1,22 +1,12 @@
 #include "type.h"
 
-// Primitive singletons: one shared object per primitive, statically allocated,
-// never freed. Because every i32 is the same pointer, type_equal()'s identity
-// fast path resolves them in one comparison.
+static Type err_type  = {.kind = TYPE_ERR, .size = 0, .align = 0};
 static Type i32_type  = {.kind = TYPE_I32, .size = 4, .align = 4};
 static Type i64_type  = {.kind = TYPE_I64, .size = 8, .align = 8};
 
+Type *type_err  = &err_type;
 Type *type_i32  = &i32_type;
 Type *type_i64  = &i64_type;
-
-static Type *make_type(TypeKind kind, size_t size, size_t align) {
-    Type *t = calloc(1, sizeof(Type));
-    t->kind = kind;
-    t->size = size;
-    t->align = align;
-
-    return t;
-}
 
 Type *type_make_primitive(TokenKind kind) {
     switch (kind) {
@@ -26,11 +16,28 @@ Type *type_make_primitive(TokenKind kind) {
     }
 }
 
-Type *type_make_func(Type *ret, TypeList params) {
-    Type *t = make_type(TYPE_FUNC, 8, 8);
-    t->kind = TYPE_FUNC;
-    t->as.func.ret = ret;
-    t->as.func.params = params;
+bool type_equal(const Type *a, const Type *b) {
+    if (!a || !b) return false;
+    if (a == b) return true;
+    if (a->kind != b->kind) return false;
 
-    return t;
+    return true;
+}
+
+bool type_is_integer(const Type *t) {
+    return t && (t->kind == TYPE_I32 || t->kind == TYPE_I64);
+}
+
+Type *type_common(Type *a, Type *b) {
+    assert(type_is_integer(a) && type_is_integer(b));
+    return (a->kind == TYPE_I64 || b->kind == TYPE_I64) ? type_i64 : type_i32;
+}
+
+const char *type_name(const Type *t) {
+    switch (t->kind) {
+        case TYPE_ERR: return "err";
+        case TYPE_I32: return "i32";
+        case TYPE_I64: return "i64";
+    }
+    UNREACHABLE("Invalid type kind (%d)", t->kind);
 }
