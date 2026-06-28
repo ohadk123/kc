@@ -145,7 +145,7 @@ static bool eval_expr(Expr *e, int64_t *out) {
         case EXPR_CONDITIONAL: return eval_cond(e, out);
         case EXPR_FUNC_CALL:   return false;
         case EXPR_INDEX:       return false;
-        case EXPR_CAST:        TODO("Evaluate cast expressions");
+        case EXPR_CAST:        return eval_expr(e->as.cast.inner, out);
     }
 
     UNREACHABLE("Not a valid expression kind (%d)", e->kind);
@@ -299,7 +299,12 @@ static Type *check_binary(Checker *c, Expr *e) {
         case BIN_PERCENT:
         case BIN_CARET:
         case BIN_PIPE:
-        case BIN_AMPERSAND: break;
+        case BIN_AMPERSAND: {
+            Type *target = type_common(e->as.binary.lhs->type, e->as.binary.rhs->type);
+            convert_expr_type(c, &e->as.binary.lhs, target, e->as.binary.lhs->loc);
+            convert_expr_type(c, &e->as.binary.rhs, target, e->as.binary.rhs->loc);
+            return target;
+        }
 
         // shifts - return lhs type
         case BIN_LESS_LESS:
@@ -319,13 +324,15 @@ static Type *check_binary(Checker *c, Expr *e) {
         case BIN_LESS:
         case BIN_LESS_EQUALS:
         case BIN_AMPERSAND_AMPERSAND:
-        case BIN_PIPE_PIPE: return type_i32;
+        case BIN_PIPE_PIPE: {
+            Type *target = type_common(e->as.binary.lhs->type, e->as.binary.rhs->type);
+            convert_expr_type(c, &e->as.binary.lhs, target, e->as.binary.lhs->loc);
+            convert_expr_type(c, &e->as.binary.rhs, target, e->as.binary.rhs->loc);
+            return type_i32;
+        }
     }
 
-    Type *target = type_common(e->as.binary.lhs->type, e->as.binary.rhs->type);
-    convert_expr_type(c, &e->as.binary.lhs, target, e->as.binary.lhs->loc);
-    convert_expr_type(c, &e->as.binary.rhs, target, e->as.binary.rhs->loc);
-    return target;
+    UNREACHABLE("Invalid Binary Operator (%s)", tokenTypesStrings[e->as.binary.op]);
 }
 
 static Type *check_unary(Checker *c, Expr *e) {
@@ -355,10 +362,13 @@ static Type *check_conditional(Checker *c, Expr *e) {
     assert(e->kind == EXPR_CONDITIONAL);
 
     check_expr(c, e->as.conditional.condition);
-    check_expr(c, e->as.conditional.elseBranch);
-    check_expr(c, e->as.conditional.thenBranch);
+    Type *thenType = check_expr(c, e->as.conditional.thenBranch);
+    Type *elseType = check_expr(c, e->as.conditional.elseBranch);
 
-    return type_common(e->as.conditional.thenBranch->type, e->as.conditional.elseBranch->type);
+    Type *common = (type_common(thenType, elseType));
+    convert_expr_type(c, &e->as.conditional.thenBranch, common, e->loc);
+    convert_expr_type(c, &e->as.conditional.elseBranch, common, e->loc);
+    return common;
 }
 
 static Type *check_func_call(Checker *c, Expr *e) {
@@ -397,9 +407,10 @@ static Type *check_index(Checker *c, Expr *e) {
 }
 
 static Type *check_cast(Checker *c, Expr *e) {
-    (void) c;
-    (void) e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_CAST);
+
+    check_expr(c, e->as.cast.inner);
+    return e->as.cast.target;
 }
 
 static Type *check_expr(Checker *c, Expr *e) {

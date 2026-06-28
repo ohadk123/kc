@@ -23,6 +23,15 @@ static String qbe_label(const char *name, Location l) {
     return str_printf("@_%s_%zu_%zu_%zu", name, i, l.line, l.col);
 }
 
+static char qbe_type(Type *type) {
+    switch (type->kind) {
+        case TYPE_ERR: UNREACHABLE("Error TypeKind");
+        case TYPE_I32: return 'w';
+        case TYPE_I64: return 'l';
+    }
+    UNREACHABLE("Invalid TypeKind (%d)", type->kind);
+}
+
 typedef struct {
     String breakLbl;
     String continueLbl;
@@ -111,7 +120,8 @@ static String gen_primary(Generator *g, Expr *e) {
         case PRIM_IDENTIFIER: {
             String out = qbe_var(e->loc);
             String qvar = get_lvalue(g, e);
-            gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(qvar));
+            char qbeType = qbe_type(e->type);
+            gprintfln(g, "%.*s =%c load%c %.*s", strf(out), qbeType, qbeType, strf(qvar));
             return out;
         }
         case PRIM_STRING_LITERAL:  TODO("%s: PRIM_STRING_LITERAL", __func__);
@@ -124,26 +134,28 @@ static String gen_primary(Generator *g, Expr *e) {
         case PRIM_FALSE:           return str_from_cstr("0");
     }
 
-    UNREACHABLE("%s: Unsupported token kind: %s", __func__, tokenTypesStrings[val.kind]);
+    UNREACHABLE("Invalid TokenKind (%s)", tokenTypesStrings[val.kind]);
 }
 static const char *get_bin_op(BinOp op) {
     switch (op) {
-        case TOK_PLUS:            return "add";
-        case TOK_MINUS:           return "sub";
-        case TOK_STAR:            return "mul";
-        case TOK_SLASH:           return "div";
-        case TOK_PERCENT:         return "rem";
-        case TOK_CARET:           return "xor";
-        case TOK_LESS_LESS:       return "shl";
-        case TOK_GREATER_GREATER: return "sar";
-        case TOK_AMPERSAND:       return "and";
-        case TOK_PIPE:            return "or";
-        case TOK_EQUALS_EQUALS:   return "ceqw";
-        case TOK_BANG_EQUALS:     return "cnew";
-        case TOK_GREATER:         return "csgtw";
-        case TOK_GREATER_EQUALS:  return "csgew";
-        case TOK_LESS:            return "csltw";
-        case TOK_LESS_EQUALS:     return "cslew";
+        case BIN_PLUS:            return "add";
+        case BIN_MINUS:           return "sub";
+        case BIN_STAR:            return "mul";
+        case BIN_SLASH:           return "div";
+        case BIN_PERCENT:         return "rem";
+        case BIN_CARET:           return "xor";
+        case BIN_LESS_LESS:       return "shl";
+        case BIN_GREATER_GREATER: return "sar";
+        case BIN_AMPERSAND:       return "and";
+        case BIN_PIPE:            return "or";
+
+        // Comparison operators need qbe type suffix
+        case BIN_EQUALS_EQUALS:   return "ceq";
+        case BIN_BANG_EQUALS:     return "cne";
+        case BIN_GREATER:         return "csgt";
+        case BIN_GREATER_EQUALS:  return "csge";
+        case BIN_LESS:            return "cslt";
+        case BIN_LESS_EQUALS:     return "csle";
         case BIN_AMPERSAND_AMPERSAND: break;
         case BIN_PIPE_PIPE:           break;
     }
@@ -166,7 +178,14 @@ static String gen_binary(Generator *g, Expr *e) {
         case BIN_LESS_LESS:
         case BIN_GREATER_GREATER:
         case BIN_AMPERSAND:
-        case BIN_PIPE:
+        case BIN_PIPE: {
+            String lhs = gen_expr(g, bin.lhs);
+            String rhs = gen_expr(g, bin.rhs);
+            gprintfln(g, "%.*s =%c %s %.*s, %.*s", strf(out), qbe_type(e->type), get_bin_op(bin.op),
+                      strf(lhs), strf(rhs));
+            break;
+        }
+
         case BIN_EQUALS_EQUALS:
         case BIN_BANG_EQUALS:
         case BIN_GREATER:
@@ -175,7 +194,9 @@ static String gen_binary(Generator *g, Expr *e) {
         case BIN_LESS_EQUALS: {
             String lhs = gen_expr(g, bin.lhs);
             String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_bin_op(bin.op), strf(lhs), strf(rhs));
+            Type *common = type_common(bin.lhs->type, bin.rhs->type);
+            gprintfln(g, "%.*s =%c %s%c %.*s, %.*s", strf(out), qbe_type(e->type), get_bin_op(bin.op),
+                      qbe_type(common), strf(lhs), strf(rhs));
             break;
         }
 
@@ -188,11 +209,15 @@ static String gen_binary(Generator *g, Expr *e) {
             bool isAnd = bin.op == BIN_AMPERSAND_AMPERSAND;
 
             String lhs = gen_expr(g, bin.lhs);
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(lhs), strf(isAnd ? rhsL : one), strf(isAnd ? zero : rhsL));
+            String tempLhs = qbe_var(e->loc);
+            gprintfln(g, "%.*s =w cne%c %.*s, 0", strf(tempLhs), qbe_type(bin.lhs->type), strf(lhs));
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(tempLhs), strf(isAnd ? rhsL : one), strf(isAnd ? zero : rhsL));
 
             gprint_lbl(g, rhsL);
             String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(rhs), strf(one), strf(zero));
+            String tempRhs = qbe_var(e->loc);
+            gprintfln(g, "%.*s =w cne%c %.*s, 0", strf(tempRhs), qbe_type(bin.rhs->type), strf(rhs));
+            gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(tempRhs), strf(one), strf(zero));
 
             gprint_lbl(g, zero);
             gprintfln(g, "jmp %.*s", strf(end));
@@ -201,7 +226,7 @@ static String gen_binary(Generator *g, Expr *e) {
             gprintfln(g, "jmp %.*s", strf(end));
 
             gprint_lbl(g, end);
-            gprintfln(g, "%.*s =w phi %.*s 0, %.*s 1", strf(out), strf(zero), strf(one));
+            gprintfln(g, "%.*s =%c phi %.*s 0, %.*s 1", strf(out), qbe_type(e->type), strf(zero), strf(one));
             break;
         }
 
@@ -219,19 +244,20 @@ static String gen_unary(Generator *g, Expr *e) {
     switch (un.op) {
         case TOK_MINUS: {
             String inner = gen_expr(g, un.inner);
-            gprintfln(g, "%.*s =w sub 0, %.*s", strf(out), strf(inner));
+            gprintfln(g, "%.*s =%c sub 0, %.*s", strf(out), qbe_type(e->type), strf(inner));
             break;
         }
 
         case TOK_TILDE: {
             String inner = gen_expr(g, un.inner);
-            gprintfln(g, "%.*s =w xor %.*s, -1", strf(out), strf(inner));
+            gprintfln(g, "%.*s =%c xor %.*s, -1", strf(out), qbe_type(e->type), strf(inner));
             break;
         }
 
         case TOK_BANG: {
             String inner = gen_expr(g, un.inner);
-            gprintfln(g, "%.*s =w ceqw %.*s, 0", strf(out), strf(inner));
+            gprintfln(g, "%.*s =%c ceq%c %.*s, 0", strf(out), qbe_type(e->type), qbe_type(e->as.unary.inner->type),
+                      strf(inner));
             break;
         }
 
@@ -241,13 +267,14 @@ static String gen_unary(Generator *g, Expr *e) {
             String loadTemp = qbe_var(e->loc);
             const char *op = un.op == UN_PLUS_PLUS ? "add" : "sub";
 
-            gprintfln(g, "%.*s =w loadw %.*s", strf(loadTemp), strf(inner));
-            gprintfln(g, "%.*s =w %s %.*s, 1", strf(out), op, strf(loadTemp));
-            gprintfln(g, "storew %.*s, %.*s", strf(out), strf(inner));
+            char qbeType = qbe_type(e->type);
+            gprintfln(g, "%.*s =%c load%c %.*s", strf(loadTemp), qbeType, qbeType, strf(inner));
+            gprintfln(g, "%.*s =%c %s %.*s, 1", strf(out), qbeType, op, strf(loadTemp));
+            gprintfln(g, "store%c %.*s, %.*s", qbeType, strf(out), strf(inner));
             break;
         }
 
-        default: TODO("%s: Unary operator \"%s\"", __func__, tokenTypesStrings[un.op]);
+        default: TODO("Invalid Unary operator (%s)", tokenTypesStrings[un.op]);
     }
 
     return out;
@@ -268,7 +295,7 @@ static const char *get_assign_op(AssignOp op) {
         case ASS_EQUALS:                 break;
    }
 
-    UNREACHABLE("Not an assignment operand (%s)", tokenTypesStrings[op]);
+    UNREACHABLE("Invalid assignment operator (%s)", tokenTypesStrings[op]);
 }
 
 
@@ -280,15 +307,16 @@ static String gen_assign(Generator *g, Expr *e) {
     String rhs = gen_expr(g, assign.rhs);
     String out = qbe_var(e->loc);
 
+    char qbeType = qbe_type(e->type);
     if (assign.op == ASS_EQUALS) {
-        gprintfln(g, "%.*s =w copy %.*s", strf(out), strf(rhs));
+        gprintfln(g, "%.*s =%c copy %.*s", strf(out), qbeType, strf(rhs));
     } else {
         String old = qbe_var(e->loc);
-        gprintfln(g, "%.*s =w loadw %.*s", strf(old), strf(lhs));
-        gprintfln(g, "%.*s =w %s %.*s, %.*s", strf(out), get_assign_op(assign.op), strf(old), strf(rhs));
+        gprintfln(g, "%.*s =%c load%c %.*s", strf(old), qbeType, qbeType, strf(lhs));
+        gprintfln(g, "%.*s =%c %s %.*s, %.*s", strf(out), qbeType, get_assign_op(assign.op), strf(old), strf(rhs));
     }
 
-    gprintfln(g, "storew %.*s, %.*s", strf(out), strf(lhs));
+    gprintfln(g, "store%c %.*s, %.*s", qbeType, strf(out), strf(lhs));
     return out;
 }
 
@@ -301,9 +329,10 @@ static String gen_unary_post(Generator *g, Expr *e) {
     String inner = get_lvalue(g, un.inner);
     const char *op = un.op == UN_PLUS_PLUS ? "add" : "sub";
 
-    gprintfln(g, "%.*s =w loadw %.*s", strf(out), strf(inner));
-    gprintfln(g, "%.*s =w %s %.*s, 1", strf(temp), op, strf(out));
-    gprintfln(g, "storew %.*s, %.*s", strf(temp), strf(inner));
+    char qbeType = qbe_type(e->type);
+    gprintfln(g, "%.*s =%c load%c %.*s", strf(out), qbeType, qbeType, strf(inner));
+    gprintfln(g, "%.*s =%c %s %.*s, 1", strf(temp), qbeType, op, strf(out));
+    gprintfln(g, "store%c %.*s, %.*s", qbeType, strf(temp), strf(inner));
 
     return out;
 }
@@ -334,7 +363,7 @@ static String gen_conditional(Generator *g, Expr *e) {
     gprintfln(g, "jmp %.*s", strf(end));
 
     gprint_lbl(g, end);
-    gprintfln(g, "%.*s =w phi %.*s %.*s, %.*s %.*s", strf(out), strf(iftEndLbl), strf(iftVal), strf(iffEndLbl),
+    gprintfln(g, "%.*s =%c phi %.*s %.*s, %.*s %.*s", strf(out), qbe_type(e->type), strf(iftEndLbl), strf(iftVal), strf(iffEndLbl),
               strf(iffVal));
 
     return out;
@@ -348,19 +377,13 @@ static String gen_func_call(Generator *g, Expr *e) {
     struct { LIST_FIELDS(String); } argsNames = {0};
     for (size_t i = 0; i < args.len; i++) {
         String argName = gen_expr(g, args.arr[i]);
-        do {
-            if ((&argsNames)->len >= (&argsNames)->cap) {
-                (&argsNames)->cap = (&argsNames)->cap < 8 ? 8 : (&argsNames)->cap * 2;
-                (&argsNames)->arr = realloc((&argsNames)->arr, (&argsNames)->cap * sizeof(*(&argsNames)->arr));
-            }
-            (&argsNames)->arr[(&argsNames)->len++] = argName;
-        } while (0);
+        list_append(&argsNames, argName);
     }
 
     String out = qbe_var(e->loc);
-    gprintf(g, "%.*s =w call $%.*s(", strf(out), strf(funcCallExpr.func->as.primary.decl->as.func.name));
+    gprintf(g, "%.*s =%c call $%.*s(", strf(out), qbe_type(e->type), strf(funcCallExpr.func->as.primary.decl->as.func.name));
     for (size_t i = 0; i < argsNames.len; i++) {
-        gprintf(g, "w %.*s, ", strf(argsNames.arr[i]));
+        gprintf(g, "%c %.*s, ", qbe_type(args.arr[i]->type), strf(argsNames.arr[i]));
     }
     gprintfln(g, ")");
 
@@ -374,9 +397,18 @@ static String gen_index(Generator *g, Expr *e) {
 }
 
 static String gen_cast(Generator *g, Expr *e) {
-    (void)g;
-    (void)e;
-    TODO("%s", __func__);
+    assert(e->kind == EXPR_CAST);
+
+    String inner = gen_expr(g, e->as.cast.inner);
+    String out = qbe_var(e->loc);
+    if (e->type->size > e->as.cast.inner->type->size) {
+        gprintfln(g, "%.*s =%c exts%c %.*s", strf(out), qbe_type(e->type), qbe_type(e->as.cast.inner->type),
+                  strf(inner));
+    } else {
+        gprintfln(g, "%.*s =%c copy %.*s", strf(out), qbe_type(e->type), strf(inner));
+    }
+
+    return out;
 }
 
 static String gen_expr(Generator *g, Expr *e) {
@@ -412,16 +444,15 @@ static void gen_block(Generator *g, Stmt *s) {
 
 static void gen_func(Generator *g, Stmt *s) {
     assert(s->kind == STMT_FUNC);
-    FuncStmt funcStmt = s->as.func;
 
-    if (funcStmt.specifier == SPEC_EXTERN) return;
+    if (s->as.func.specifier == SPEC_EXTERN) return;
 
-    if (funcStmt.specifier == SPEC_PUB) gprintf(g, "export ");
-    gprintf(g, "function w $%.*s(", strf(funcStmt.name));
+    if (s->as.func.specifier == SPEC_PUB) gprintf(g, "export ");
+    gprintf(g, "function %c $%.*s(", qbe_type(s->as.func.ret), strf(s->as.func.name));
 
-    StmtList params = funcStmt.params;
+    StmtList params = s->as.func.params;
     for (size_t i = 0; i < params.len; i++) {
-        gprintf(g, "w %%%.*s, ", strf(params.arr[i]->as.var.name));
+        gprintf(g, "%c %%%.*s, ", qbe_type(params.arr[i]->as.var.type), strf(params.arr[i]->as.var.name));
     }
     gprintfln(g, ") {");
 
@@ -430,8 +461,9 @@ static void gen_func(Generator *g, Stmt *s) {
 
     for (size_t i = 0; i < params.len; i++) {
         String qvar = qbe_var(s->loc);
-        gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
-        gprintfln(g, "storew %%%.*s, %.*s", strf(params.arr[i]->as.var.name), strf(qvar));
+        VarStmt var = params.arr[i]->as.var;
+        gprintfln(g, "%.*s =l alloc%d %d", strf(qvar), var.type->align, var.type->size);
+        gprintfln(g, "store%c %%%.*s, %.*s", qbe_type(var.type), strf(var.name), strf(qvar));
         params.arr[i]->as.var.qbe_var = qvar;
     }
 
@@ -471,10 +503,10 @@ static void gen_var(Generator *g, Stmt *s) {
     if (!g->inFunc) return;
 
     String qvar = qbe_var(s->loc);
-    gprintfln(g, "%.*s =l alloc4 4", strf(qvar));
+    gprintfln(g, "%.*s =l alloc%d %d", strf(qvar), varStmt.type->align, varStmt.type->size);
     assert(varStmt.init);
     String init = gen_expr(g, varStmt.init);
-    gprintfln(g, "storew %.*s, %.*s", strf(init), strf(qvar));
+    gprintfln(g, "store%c %.*s, %.*s", qbe_type(varStmt.type), strf(init), strf(qvar));
     s->as.var.qbe_var = qvar;
 }
 
@@ -530,7 +562,9 @@ static void gen_if(Generator *g, Stmt *s) {
 	String iffLbl = ifStmt.elseBranch ? qbe_label("else", s->loc) : endLbl;
 
 	String condVal = gen_expr(g, ifStmt.condition);
-	gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(condVal), strf(iftLbl), strf(iffLbl));
+    String tempCond = qbe_var(s->loc);
+    gprintfln(g, "%.*s =w cne%c %.*s, 0", strf(tempCond), qbe_type(ifStmt.condition->type), strf(condVal));
+	gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(tempCond), strf(iftLbl), strf(iffLbl));
     gprint_lbl(g, iftLbl);
 	gen_stmt(g, ifStmt.thenBranch);
 	gprintfln(g, "jmp %.*s", strf(endLbl));
@@ -612,7 +646,7 @@ void gen_data_var(Generator *g, Stmt *s) {
 
     if (varStmt.specifier == SPEC_PUB) gprintf(g, "export ");
     if (varStmt.specifier != SPEC_EXTERN)
-        gprintfln(g, "data %.*s = { w %d }", strf(varStmt.qbe_var), (int32_t)varStmt.initVal);
+        gprintfln(g, "data %.*s = { %c %ld }", strf(varStmt.qbe_var), qbe_type(varStmt.type), varStmt.initVal);
     return;
 }
 
