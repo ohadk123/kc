@@ -8,22 +8,21 @@ typedef struct Type Type;
 extern Type *type_err;
 extern Type *type_i32;
 extern Type *type_i64;
+extern Type *type_u32;
+extern Type *type_u64;
 
 typedef enum {
     TYPE_ERR = 0,
 
     TYPE_I32 = TOK_I32,
     TYPE_I64 = TOK_I64,
+    TYPE_U32 = TOK_U32,
+    TYPE_U64 = TOK_U64,
 } TypeKind;
 
 typedef struct {
     LIST_FIELDS(Type *);
 } TypeList;
-
-typedef struct {
-    Type    *ret;
-    TypeList params;
-} FuncType;
 
 struct Type {
     TypeKind kind;

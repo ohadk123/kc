@@ -3,17 +3,25 @@
 static Type err_type  = {.kind = TYPE_ERR, .size = 0, .align = 0};
 static Type i32_type  = {.kind = TYPE_I32, .size = 4, .align = 4};
 static Type i64_type  = {.kind = TYPE_I64, .size = 8, .align = 8};
+static Type u32_type  = {.kind = TYPE_U32, .size = 4, .align = 4};
+static Type u64_type  = {.kind = TYPE_U64, .size = 8, .align = 8};
 
 Type *type_err  = &err_type;
 Type *type_i32  = &i32_type;
 Type *type_i64  = &i64_type;
+Type *type_u32  = &u32_type;
+Type *type_u64  = &u64_type;
 
 Type *type_make_primitive(TokenKind kind) {
-    switch (kind) {
-        case TOK_I32:  return type_i32;
-        case TOK_I64:  return type_i64;
-        default:       return NULL; // not a supported type (yet)
+    switch ((TypeKind) kind) {
+        case TYPE_ERR:
+        case TYPE_I32: return type_i32;
+        case TYPE_I64: return type_i64;
+        case TYPE_U32: return type_u32;
+        case TYPE_U64: return type_u64;
     }
+
+	UNREACHABLE("Invalid TokenKind for TypeKind (%s)", tokenTypesStrings[kind]);
 }
 
 bool type_equal(const Type *a, const Type *b) {
@@ -38,6 +46,9 @@ const char *type_name(const Type *t) {
         case TYPE_ERR: return "err";
         case TYPE_I32: return "i32";
         case TYPE_I64: return "i64";
+        case TYPE_U32: return "u32";
+        case TYPE_U64: return "u64";
     }
+
     UNREACHABLE("Invalid type kind (%d)", t->kind);
 }
