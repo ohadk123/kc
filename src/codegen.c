@@ -28,7 +28,22 @@ static char qbe_type(Type *type) {
         case TYPE_ERR: UNREACHABLE("Error TypeKind");
         case TYPE_I32: return 'w';
         case TYPE_I64: return 'l';
+        case TYPE_U32: return 'w';
+        case TYPE_U64: return 'l';
     }
+
+    UNREACHABLE("Invalid TypeKind (%d)", type->kind);
+}
+
+static char qbe_signedness(Type *type) {
+    switch (type->kind) {
+        case TYPE_ERR: UNREACHABLE("Error TypeKind");
+        case TYPE_I32:
+        case TYPE_I64: return 's';
+        case TYPE_U32:
+        case TYPE_U64: return 'u';
+    }
+
     UNREACHABLE("Invalid TypeKind (%d)", type->kind);
 }
 
