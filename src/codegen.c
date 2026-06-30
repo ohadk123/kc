@@ -35,16 +35,8 @@ static char qbe_type(Type *type) {
     UNREACHABLE("Invalid TypeKind (%d)", type->kind);
 }
 
-static char qbe_signedness(Type *type) {
-    switch (type->kind) {
-        case TYPE_ERR: UNREACHABLE("Error TypeKind");
-        case TYPE_I32:
-        case TYPE_I64: return 's';
-        case TYPE_U32:
-        case TYPE_U64: return 'u';
-    }
-
-    UNREACHABLE("Invalid TypeKind (%d)", type->kind);
+static inline char qbe_signedness(Type *t) {
+	return type_is_signed(t) ? 's' : 'u';
 }
 
 typedef struct {
@@ -151,27 +143,28 @@ static String gen_primary(Generator *g, Expr *e) {
 
     UNREACHABLE("Invalid TokenKind (%s)", tokenTypesStrings[val.kind]);
 }
-static const char *get_bin_op(BinOp op) {
-    switch (op) {
-        case BIN_PLUS:            return "add";
-        case BIN_MINUS:           return "sub";
-        case BIN_STAR:            return "mul";
-        case BIN_SLASH:           return "div";
-        case BIN_PERCENT:         return "rem";
-        case BIN_CARET:           return "xor";
-        case BIN_LESS_LESS:       return "shl";
-        case BIN_GREATER_GREATER: return "sar";
-        case BIN_AMPERSAND:       return "and";
-        case BIN_PIPE:            return "or";
+static String get_bin_op(BinOp op, Type *t) {
+	char type = qbe_type(t);
+	char sign = qbe_signedness(t);
 
-        // Comparison operators need qbe type suffix
-        case BIN_EQUALS_EQUALS:   return "ceq";
-        case BIN_BANG_EQUALS:     return "cne";
-        case BIN_GREATER:         return "csgt";
-        case BIN_GREATER_EQUALS:  return "csge";
-        case BIN_LESS:            return "cslt";
-        case BIN_LESS_EQUALS:     return "csle";
-        case BIN_AMPERSAND_AMPERSAND: break;
+    switch (op) {
+        case BIN_PLUS:                return str_from_cstr("add");
+        case BIN_MINUS:               return str_from_cstr("sub");
+        case BIN_STAR:                return str_from_cstr("mul");
+        case BIN_SLASH:               return str_from_cstr("div");
+        case BIN_PERCENT:             return str_from_cstr("rem");
+        case BIN_CARET:               return str_from_cstr("xor");
+        case BIN_LESS_LESS:           return str_from_cstr("shl");
+		case BIN_GREATER_GREATER:     return type_is_signed(t) ? str_from_cstr("sar") : str_from_cstr("shr");
+        case BIN_AMPERSAND:           return str_from_cstr("and");
+        case BIN_PIPE:                return str_from_cstr("or");
+        case BIN_EQUALS_EQUALS:       return str_printf("ceq%c", type);
+        case BIN_BANG_EQUALS:         return str_printf("cne%c", type);
+        case BIN_GREATER:             return str_printf("c%cgt%c", sign, type);
+        case BIN_GREATER_EQUALS:      return str_printf("c%cge%c", sign, type);
+        case BIN_LESS:                return str_printf("c%clt%c", sign, type);
+        case BIN_LESS_EQUALS:         return str_printf("c%cle%c", sign, type);
+        case BIN_AMPERSAND_AMPERSAND:
         case BIN_PIPE_PIPE:           break;
     }
 
@@ -193,14 +186,7 @@ static String gen_binary(Generator *g, Expr *e) {
         case BIN_LESS_LESS:
         case BIN_GREATER_GREATER:
         case BIN_AMPERSAND:
-        case BIN_PIPE: {
-            String lhs = gen_expr(g, bin.lhs);
-            String rhs = gen_expr(g, bin.rhs);
-            gprintfln(g, "%.*s =%c %s %.*s, %.*s", strf(out), qbe_type(e->type), get_bin_op(bin.op),
-                      strf(lhs), strf(rhs));
-            break;
-        }
-
+        case BIN_PIPE:
         case BIN_EQUALS_EQUALS:
         case BIN_BANG_EQUALS:
         case BIN_GREATER:
@@ -210,8 +196,8 @@ static String gen_binary(Generator *g, Expr *e) {
             String lhs = gen_expr(g, bin.lhs);
             String rhs = gen_expr(g, bin.rhs);
             Type *common = type_common(bin.lhs->type, bin.rhs->type);
-            gprintfln(g, "%.*s =%c %s%c %.*s, %.*s", strf(out), qbe_type(e->type), get_bin_op(bin.op),
-                      qbe_type(common), strf(lhs), strf(rhs));
+			String op = get_bin_op(bin.op, common);
+            gprintfln(g, "%.*s =%c %.*s %.*s, %.*s", strf(out), qbe_type(e->type), strf(op), strf(lhs), strf(rhs));
             break;
         }
 
@@ -245,7 +231,7 @@ static String gen_binary(Generator *g, Expr *e) {
             break;
         }
 
-        default: TODO("%s: Binary operator \"%s\"", __func__, tokenTypesStrings[bin.op]);
+   default: TODO("%s: Binary operator \"%s\"", __func__, tokenTypesStrings[bin.op]);
     }
 
     return out;
@@ -411,17 +397,20 @@ static String gen_index(Generator *g, Expr *e) {
     TODO("%s", __func__);
 }
 
+static String get_cast_op(Type *target, Type *src) {
+	assert(target && src);
+
+	if (target->size <= src->size) return str_from_cstr("copy");
+	else return str_printf("ext%cw", qbe_signedness(src));
+}
+
 static String gen_cast(Generator *g, Expr *e) {
     assert(e->kind == EXPR_CAST);
 
     String inner = gen_expr(g, e->as.cast.inner);
     String out = qbe_var(e->loc);
-    if (e->type->size > e->as.cast.inner->type->size) {
-        gprintfln(g, "%.*s =%c exts%c %.*s", strf(out), qbe_type(e->type), qbe_type(e->as.cast.inner->type),
-                  strf(inner));
-    } else {
-        gprintfln(g, "%.*s =%c copy %.*s", strf(out), qbe_type(e->type), strf(inner));
-    }
+	String op = get_cast_op(e->as.cast.target, e->as.cast.inner->type);
+	gprintfln(g, "%.*s =%c %.*s %.*s", strf(out), qbe_type(e->as.cast.target), strf(op), strf(inner));
 
     return out;
 }
