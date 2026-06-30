@@ -32,10 +32,11 @@ struct Type {
 
 Type *type_make_primitive(TokenKind kind);
 
-bool type_equal(const Type *a, const Type *b);
-
-bool type_is_integer(const Type *t);
 Type *type_common(Type *a, Type *b);
+
+bool type_equal(const Type *a, const Type *b);
+bool type_is_integer(const Type *t);
+bool type_is_signed(const Type *t);
 
 const char *type_name(const Type *t);
 

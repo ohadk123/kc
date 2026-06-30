@@ -71,3 +71,17 @@ bool type_is_integer(const Type *t) {
 
     UNREACHABLE("Invalid TypeKind (%s)", tokenTypesStrings[t->kind]);
 }
+
+bool type_is_signed(const Type *t) {
+    assert(t);
+
+    switch (t->kind) {
+            case TYPE_I32:
+            case TYPE_I64: return true;
+            case TYPE_ERR:
+            case TYPE_U32:
+            case TYPE_U64: return false;
+    }
+
+    UNREACHABLE("Invalid TypeKind (%s)", tokenTypesStrings[t->kind]);
+}
