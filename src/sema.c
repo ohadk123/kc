@@ -33,6 +33,7 @@ static bool is_lvalue(Expr *e) {
             case STMT_FOR:
             case STMT_RETURN:
             case STMT_FUNC:
+            case STMT_SWITCH:
             case STMT_BREAK:
             case STMT_CONTINUE: return false;
         }
@@ -549,6 +550,12 @@ static void check_continue(Checker *c, Stmt *s) {
     if (c->loopCount < 1) checker_error(c, s->loc, "'continue' statement not in a loop");
 }
 
+static void check_switch(Checker *c, Stmt *s) {
+    assert(s->kind == STMT_SWITCH);
+    (void) c;
+    TODO("%s", __func__);
+}
+
 static void check_stmt(Checker *c, Stmt *s) {
     switch (s->kind) {
         case STMT_NULL:                                     return;
@@ -561,6 +568,7 @@ static void check_stmt(Checker *c, Stmt *s) {
         case STMT_FOR:      check_for(c, s);                return;
         case STMT_RETURN:   check_return(c, s);             return;
         case STMT_FUNC:     check_func(c, s);               return;
+        case STMT_SWITCH:   check_switch(c, s);             return;
         case STMT_BREAK:    check_break(c, s);              return;
         case STMT_CONTINUE: check_continue(c, s);           return;
     }

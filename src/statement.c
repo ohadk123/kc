@@ -89,6 +89,14 @@ Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, St
     return s;
 }
 
+Stmt *stmt_make_switch(Expr *value, SwitchCaseList cases, Stmt *wildcard, Location loc) {
+    Stmt *s = make_stmt(STMT_SWITCH, loc);
+    s->as.switchS.value = value;
+    s->as.switchS.cases = cases;
+    s->as.switchS.wildcard = wildcard;
+    return s;
+}
+
 void print_stmt(Stmt *stmt, int indent) {
     if (!stmt) {
         printf("null");
@@ -183,6 +191,32 @@ void print_stmt(Stmt *stmt, int indent) {
             print_expr(stmt->as.returnS.retVal, i);
             printf("\n");
             break;
+        case STMT_SWITCH: {
+            SwitchStmt *sw = &stmt->as.switchS;
+            printf("%*s\"kind\": \"switch\",\n", i * 2, "");
+            printf("%*s\"value\": ", i * 2, "");
+            print_expr(sw->value, i);
+            printf(",\n");
+            printf("%*s\"cases\": [\n", i * 2, "");
+            for (size_t j = 0; j < sw->cases.len; j++) {
+                SwitchCase *arm = &sw->cases.arr[j];
+                printf("%*s{\n", (i + 1) * 2, "");
+                printf("%*s\"value\": ", (i + 2) * 2, "");
+                print_expr(arm->value, i + 2);
+                printf(",\n%*s\"body\": ", (i + 2) * 2, "");
+                print_stmt(arm->body, i + 2);
+                printf("\n%*s}", (i + 1) * 2, "");
+                if (j + 1 < sw->cases.len) printf(",");
+                printf("\n");
+            }
+            printf("%*s]", i * 2, "");
+            if (sw->wildcard) {
+                printf(",\n%*s\"wildcard\": ", i * 2, "");
+                print_stmt(sw->wildcard, i);
+            }
+            printf("\n");
+            break;
+        }
         case STMT_FUNC: {
             FuncStmt *fn = &stmt->as.func;
             printf("%*s\"kind\": \"func\",\n", i * 2, "");
@@ -221,6 +255,7 @@ String get_top_level_name(Stmt *s) {
         case STMT_IF:
         case STMT_FOR:
         case STMT_RETURN:
+        case STMT_SWITCH:
         case STMT_BREAK:
         case STMT_CONTINUE: break;
     }

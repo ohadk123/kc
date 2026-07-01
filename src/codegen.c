@@ -628,6 +628,12 @@ static void gen_continue(Generator *g, Stmt *s) {
     gprint_lbl(g, qbe_label("next", s->loc));
 }
 
+static void gen_switch(Generator *g, Stmt *s) {
+    assert(s->kind == STMT_SWITCH);
+    (void) g;
+    TODO("%s", __func__);
+}
+
 static void gen_stmt(Generator *g, Stmt *s) {
     switch (s->kind) {
         case STMT_NULL:     break;
@@ -640,6 +646,7 @@ static void gen_stmt(Generator *g, Stmt *s) {
         case STMT_DO_WHILE: gen_do_while(g, s); break;
         case STMT_IF:       gen_if(g, s); break;
         case STMT_FOR:      gen_for(g, s); break;
+        case STMT_SWITCH:   gen_switch(g, s); break;
         case STMT_BREAK:    gen_break(g, s); break;
         case STMT_CONTINUE: gen_continue(g, s); break;
     }
