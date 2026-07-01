@@ -151,8 +151,8 @@ static String get_bin_op(BinOp op, Type *t) {
         case BIN_PLUS:                return str_from_cstr("add");
         case BIN_MINUS:               return str_from_cstr("sub");
         case BIN_STAR:                return str_from_cstr("mul");
-        case BIN_SLASH:               return str_from_cstr("div");
-        case BIN_PERCENT:             return str_from_cstr("rem");
+		case BIN_SLASH:               return type_is_signed(t) ? str_from_cstr("div") : str_from_cstr("udiv");
+		case BIN_PERCENT:             return type_is_signed(t) ? str_from_cstr("rem") : str_from_cstr("urem");
         case BIN_CARET:               return str_from_cstr("xor");
         case BIN_LESS_LESS:           return str_from_cstr("shl");
 		case BIN_GREATER_GREATER:     return type_is_signed(t) ? str_from_cstr("sar") : str_from_cstr("shr");
