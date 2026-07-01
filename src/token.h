@@ -61,6 +61,7 @@
     X(TOK_MINUS_GREATER)  /* ->  */         \
     X(TOK_EQUALS_GREATER) /* =>  */         \
     X(TOK_AT)             /* @   */         \
+    X(TOK_UNDERSCOE)      /* _   */         \
                                             \
     X(TOK_IDENTIFIER)                       \
     X(TOK_STRING_LITERAL)                   \

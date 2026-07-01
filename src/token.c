@@ -10,6 +10,9 @@ TokenKind match_keyword_or_ident(String keyword) {
     assert(keyword.len != 0);
 
     switch (keyword.data[0]) {
+        case '_':
+            if (cmp_cstr(keyword, "_"))        return TOK_UNDERSCOE;
+            break;
         case 'a':
             if (cmp_cstr(keyword, "alias"))    return TOK_ALIAS;
             break;
