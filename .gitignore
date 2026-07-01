@@ -56,3 +56,4 @@ dkms.conf
 build/
 test.k
 writing-a-c-compiler-tests/
+compile_commands.json
