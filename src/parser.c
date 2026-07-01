@@ -476,6 +476,33 @@ Stmt *do_while_stmt(Parser *p) {
     return stmt_make_do_while(cond, body, loc);
 }
 
+Stmt *switch_stmt(Parser *p) {
+    Location loc = previous(p).loc;
+    expect(p, TOK_LEFT_PAREN, "Expected '(' after switch");
+    Expr *value = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expect ')' after switch value");
+
+    expect(p, TOK_LEFT_BRACE, "Expected '{' to start switch block");
+    SwitchCaseList cases = {0};
+    Stmt *wildcard = NULL;
+    while (!match(p, TOK_RIGHT_BRACE)) {
+        expect(p, TOK_CASE, "Expected 'case'");
+        if (match(p, TOK_UNDERSCOE)) {
+            expect(p, TOK_COLON, "Expected ':' after case value");
+            wildcard = statement(p);
+            expect(p, TOK_RIGHT_BRACE, "Wildcard case must be the last case in switch");
+            break;
+        }
+        Expr *caseValue = expression(p);
+        expect(p, TOK_COLON, "Expected ':' after case value");
+        Stmt *body = statement(p);
+        SwitchCase case_ = (SwitchCase) {caseValue, body};
+        list_append(&cases, case_);
+    }
+
+    return stmt_make_switch(value, cases, wildcard, loc);
+}
+
 Stmt *statement(Parser *p) {
     if (is_decl_start(p))         return var_stmt(p);
     if (match(p, TOK_FOR))        return for_stmt(p);
@@ -486,6 +513,7 @@ Stmt *statement(Parser *p) {
     if (match(p, TOK_CONTINUE))   return continue_stmt(p);
     if (match(p, TOK_RETURN))     return return_stmt(p);
     if (match(p, TOK_DO))         return do_while_stmt(p);
+    if (match(p, TOK_SWITCH))      return switch_stmt(p);
 
     Location loc = peek(p).loc;
     if (match(p, TOK_SEMICOLON))  return stmt_make_null(loc);
