@@ -630,8 +630,33 @@ static void gen_continue(Generator *g, Stmt *s) {
 
 static void gen_switch(Generator *g, Stmt *s) {
     assert(s->kind == STMT_SWITCH);
-    (void) g;
-    TODO("%s", __func__);
+
+    String switchVal = gen_expr(g, s->as.switchS.value);
+    Type *switchType = s->as.switchS.value->type;
+    String endLbl = qbe_label("end", s->loc);
+
+    FOR_EACH(&s->as.switchS.cases, SwitchCase, case_) {
+        String matchLbl = qbe_label("match", case_->value->loc);
+        String nextLbl = qbe_label("next", case_->value->loc);
+        String cmpVal = qbe_var(case_->value->loc);
+
+        String caseVal = gen_expr(g, case_->value);
+        gprintfln(g, "%.*s =%c ceq%c %.*s, %.*s", strf(cmpVal), qbe_type(switchType), qbe_type(switchType),
+                  strf(switchVal), strf(caseVal));
+        gprintfln(g, "jnz %.*s, %.*s, %.*s", strf(cmpVal), strf(matchLbl), strf(nextLbl));
+
+        gprintfln(g, "%.*s", strf(matchLbl));
+        gen_stmt(g, case_->body);
+        gprintfln(g, "jmp %.*s", strf(endLbl));
+
+        gprintfln(g, "%.*s", strf(nextLbl));
+    }
+
+    if (s->as.switchS.wildcard) {
+        gen_stmt(g, s->as.switchS.wildcard);
+    }
+
+    gprintfln(g, "%.*s", strf(endLbl));
 }
 
 static void gen_stmt(Generator *g, Stmt *s) {
