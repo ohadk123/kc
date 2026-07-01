@@ -8,7 +8,7 @@ __attribute__((__noreturn__)) void compile_error(String fileName, Location place
     vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "\n");
-    abort();
+    exit(1);
 }
 
 bool compile_err_no_abort(String fileName, Location place, const char *fmt, ...) {
