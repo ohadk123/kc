@@ -21,6 +21,7 @@ TokenKind match_keyword_or_ident(String keyword) {
             if (cmp_cstr(keyword, "break"))    return TOK_BREAK;
             break;
         case 'c':
+            if (cmp_cstr(keyword, "case"))     return TOK_CASE;
             if (cmp_cstr(keyword, "cast"))     return TOK_CAST;
             if (cmp_cstr(keyword, "const"))    return TOK_CONST;
             if (cmp_cstr(keyword, "continue")) return TOK_CONTINUE;
@@ -63,6 +64,7 @@ TokenKind match_keyword_or_ident(String keyword) {
         case 's':
             if (cmp_cstr(keyword, "static"))   return TOK_STATIC;
             if (cmp_cstr(keyword, "struct"))   return TOK_STRUCT;
+            if (cmp_cstr(keyword, "switch"))   return TOK_SWITCH;
             break;
         case 't':
             if (cmp_cstr(keyword, "this"))     return TOK_THIS;
