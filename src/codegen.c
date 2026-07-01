@@ -281,18 +281,18 @@ static String gen_unary(Generator *g, Expr *e) {
     return out;
 }
 
-static const char *get_assign_op(AssignOp op) {
+static const char *get_assign_op(AssignOp op, Type *t) {
    switch (op) {
         case ASS_PLUS_EQUALS:            return "add";
         case ASS_MINUS_EQUALS:           return "sub";
         case ASS_STAR_EQUALS:            return "mul";
-        case ASS_SLASH_EQUALS:           return "div";
-        case ASS_PERCENT_EQUALS:         return "rem";
+        case ASS_SLASH_EQUALS:           return type_is_signed(t) ? "div" : "udiv";
+        case ASS_PERCENT_EQUALS:         return type_is_signed(t) ? "rem" : "urem";
         case ASS_AMPERSAND_EQUALS:       return "and";
         case ASS_PIPE_EQUALS:            return "or";
         case ASS_CARET_EQUALS:           return "xor";
         case ASS_LESS_LESS_EQUALS:       return "shl";
-        case ASS_GREATER_GREATER_EQUALS: return "sar";
+        case ASS_GREATER_GREATER_EQUALS: return type_is_signed(t) ? "sar" : "shr";
         case ASS_EQUALS:                 break;
    }
 
@@ -314,7 +314,8 @@ static String gen_assign(Generator *g, Expr *e) {
     } else {
         String old = qbe_var(e->loc);
         gprintfln(g, "%.*s =%c load%c %.*s", strf(old), qbeType, qbeType, strf(lhs));
-        gprintfln(g, "%.*s =%c %s %.*s, %.*s", strf(out), qbeType, get_assign_op(assign.op), strf(old), strf(rhs));
+        gprintfln(g, "%.*s =%c %s %.*s, %.*s", strf(out), qbeType, get_assign_op(assign.op, assign.lhs->type),
+                  strf(old), strf(rhs));
     }
 
     gprintfln(g, "store%c %.*s, %.*s", qbeType, strf(out), strf(lhs));
