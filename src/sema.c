@@ -1,5 +1,6 @@
 #include "sema.h"
 #include "compiler.h"
+#include "utils.h"
 
 static bool fill_global_symbol_table(TranslationUnit *unit) {
     bool hadError = false;
@@ -552,8 +553,31 @@ static void check_continue(Checker *c, Stmt *s) {
 
 static void check_switch(Checker *c, Stmt *s) {
     assert(s->kind == STMT_SWITCH);
-    (void) c;
-    TODO("%s", __func__);
+
+    enter_scope(c);
+    c->loopCount++;
+
+    Type *valueType = check_expr(c, s->as.switchS.value);
+    for (size_t i = 0; i < s->as.switchS.cases.len; i++) {
+        SwitchCase *case_ = &s->as.switchS.cases.arr[i];
+        check_expr(c, case_->value);
+        if (!eval_expr(case_->value, &case_->eval)) checker_error(c, case_->value->loc, "Switch case value is not compile time constant");
+
+        for (size_t j = 0; j < i; j++) {
+            if (s->as.switchS.cases.arr[j].eval == case_->eval) {
+                checker_error(c, case_->value->loc, "Duplicate case value");
+                break;
+            }
+        }
+
+        convert_expr_type(c, &case_->value, valueType, case_->value->loc);
+        check_stmt(c, case_->body);
+    }
+
+    if (s->as.switchS.wildcard) check_stmt(c, s->as.switchS.wildcard);
+
+    c->loopCount--;
+    exit_scope(c);
 }
 
 static void check_stmt(Checker *c, Stmt *s) {

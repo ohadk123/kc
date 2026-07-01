@@ -86,6 +86,7 @@ typedef struct {
 typedef struct {
     Expr *value;
     Stmt *body;
+    int64_t eval;
 } SwitchCase;
 
 typedef struct {

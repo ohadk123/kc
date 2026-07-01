@@ -496,7 +496,7 @@ Stmt *switch_stmt(Parser *p) {
         Expr *caseValue = expression(p);
         expect(p, TOK_COLON, "Expected ':' after case value");
         Stmt *body = statement(p);
-        SwitchCase case_ = (SwitchCase) {caseValue, body};
+        SwitchCase case_ = (SwitchCase) {caseValue, body, 0};
         list_append(&cases, case_);
     }
 
