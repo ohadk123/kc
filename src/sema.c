@@ -414,7 +414,7 @@ static Type *check_cast(Checker *c, Expr *e) {
 }
 
 static Type *check_expr(Checker *c, Expr *e) {
-    Type *t;
+    Type *t = NULL;
     switch (e->kind) {
         case EXPR_PRIMARY:     t = check_primary(c, e);                 break;
         case EXPR_GROUPING:    t = check_expr(c, e->as.grouping.inner); break;
@@ -427,6 +427,7 @@ static Type *check_expr(Checker *c, Expr *e) {
         case EXPR_INDEX:       t = check_index(c, e);                   break;
         case EXPR_CAST:        t = check_cast(c, e);                    break;
     }
+    if (!t) UNREACHABLE("Invalid Expression Kind (%d)", e->kind);
 
     return e->type = t;
 }
