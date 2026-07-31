@@ -140,6 +140,24 @@ static bool eval_cond(Expr *e, int64_t *out) {
     return true;
 }
 
+static bool eval_cast(Expr *e, int64_t *out) {
+    assert(e->kind == EXPR_CAST);
+
+    int64_t inner;
+    if (!eval_expr(e->as.cast.inner, &inner)) return false;
+
+    Type *target = e->as.cast.target;
+    switch (target->kind) {
+        case TYPE_ERR: UNREACHABLE("Error type kind in case expression");
+        case TYPE_I32: *out = (int32_t) inner; break;
+        case TYPE_I64: *out = (int64_t) inner; break;
+        case TYPE_U32: *out = (uint32_t) inner; break;
+        case TYPE_U64: *out = (uint64_t) inner; break;
+    }
+
+    return true;
+}
+
 static bool eval_expr(Expr *e, int64_t *out) {
     switch (e->kind) {
         case EXPR_PRIMARY:     return eval_primary(e, out);
@@ -151,7 +169,7 @@ static bool eval_expr(Expr *e, int64_t *out) {
         case EXPR_CONDITIONAL: return eval_cond(e, out);
         case EXPR_FUNC_CALL:   return false;
         case EXPR_INDEX:       return false;
-        case EXPR_CAST:        return eval_expr(e->as.cast.inner, out);
+        case EXPR_CAST:        return eval_cast(e, out);
     }
 
     UNREACHABLE("Not a valid expression kind (%d)", e->kind);
@@ -574,6 +592,7 @@ static void check_switch(Checker *c, Stmt *s) {
         for (size_t j = 0; j < i; j++) {
             if (s->as.switchS.cases.arr[j].eval == case_->eval) {
                 CHECKER_ERROR(c, case_->value->loc, "Duplicate case value");
+                CHECKER_ERROR(c, s->as.switchS.cases.arr[j].value->loc, "Already used here");
                 break;
             }
         }

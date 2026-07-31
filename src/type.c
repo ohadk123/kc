@@ -17,14 +17,17 @@
  * Preprocessor generated definitions
  *****************************************************************************/
 
+// Data declaration
 #define X(name, k, s, a) static Type name##_type = {.kind = k, .size = s, .align = a};
 TYPES_LIST(X)
 #undef X
 
+// Pointers to the primitives
 #define X(name, k, s, a) Type *type_##name = &name##_type;
 TYPES_LIST(X)
 #undef X
 
+// Get type pointer from TokenKind
 #define X(name, k, s, a) \
     case k: return type_##name;
 Type *type_make_primitive(TokenKind kind) {
@@ -33,6 +36,7 @@ Type *type_make_primitive(TokenKind kind) {
 }
 #undef X
 
+// Name of a type
 #define X(name, k, s, a) \
     case k: return #name;
 const char *type_name(const Type *t) {
@@ -41,6 +45,7 @@ const char *type_name(const Type *t) {
 }
 #undef X
 
+// Common type between two types -> this is why ordering matters
 #define X(name, k, s, al) \
     if (a->kind == k || b->kind == k) return type_##name;
 Type *type_common(Type *a, Type *b) {
