@@ -118,7 +118,9 @@
     X(TOK_FALSE) /* false */
 
 #define X(type) type,
-typedef enum { TOKEN_LIST } TokenKind;
+typedef enum {
+    TOKEN_LIST
+} TokenKind;
 #undef X
 
 typedef struct {

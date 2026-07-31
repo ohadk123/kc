@@ -29,7 +29,7 @@ String str_from_file(const char *path) {
     if (fseek(fp, 0, SEEK_SET) != 0) ERROR("fseek failed");
 
     size_t count = end - start;
-    char *data = calloc(count + 1, sizeof(char));
+    char *data   = calloc(count + 1, sizeof(char));
     assert(data);
 
     assert(fread(data, sizeof(char), count, fp) == count);
@@ -66,7 +66,7 @@ String str_printf(const char *fmt, ...) {
     va_end(args_copy);
     return (String){
         .data = buf,
-        .len = len,
+        .len  = len,
     };
 }
 

@@ -9,6 +9,7 @@ const char *tokenTypesStrings[] = {TOKEN_LIST};
 TokenKind match_keyword_or_ident(String keyword) {
     assert(keyword.len != 0);
 
+    // clang-format off
     switch (keyword.data[0]) {
         case '_':
             if (cmp_cstr(keyword, "_"))        return TOK_UNDERSCOE;
@@ -87,100 +88,103 @@ TokenKind match_keyword_or_ident(String keyword) {
             if (cmp_cstr(keyword, "while"))    return TOK_WHILE;
             break;
     }
+    // clang-format on
 
     return TOK_IDENTIFIER;
 }
 
 Token tok_make_simple(TokenKind type, size_t line, size_t col) {
     return (Token){
-        .kind = type,
+        .kind     = type,
         .loc.line = line,
-        .loc.col = col,
+        .loc.col  = col,
     };
 }
 
 Token tok_make_unknown(char c, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_UNKNOWN,
+        .kind       = TOK_UNKNOWN,
         .as.unknown = c,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line   = line,
+        .loc.col    = col,
     };
 }
 
 Token tok_make_ident(String ident, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_IDENTIFIER,
+        .kind          = TOK_IDENTIFIER,
         .as.identifier = ident,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line      = line,
+        .loc.col       = col,
     };
 }
 
 Token tok_make_string_lit(String strLit, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_STRING_LITERAL,
+        .kind             = TOK_STRING_LITERAL,
         .as.stringLiteral = strLit,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line         = line,
+        .loc.col          = col,
     };
 }
 
 Token tok_make_int_lit(uint32_t value, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_INTEGER_LITERAL,
+        .kind              = TOK_INTEGER_LITERAL,
         .as.integerLiteral = value,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line          = line,
+        .loc.col           = col,
     };
 }
 
 Token tok_make_long_lit(uint64_t value, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_LONG_LITERAL,
+        .kind           = TOK_LONG_LITERAL,
         .as.longLiteral = value,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line       = line,
+        .loc.col        = col,
     };
 }
 
 Token tok_make_float_lit(float value, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_FLOAT_LITERAL,
+        .kind            = TOK_FLOAT_LITERAL,
         .as.floatLiteral = value,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line        = line,
+        .loc.col         = col,
     };
 }
 
 Token tok_make_double_lit(double value, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_FLOAT_LITERAL,
+        .kind             = TOK_FLOAT_LITERAL,
         .as.doubleLiteral = value,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line         = line,
+        .loc.col          = col,
     };
 }
 
 Token tok_make_char_lit(uint8_t value, size_t line, size_t col) {
     return (Token){
-        .kind = TOK_CHAR_LITERAL,
+        .kind           = TOK_CHAR_LITERAL,
         .as.charLiteral = value,
-        .loc.line = line,
-        .loc.col = col,
+        .loc.line       = line,
+        .loc.col        = col,
     };
 }
 
-static bool is_printable_char(char c) { return ' ' <= c && c <= '~'; }
+static bool is_printable_char(char c) {
+    return ' ' <= c && c <= '~';
+}
 
 void print_tok(Token token) {
     printf("{ [%zu:%zu] \"type\": \"%s\"", token.loc.line, token.loc.col, tokenTypesStrings[token.kind]);
     switch (token.kind) {
         case TOK_IDENTIFIER:
-            printf(", \"name\": \"%.*s\"", (int)token.as.identifier.len, token.as.identifier.data);
+            printf(", \"name\": \"%.*s\"", (int) token.as.identifier.len, token.as.identifier.data);
             break;
         case TOK_STRING_LITERAL:
-            printf(", \"value\": \"%.*s\"", (int)token.as.stringLiteral.len, token.as.stringLiteral.data);
+            printf(", \"value\": \"%.*s\"", (int) token.as.stringLiteral.len, token.as.stringLiteral.data);
             break;
         case TOK_CHAR_LITERAL:
             if (is_printable_char(token.as.charLiteral))
@@ -189,9 +193,9 @@ void print_tok(Token token) {
                 printf(", \"value\": \"0x%02x\"", token.as.charLiteral);
             break;
         case TOK_INTEGER_LITERAL: printf(", \"value\": %u", token.as.integerLiteral); break;
-        case TOK_LONG_LITERAL: printf(", \"value\": %lu", token.as.longLiteral); break;
+        case TOK_LONG_LITERAL:    printf(", \"value\": %lu", token.as.longLiteral); break;
         case TOK_FLOAT_LITERAL:   printf(", \"value\": %f", token.as.floatLiteral); break;
-        case TOK_DOUBLE_LITERAL:   printf(", \"value\": %f", token.as.doubleLiteral); break;
+        case TOK_DOUBLE_LITERAL:  printf(", \"value\": %f", token.as.doubleLiteral); break;
         case TOK_UNKNOWN:
             if (is_printable_char(token.as.unknown))
                 printf(", \"value\": \"%c\"", token.as.unknown);

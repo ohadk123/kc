@@ -28,7 +28,7 @@ typedef enum {
 } StmtKind;
 
 typedef enum {
-    SPEC_NONE  = 0,
+    SPEC_NONE   = 0,
     SPEC_PUB    = TOK_PUB,
     SPEC_EXTERN = TOK_EXTERN,
     SPEC_STATIC = TOK_STATIC,
@@ -123,7 +123,7 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
-Stmt *stmt_make_return(Expr *ret_val, Location loc);
+Stmt *stmt_make_return(Expr *retVal, Location loc);
 Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc);
 Stmt *stmt_make_switch(Expr *value, SwitchCaseList cases, Stmt *wildcard, Location loc);
 

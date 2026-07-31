@@ -46,6 +46,7 @@ typedef enum {
     EXPR_CAST,
 } ExprKind;
 
+// clang-format off
 typedef enum {
     PRIM_IDENTIFIER      = TOK_IDENTIFIER,
     PRIM_STRING_LITERAL  = TOK_STRING_LITERAL,
@@ -57,6 +58,7 @@ typedef enum {
     PRIM_TRUE            = TOK_TRUE,
     PRIM_FALSE           = TOK_FALSE,
 } PrimaryKind;
+// clang-format on
 
 typedef struct {
     PrimaryKind kind;
@@ -81,6 +83,7 @@ typedef struct {
     Expr *inner;
 } GroupingExpr;
 
+// clang-format off
 typedef enum {
     BIN_PLUS                = TOK_PLUS,
     BIN_MINUS               = TOK_MINUS,
@@ -101,6 +104,7 @@ typedef enum {
     BIN_AMPERSAND_AMPERSAND = TOK_AMPERSAND_AMPERSAND,
     BIN_PIPE_PIPE           = TOK_PIPE_PIPE,
 } BinOp;
+// clang-format on
 
 typedef struct {
     BinOp op;
@@ -108,6 +112,7 @@ typedef struct {
     Expr *rhs;
 } BinaryExpr;
 
+// clang-format off
 typedef enum {
     UN_PLUS_PLUS   = TOK_PLUS_PLUS,
     UN_MINUS_MINUS = TOK_MINUS_MINUS,
@@ -118,6 +123,7 @@ typedef enum {
     UN_TILDE       = TOK_TILDE,
     UN_BANG        = TOK_BANG
 } UnaryOp;
+// clang-format on
 
 typedef struct {
     UnaryOp op;
@@ -125,16 +131,16 @@ typedef struct {
 } UnaryExpr;
 
 typedef enum {
-    ASS_EQUALS = TOK_EQUALS,
-    ASS_PLUS_EQUALS = TOK_PLUS_EQUALS,
-    ASS_MINUS_EQUALS = TOK_MINUS_EQUALS,
-    ASS_STAR_EQUALS = TOK_STAR_EQUALS,
-    ASS_SLASH_EQUALS = TOK_SLASH_EQUALS,
-    ASS_PERCENT_EQUALS = TOK_PERCENT_EQUALS,
-    ASS_AMPERSAND_EQUALS = TOK_AMPERSAND_EQUALS,
-    ASS_CARET_EQUALS = TOK_CARET_EQUALS,
-    ASS_PIPE_EQUALS = TOK_PIPE_EQUALS,
-    ASS_LESS_LESS_EQUALS = TOK_LESS_LESS_EQUALS,
+    ASS_EQUALS                 = TOK_EQUALS,
+    ASS_PLUS_EQUALS            = TOK_PLUS_EQUALS,
+    ASS_MINUS_EQUALS           = TOK_MINUS_EQUALS,
+    ASS_STAR_EQUALS            = TOK_STAR_EQUALS,
+    ASS_SLASH_EQUALS           = TOK_SLASH_EQUALS,
+    ASS_PERCENT_EQUALS         = TOK_PERCENT_EQUALS,
+    ASS_AMPERSAND_EQUALS       = TOK_AMPERSAND_EQUALS,
+    ASS_CARET_EQUALS           = TOK_CARET_EQUALS,
+    ASS_PIPE_EQUALS            = TOK_PIPE_EQUALS,
+    ASS_LESS_LESS_EQUALS       = TOK_LESS_LESS_EQUALS,
     ASS_GREATER_GREATER_EQUALS = TOK_GREATER_GREATER_EQUALS,
 } AssignOp;
 
