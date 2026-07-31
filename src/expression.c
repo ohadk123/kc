@@ -3,98 +3,98 @@
 static Expr *make_expr(ExprKind kind, Location loc) {
     Expr *e = calloc(1, sizeof(Expr));
     e->kind = kind;
-    e->loc = loc;
+    e->loc  = loc;
     return e;
 }
 
 static PrimaryValue token_to_primary(Token token) {
     PrimaryValue p = {0};
-    p.kind = (PrimaryKind) token.kind;
+    p.kind         = (PrimaryKind) token.kind;
 
     switch (p.kind) {
-        case PRIM_IDENTIFIER: p.as.identifier = token.as.identifier; return p;
-        case PRIM_STRING_LITERAL: p.as.stringLiteral = token.as.stringLiteral; return p;
-        case PRIM_CHAR_LITERAL: p.as.charLiteral = token.as.charLiteral; return p;
+        case PRIM_IDENTIFIER:      p.as.identifier = token.as.identifier; return p;
+        case PRIM_STRING_LITERAL:  p.as.stringLiteral = token.as.stringLiteral; return p;
+        case PRIM_CHAR_LITERAL:    p.as.charLiteral = token.as.charLiteral; return p;
         case PRIM_INTEGER_LITERAL: p.as.integerLiteral = token.as.integerLiteral; return p;
-        case PRIM_LONG_LITERAL: p.as.longLiteral = token.as.longLiteral; return p;
-        case PRIM_FLOAT_LITERAL: p.as.floatLiteral = token.as.floatLiteral; return p;
-        case PRIM_DOUBLE_LITERAL: p.as.doubleLiteral = token.as.doubleLiteral; return p;
+        case PRIM_LONG_LITERAL:    p.as.longLiteral = token.as.longLiteral; return p;
+        case PRIM_FLOAT_LITERAL:   p.as.floatLiteral = token.as.floatLiteral; return p;
+        case PRIM_DOUBLE_LITERAL:  p.as.doubleLiteral = token.as.doubleLiteral; return p;
         case PRIM_TRUE:
-        case PRIM_FALSE: return p; // Do Nothing
+        case PRIM_FALSE:           return p; // Do Nothing
     }
 
     UNREACHABLE("Invalid Primary Kind (%s)", tokenTypesStrings[token.kind]);
 }
 
 Expr *expr_make_primary(Token val, Location loc) {
-    Expr *e = make_expr(EXPR_PRIMARY, loc);
+    Expr *e             = make_expr(EXPR_PRIMARY, loc);
     e->as.primary.value = token_to_primary(val);
-    e->as.primary.decl = NULL;
+    e->as.primary.decl  = NULL;
     return e;
 }
 
 Expr *expr_make_grouping(Expr *inner, Location loc) {
-    Expr *e = make_expr(EXPR_GROUPING, loc);
+    Expr *e              = make_expr(EXPR_GROUPING, loc);
     e->as.grouping.inner = inner;
     return e;
 }
 
 Expr *expr_make_binary(BinOp op, Expr *lhs, Expr *rhs, Location loc) {
-    Expr *e = make_expr(EXPR_BINARY, loc);
-    e->as.binary.op = op;
+    Expr *e          = make_expr(EXPR_BINARY, loc);
+    e->as.binary.op  = op;
     e->as.binary.lhs = lhs;
     e->as.binary.rhs = rhs;
     return e;
 }
 
 Expr *expr_make_unary(UnaryOp op, Expr *inner, Location loc) {
-    Expr *e = make_expr(EXPR_UNARY, loc);
-    e->as.unary.op = op;
+    Expr *e           = make_expr(EXPR_UNARY, loc);
+    e->as.unary.op    = op;
     e->as.unary.inner = inner;
     return e;
 }
 
 Expr *expr_make_unary_post(UnaryOp op, Expr *inner, Location loc) {
-    Expr *e = make_expr(EXPR_UNARY_POST, loc);
-    e->as.unary.op = op;
+    Expr *e           = make_expr(EXPR_UNARY_POST, loc);
+    e->as.unary.op    = op;
     e->as.unary.inner = inner;
     return e;
 }
 
 Expr *expr_make_assign(AssignOp op, Expr *lhs, Expr *rhs, Location loc) {
-    Expr *e = make_expr(EXPR_ASSIGN, loc);
-    e->as.assignment.op = op;
+    Expr *e              = make_expr(EXPR_ASSIGN, loc);
+    e->as.assignment.op  = op;
     e->as.assignment.lhs = lhs;
     e->as.assignment.rhs = rhs;
     return e;
 }
 
 Expr *expr_make_conditional(Expr *cond, Expr *thenBranch, Expr *elseBranch, Location loc) {
-    Expr *e = make_expr(EXPR_CONDITIONAL, loc);
-    e->as.conditional.condition = cond;
+    Expr *e                      = make_expr(EXPR_CONDITIONAL, loc);
+    e->as.conditional.condition  = cond;
     e->as.conditional.thenBranch = thenBranch;
     e->as.conditional.elseBranch = elseBranch;
     return e;
 }
 
 Expr *expr_make_func_call(Expr *func, ExprList args, Location loc) {
-    Expr *e = make_expr(EXPR_FUNC_CALL, loc);
+    Expr *e             = make_expr(EXPR_FUNC_CALL, loc);
     e->as.funcCall.func = func;
     e->as.funcCall.args = args;
     return e;
 }
 
 Expr *expr_make_index(Expr *array, Expr *index, Location loc) {
-    Expr *e = make_expr(EXPR_INDEX, loc);
+    Expr *e           = make_expr(EXPR_INDEX, loc);
     e->as.index.array = array;
     e->as.index.index = index;
     return e;
 }
 
 Expr *expr_make_cast(Type *target, Expr *inner, Location loc) {
-    Expr *e = make_expr(EXPR_CAST, loc);
+    Expr *e           = make_expr(EXPR_CAST, loc);
     e->as.cast.target = target;
-    e->as.cast.inner = inner;
+    e->as.cast.inner  = inner;
     return e;
 }
 
@@ -159,12 +159,14 @@ void print_expr(Expr *expr, int indent) {
                 case PRIM_LONG_LITERAL:    printf("%lu", v.as.longLiteral); break;
                 case PRIM_FLOAT_LITERAL:   printf("%f", v.as.floatLiteral); break;
                 case PRIM_DOUBLE_LITERAL:  printf("%f", v.as.doubleLiteral); break;
-                case PRIM_STRING_LITERAL:  printf("\"%.*s\"", (int)v.as.stringLiteral.len, v.as.stringLiteral.data); break;
-                case PRIM_CHAR_LITERAL:    printf("'%c'", v.as.charLiteral); break;
-                case PRIM_IDENTIFIER:      printf("\"%.*s\"", (int)v.as.identifier.len, v.as.identifier.data); break;
-                case PRIM_TRUE:            printf("true"); break;
-                case PRIM_FALSE:           printf("false"); break;
-                default:                  printf("\"?\""); break;
+                case PRIM_STRING_LITERAL:
+                    printf("\"%.*s\"", (int) v.as.stringLiteral.len, v.as.stringLiteral.data);
+                    break;
+                case PRIM_CHAR_LITERAL: printf("'%c'", v.as.charLiteral); break;
+                case PRIM_IDENTIFIER:   printf("\"%.*s\"", (int) v.as.identifier.len, v.as.identifier.data); break;
+                case PRIM_TRUE:         printf("true"); break;
+                case PRIM_FALSE:        printf("false"); break;
+                default:                printf("\"?\""); break;
             }
             printf("\n");
             break;

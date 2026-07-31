@@ -3,7 +3,9 @@
 #include "lexer.h"
 #include <ctype.h>
 
-static inline bool is_hex(char c) { return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F'); }
+static inline bool is_hex(char c) {
+    return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
+}
 
 static inline char hex_to_val(char c) {
     if ('0' <= c && c <= '9') return c - '0' + 0x0;
@@ -13,7 +15,9 @@ static inline char hex_to_val(char c) {
     return -1;
 }
 
-static inline bool is_oct(char c) { return '0' <= c && c <= '7'; }
+static inline bool is_oct(char c) {
+    return '0' <= c && c <= '7';
+}
 
 static inline char oct_to_val(char c) {
     if (is_oct(c)) return c - '0';
@@ -29,10 +33,13 @@ typedef struct {
     bool hadError;
 } Lexer;
 
-#define lexer_error(l, fmt, ...) \
-    ((l)->hadError = compile_err_no_abort((l)->unit->fileName, (Location){(l)->line, (l)->col}, fmt, ##__VA_ARGS__), (Token){0})
+#define LEXER_ERROR(l, fmt, ...)                                                                                     \
+    ((l)->hadError = compile_err_no_abort((l)->unit->fileName, (Location){(l)->line, (l)->col}, fmt, ##__VA_ARGS__), \
+     (Token){0})
 
-static inline void add_tok(Lexer *l, Token token) { list_append(&l->unit->tokens, token); }
+static inline void add_tok(Lexer *l, Token token) {
+    LIST_APPEND(&l->unit->tokens, token);
+}
 
 static void add_simple_tok(Lexer *l, TokenKind type) {
     Token t = tok_make_simple(type, l->line, l->col);
@@ -40,7 +47,9 @@ static void add_simple_tok(Lexer *l, TokenKind type) {
 }
 
 // Check if we've reached the end of the input
-static bool is_at_end(Lexer *l) { return l->index == l->unit->input.len; }
+static bool is_at_end(Lexer *l) {
+    return l->index == l->unit->input.len;
+}
 
 // Advance the lexer and return the current character
 static char advance(Lexer *l) {
@@ -67,7 +76,7 @@ static char peek(Lexer *l) {
 
 static Token make_ident_keyword(Lexer *l) {
     size_t start = l->index - 1;
-    size_t col = l->col;
+    size_t col   = l->col;
 
     while (isalnum(peek(l)) || peek(l) == '_') advance(l);
     size_t end = l->index;
@@ -81,19 +90,19 @@ static Token make_ident_keyword(Lexer *l) {
 }
 
 static Token make_number(Lexer *l) {
-    size_t start = l->index - 1;
-    size_t col   = l->col;
+    size_t start     = l->index - 1;
+    size_t col       = l->col;
     const char *nptr = l->unit->input.data + start;
 
     char *end;
     uint64_t val = strtoull(nptr, &end, 0);
-    if (end <= nptr) return lexer_error(l, "Invalid number");
+    if (end <= nptr) return LEXER_ERROR(l, "Invalid number");
     l->index += end - nptr - 1;
     l->col += end - nptr - 1;
 
     bool isLong = match(l, 'L');
-    if (!isLong && val > INT32_MAX) return lexer_error(l, "Integer literal does not fit in i32");
-    if (isLong && val > INT64_MAX) return lexer_error(l, "Integer literal does not fit in i64");
+    if (!isLong && val > INT32_MAX) return LEXER_ERROR(l, "Integer literal does not fit in i32");
+    if (isLong && val > INT64_MAX) return LEXER_ERROR(l, "Integer literal does not fit in i64");
 
     return isLong ? tok_make_long_lit(val, l->line, col) : tok_make_int_lit(val, l->line, col);
 }
@@ -122,7 +131,7 @@ static uint8_t consume_escape_char(Lexer *l) {
                 val *= 16;
                 char o = hex_to_val(c);
                 if (o == -1) {
-                    lexer_error(l, "'%c' is Not a hex character", c);
+                    LEXER_ERROR(l, "'%c' is Not a hex character", c);
                     o = 0;
                 }
                 val += o;
@@ -134,7 +143,7 @@ static uint8_t consume_escape_char(Lexer *l) {
                 val *= 8;
                 char o = oct_to_val(c);
                 if (o == -1) {
-                    lexer_error(l, "'%c' Not an octal val", c);
+                    LEXER_ERROR(l, "'%c' Not an octal val", c);
                     o = 0;
                 }
                 val += o;
@@ -143,12 +152,12 @@ static uint8_t consume_escape_char(Lexer *l) {
     }
 
     if (val > UINT8_MAX) TODO("Hex escape sequence out of range");
-    return (uint8_t)val;
+    return (uint8_t) val;
 }
 
 static Token make_string(Lexer *l) {
     StringBuilder string = {0};
-    size_t col = l->col;
+    size_t col           = l->col;
 
     while (!is_at_end(l) && peek(l) != '\n') {
         if (peek(l) == '\"') {
@@ -158,7 +167,7 @@ static Token make_string(Lexer *l) {
 
         char c = advance(l);
         if (c == '\\') c = consume_escape_char(l);
-        list_append(&string, c);
+        LIST_APPEND(&string, c);
     }
     TODO("Unterminated string literal");
 
@@ -168,7 +177,7 @@ terminated:
 
 static Token make_char(Lexer *l) {
     size_t col = l->col;
-    uint8_t c = advance(l);
+    uint8_t c  = advance(l);
 
     if (c == '\\') c = consume_escape_char(l);
     if (peek(l) != '\'') TODO("Unterminated char literal");
@@ -187,10 +196,10 @@ bool scan_file(TranslationUnit *unit) {
     if (!unit) return false;
 
     Lexer l = (Lexer){
-        .unit = unit,
-        .index = 0,
-        .line = 1,
-        .col = 0,
+        .unit     = unit,
+        .index    = 0,
+        .line     = 1,
+        .col      = 0,
         .hadError = false,
     };
 
@@ -404,13 +413,13 @@ bool scan_file(TranslationUnit *unit) {
             // TOK_AT
             case '@': ADD_SIMPLE(TOK_AT); break;
 
-            default: lexer_error(&l, "Unknown character '%c'", c); break;
+            default:  LEXER_ERROR(&l, "Unknown character '%c'", c); break;
         }
     }
 
     add_simple_tok(&l, TOK_EOF);
 
-    free((void *)l.unit->input.data);
+    free((void *) l.unit->input.data);
 
     return !l.hadError;
 }
@@ -419,8 +428,8 @@ void free_token_list(TokensList *tokens) {
     for (size_t i = 0; i < tokens->len; i++) {
         Token *tok = &tokens->arr[i];
         switch (tok->kind) {
-            case TOK_IDENTIFIER:     free((void *)tok->as.identifier.data); break;
-            case TOK_STRING_LITERAL: free((void *)tok->as.stringLiteral.data); break;
+            case TOK_IDENTIFIER:     free((void *) tok->as.identifier.data); break;
+            case TOK_STRING_LITERAL: free((void *) tok->as.stringLiteral.data); break;
             default:                 break;
         }
     }

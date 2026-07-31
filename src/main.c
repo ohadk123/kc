@@ -6,8 +6,8 @@
 
 int main(int argc, char *argv[]) {
     const char *source = NULL;
-    bool object = false;
-    bool dump_qbe = false;
+    bool object        = false;
+    bool dumpQbe       = false;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: kc [-qc] <file>\n");
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
             if (!strcmp(arg, "-c")) {
                 object = true;
             } else if (!strcmp(arg, "-q")) {
-                dump_qbe = true;
+                dumpQbe = true;
             } else {
                 fprintf(stderr, "Unkown flag '%s'", arg);
                 return 1;
@@ -38,38 +38,38 @@ int main(int argc, char *argv[]) {
 
     TranslationUnit unit = (TranslationUnit){
         .fileName = str_from_cstr(source),
-        .input = str_from_file(source),
+        .input    = str_from_file(source),
     };
 
     if (!scan_file(&unit)) return 1;
     parse(&unit);
     if (!semantic_analysis(&unit)) return 1;
 
-    if (dump_qbe) {
+    if (dumpQbe) {
         codegen(&unit, NULL);
         return 0;
     }
 
-    const char *fileNameNoExt = strtok((char *)source, ".");
-    String qbeFile = str_printf("%s.ssa", fileNameNoExt);
-    String asmFile = str_printf("%s.s", fileNameNoExt);
+    const char *fileNameNoExt = strtok((char *) source, ".");
+    String qbeFile            = str_printf("%s.ssa", fileNameNoExt);
+    String asmFile            = str_printf("%s.s", fileNameNoExt);
 
     FILE *outf = fopen(qbeFile.data, "w");
     codegen(&unit, outf);
     fflush(outf);
     fclose(outf);
 
-    String qbeCommand = str_printf("qbe %.*s -o %.*s", strf(qbeFile), strf(asmFile));
-    int ret = system(qbeCommand.data);
+    String qbeCommand = str_printf("qbe %.*s -o %.*s", STRF(qbeFile), STRF(asmFile));
+    int ret           = system(qbeCommand.data);
     printf("qbe done with code %d\n", ret);
     remove(qbeFile.data);
     if (ret != 0) exit(1);
 
     String asmCommand;
     if (object)
-        asmCommand = str_printf("gcc -c %.*s -o %s.o", strf(asmFile), fileNameNoExt);
+        asmCommand = str_printf("gcc -c %.*s -o %s.o", STRF(asmFile), fileNameNoExt);
     else
-        asmCommand = str_printf("gcc %.*s -o %s", strf(asmFile), fileNameNoExt);
+        asmCommand = str_printf("gcc %.*s -o %s", STRF(asmFile), fileNameNoExt);
 
     ret = system(asmCommand.data);
     printf("gcc done with code %d\n", ret);

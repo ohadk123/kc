@@ -32,7 +32,7 @@
     do {                                                                 \
         void *__bt_array[BT_SIZE];                                       \
         size_t __bt_size;                                                \
-        __bt_size = backtrace(__bt_array, BT_SIZE);                      \
+        __bt_size            = backtrace(__bt_array, BT_SIZE);           \
         char **__bt__strings = backtrace_symbols(__bt_array, __bt_size); \
         printf("Backtrace (%zd frames):\n", __bt_size);                  \
         for (size_t i = 0; i < __bt_size; i++) {                         \
@@ -49,7 +49,7 @@
 
 #define MIN_CAP 8
 
-#define list_append(l, e)                                               \
+#define LIST_APPEND(l, e)                                               \
     do {                                                                \
         if ((l)->len >= (l)->cap) {                                     \
             (l)->cap = (l)->cap < MIN_CAP ? MIN_CAP : (l)->cap * 2;     \
@@ -58,7 +58,7 @@
         (l)->arr[(l)->len++] = e;                                       \
     } while (0)
 
-#define list_append_many(l, arr, arrLen)                                \
+#define LIST_APPEND_MANY(l, arr, arrLen)                                \
     do {                                                                \
         while ((l)->len + (arrLen) >= (l)->cap) {                       \
             (l)->cap = (l)->cap < MIN_CAP ? MIN_CAP : (l)->cap * 2;     \
@@ -69,7 +69,9 @@
         }                                                               \
     } while (0)
 
+// clang-format off
 #define FOR_EACH(l, T, v) \
     for (T *v = (l)->arr; v < (l)->arr + (l)->len; v++)
+// clang-format on
 
 #endif // UTILS_H

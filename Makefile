@@ -31,3 +31,6 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 .PHONY: all compile build release clean
+
+format:
+	clang-format --dry-run --Werror src/*.c src/*.h

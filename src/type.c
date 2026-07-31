@@ -11,35 +11,43 @@
     X(i64, TYPE_I64, 8, 8) \
     X(u32, TYPE_U32, 4, 4) \
     X(i32, TYPE_I32, 4, 4) \
-    X(err, TYPE_ERR, 0, 0) \
+    X(err, TYPE_ERR, 0, 0)
 
 /******************************************************************************
  * Preprocessor generated definitions
  *****************************************************************************/
 
+// Data declaration
 #define X(name, k, s, a) static Type name##_type = {.kind = k, .size = s, .align = a};
 TYPES_LIST(X)
 #undef X
 
+// Pointers to the primitives
 #define X(name, k, s, a) Type *type_##name = &name##_type;
 TYPES_LIST(X)
 #undef X
 
-#define X(name, k, s, a) case k: return type_##name;
+// Get type pointer from TokenKind
+#define X(name, k, s, a) \
+    case k: return type_##name;
 Type *type_make_primitive(TokenKind kind) {
-    switch ((TypeKind)kind) { TYPES_LIST(X) }
+    switch ((TypeKind) kind) { TYPES_LIST(X) }
     UNREACHABLE("Invalid TokenKind for TypeKind (%s)", tokenTypesStrings[kind]);
 }
 #undef X
 
-#define X(name, k, s, a) case k: return #name;
+// Name of a type
+#define X(name, k, s, a) \
+    case k: return #name;
 const char *type_name(const Type *t) {
     switch (t->kind) { TYPES_LIST(X) }
     UNREACHABLE("Invalid type kind (%d)", t->kind);
 }
 #undef X
 
-#define X(name, k, s, al) if (a->kind == k || b->kind == k) return type_##name;
+// Common type between two types -> this is why ordering matters
+#define X(name, k, s, al) \
+    if (a->kind == k || b->kind == k) return type_##name;
 Type *type_common(Type *a, Type *b) {
     assert(type_is_integer(a) && type_is_integer(b));
     TYPES_LIST(X)
@@ -76,11 +84,11 @@ bool type_is_signed(const Type *t) {
     assert(t);
 
     switch (t->kind) {
-            case TYPE_I32:
-            case TYPE_I64: return true;
-            case TYPE_ERR:
-            case TYPE_U32:
-            case TYPE_U64: return false;
+        case TYPE_I32:
+        case TYPE_I64: return true;
+        case TYPE_ERR:
+        case TYPE_U32:
+        case TYPE_U64: return false;
     }
 
     UNREACHABLE("Invalid TypeKind (%s)", tokenTypesStrings[t->kind]);

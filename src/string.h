@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-#define strf(str) (int) (str).len, (str).data
+#define STRF(str) (int) (str).len, (str).data
 
 typedef struct {
     const char *data; // Null terminated string

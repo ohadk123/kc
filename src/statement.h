@@ -20,6 +20,7 @@ typedef enum {
     STMT_FOR,
     STMT_RETURN,
     STMT_FUNC,
+    STMT_SWITCH,
 
     // struct-less statements
     STMT_BREAK,
@@ -27,7 +28,7 @@ typedef enum {
 } StmtKind;
 
 typedef enum {
-    SPEC_NONE  = 0,
+    SPEC_NONE   = 0,
     SPEC_PUB    = TOK_PUB,
     SPEC_EXTERN = TOK_EXTERN,
     SPEC_STATIC = TOK_STATIC,
@@ -82,6 +83,22 @@ typedef struct {
     StorageSpecifier specifier;
 } FuncStmt;
 
+typedef struct {
+    Expr *value;
+    Stmt *body;
+    int64_t eval;
+} SwitchCase;
+
+typedef struct {
+    LIST_FIELDS(SwitchCase);
+} SwitchCaseList;
+
+typedef struct {
+    Expr *value;
+    SwitchCaseList cases;
+    Stmt *wildcard;
+} SwitchStmt;
+
 struct _Stmt {
     StmtKind kind;
     Location loc;
@@ -94,6 +111,7 @@ struct _Stmt {
         ForStmt forS;
         ReturnStmt returnS;
         FuncStmt func;
+        SwitchStmt switchS;
     } as;
 };
 
@@ -105,8 +123,9 @@ Stmt *stmt_make_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_do_while(Expr *cond, Stmt *body, Location loc);
 Stmt *stmt_make_if(Expr *cond, Stmt *thenBranch, Stmt *elseBranch, Location loc);
 Stmt *stmt_make_for(Stmt *init, Expr *cond, Expr *inc, Stmt *body, Location loc);
-Stmt *stmt_make_return(Expr *ret_val, Location loc);
+Stmt *stmt_make_return(Expr *retVal, Location loc);
 Stmt *stmt_make_func(Type *ret, String name, StmtList params, StmtList block, StorageSpecifier storage, Location loc);
+Stmt *stmt_make_switch(Expr *value, SwitchCaseList cases, Stmt *wildcard, Location loc);
 
 Stmt *stmt_make_break(Location loc);
 Stmt *stmt_make_continue(Location loc);

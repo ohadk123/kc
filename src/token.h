@@ -61,6 +61,7 @@
     X(TOK_MINUS_GREATER)  /* ->  */         \
     X(TOK_EQUALS_GREATER) /* =>  */         \
     X(TOK_AT)             /* @   */         \
+    X(TOK_UNDERSCOE)      /* _   */         \
                                             \
     X(TOK_IDENTIFIER)                       \
     X(TOK_STRING_LITERAL)                   \
@@ -70,8 +71,9 @@
     X(TOK_FLOAT_LITERAL)                    \
     X(TOK_DOUBLE_LITERAL)                   \
                                             \
-    X(TOK_CAST)     /* cast     */          \
     X(TOK_BREAK)    /* break    */          \
+    X(TOK_CASE)     /* case     */          \
+    X(TOK_CAST)     /* cast     */          \
     X(TOK_CONST)    /* const    */          \
     X(TOK_CONTINUE) /* continue */          \
     X(TOK_DO)       /* do       */          \
@@ -89,6 +91,7 @@
     X(TOK_RETURN)   /* return   */          \
     X(TOK_STATIC)   /* static   */          \
     X(TOK_STRUCT)   /* struct   */          \
+    X(TOK_SWITCH)   /* switch   */          \
     X(TOK_THIS)     /* this     */          \
     X(TOK_UNION)    /* union    */          \
     X(TOK_VARIANT)  /* variant  */          \
@@ -115,7 +118,9 @@
     X(TOK_FALSE) /* false */
 
 #define X(type) type,
-typedef enum { TOKEN_LIST } TokenKind;
+typedef enum {
+    TOKEN_LIST
+} TokenKind;
 #undef X
 
 typedef struct {

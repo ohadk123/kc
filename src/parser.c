@@ -5,11 +5,16 @@ typedef struct {
     size_t index;
 } Parser;
 
-#define parser_error(p, fmt, ...) compile_error(p->unit->fileName, peek((p)).loc, fmt, ##__VA_ARGS__)
+#define PARSER_ERROR(p, fmt, ...) compile_error(p->unit->fileName, peek((p)).loc, fmt, ##__VA_ARGS__)
 
-static bool is_at_end(Parser *p) { return p->unit->tokens.arr[p->index].kind == TOK_EOF; }
+static bool is_at_end(Parser *p) {
+    return p->unit->tokens.arr[p->index].kind == TOK_EOF;
+}
 
-static Token previous(Parser *p) { assert(p->index > 0); return p->unit->tokens.arr[p->index - 1]; }
+static Token previous(Parser *p) {
+    assert(p->index > 0);
+    return p->unit->tokens.arr[p->index - 1];
+}
 
 static bool match_arr(Parser *p, size_t count, const TokenKind *tokens) {
     if (is_at_end(p)) return false;
@@ -23,9 +28,11 @@ static bool match_arr(Parser *p, size_t count, const TokenKind *tokens) {
     return false;
 }
 
-#define match(p, ...) match_arr(p, sizeof((TokenKind[]){__VA_ARGS__}) / sizeof(TokenKind), (TokenKind[]){__VA_ARGS__})
+#define MATCH(p, ...) match_arr(p, sizeof((TokenKind[]){__VA_ARGS__}) / sizeof(TokenKind), (TokenKind[]){__VA_ARGS__})
 
-inline static Token peek(Parser *p) { return p->unit->tokens.arr[p->index]; }
+inline static Token peek(Parser *p) {
+    return p->unit->tokens.arr[p->index];
+}
 
 inline static Token peek_ahead(Parser *p, size_t offset) {
     if (p->index + offset >= p->unit->tokens.len) return (Token){0};
@@ -33,8 +40,8 @@ inline static Token peek_ahead(Parser *p, size_t offset) {
 }
 
 static Token expect(Parser *p, TokenKind expected, const char *msg) {
-    if (match(p, expected)) return previous(p);
-    parser_error(p, msg);
+    if (MATCH(p, expected)) return previous(p);
+    PARSER_ERROR(p, msg);
 }
 
 /******************************************************************************
@@ -52,12 +59,12 @@ static bool is_type(Parser *p) {
 }
 
 static StorageSpecifier parse_storage_global(Parser *p) {
-    if (match(p, TOK_EXTERN, TOK_PUB)) return (StorageSpecifier) previous(p).kind;
+    if (MATCH(p, TOK_EXTERN, TOK_PUB)) return (StorageSpecifier) previous(p).kind;
     return SPEC_NONE;
 }
 
 static StorageSpecifier parse_storage_local(Parser *p) {
-    if (match(p, TOK_STATIC)) return (StorageSpecifier) previous(p).kind;
+    if (MATCH(p, TOK_STATIC)) return (StorageSpecifier) previous(p).kind;
     return SPEC_NONE;
 }
 
@@ -81,30 +88,30 @@ static Expr *expression(Parser *p);
 // primary := INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | STRING_LITERAL | TRUE | FALSE | IDENTIFIER |
 // '(' expression ')'
 static Expr *primary_expr(Parser *p) {
-    if (match(p, TOK_INTEGER_LITERAL, TOK_LONG_LITERAL, TOK_FLOAT_LITERAL, TOK_DOUBLE_LITERAL, TOK_CHAR_LITERAL,
+    if (MATCH(p, TOK_INTEGER_LITERAL, TOK_LONG_LITERAL, TOK_FLOAT_LITERAL, TOK_DOUBLE_LITERAL, TOK_CHAR_LITERAL,
               TOK_STRING_LITERAL, TOK_TRUE, TOK_FALSE, TOK_IDENTIFIER)) {
         Token primary = previous(p);
         return expr_make_primary(primary, primary.loc);
-    } else if (match(p, TOK_LEFT_PAREN)) {
+    } else if (MATCH(p, TOK_LEFT_PAREN)) {
         Location leftParenLoc = previous(p).loc;
-        Expr *inner = expression(p);
+        Expr *inner           = expression(p);
         expect(p, TOK_RIGHT_PAREN, "Expected closing ')'");
         return expr_make_grouping(inner, leftParenLoc);
     }
 
-    parser_error(p, "Expected expression");
+    PARSER_ERROR(p, "Expected expression");
 }
 
 // cast := 'cast' '<' IDENTIFIER '>' '(' expression ')'
 static Expr *cast_expr(Parser *p) {
-    if (match(p, TOK_CAST)) {
-        const char *usage =  "Cast is used as: \"cast<T>(expression)\"";
+    if (MATCH(p, TOK_CAST)) {
+        const char *usage = "Cast is used as: \"cast<T>(expression)\"";
 
         Location loc = previous(p).loc;
         expect(p, TOK_LESS, usage);
 
         Type *target = parse_type(p);
-        if (!target) parser_error(p, usage);
+        if (!target) PARSER_ERROR(p, usage);
 
         expect(p, TOK_GREATER, usage);
         expect(p, TOK_LEFT_PAREN, usage);
@@ -124,17 +131,17 @@ static Expr *postfix_expr(Parser *p) {
     Expr *expr = cast_expr(p);
 
     while (true) {
-        if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
+        if (MATCH(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS)) {
             Token op = previous(p);
-            expr = expr_make_unary_post((UnaryOp) op.kind, expr, op.loc);
-        } else if (match(p, TOK_LEFT_PAREN)) {
+            expr     = expr_make_unary_post((UnaryOp) op.kind, expr, op.loc);
+        } else if (MATCH(p, TOK_LEFT_PAREN)) {
             ExprList args = {0};
-            if (!match(p, TOK_RIGHT_PAREN)) {
+            if (!MATCH(p, TOK_RIGHT_PAREN)) {
                 while (true) {
                     Expr *arg = expression(p);
-                    list_append(&args, arg);
+                    LIST_APPEND(&args, arg);
 
-                    if (!match(p, TOK_COMMA)) {
+                    if (!MATCH(p, TOK_COMMA)) {
                         expect(p, TOK_RIGHT_PAREN, "Expected ')'");
                         break;
                     }
@@ -142,7 +149,7 @@ static Expr *postfix_expr(Parser *p) {
             }
 
             expr = expr_make_func_call(expr, args, expr->loc);
-        } else if (match(p, TOK_LEFT_BRACKET)) {
+        } else if (MATCH(p, TOK_LEFT_BRACKET)) {
             Expr *index = expression(p);
             expect(p, TOK_RIGHT_BRACKET, "Expected ']'");
             expr = expr_make_index(expr, index, expr->loc);
@@ -157,8 +164,8 @@ static Expr *postfix_expr(Parser *p) {
 // unary := ('&' | '*' | '+' | '-' | '~' | '!' | '++' | '--') unary
 //        | postfix
 static Expr *unary_expr(Parser *p) {
-    if (match(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS, TOK_AMPERSAND, TOK_STAR, TOK_PLUS, TOK_MINUS, TOK_TILDE, TOK_BANG)) {
-        Token op = previous(p);
+    if (MATCH(p, TOK_PLUS_PLUS, TOK_MINUS_MINUS, TOK_AMPERSAND, TOK_STAR, TOK_PLUS, TOK_MINUS, TOK_TILDE, TOK_BANG)) {
+        Token op    = previous(p);
         Expr *inner = unary_expr(p);
         return expr_make_unary((UnaryOp) op.kind, inner, op.loc);
     }
@@ -170,10 +177,10 @@ static Expr *unary_expr(Parser *p) {
 static Expr *multiplicative_expr(Parser *p) {
     Expr *expr = unary_expr(p);
 
-    while (match(p, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_STAR, TOK_SLASH, TOK_PERCENT)) {
+        Token op  = previous(p);
         Expr *rhs = unary_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -183,10 +190,10 @@ static Expr *multiplicative_expr(Parser *p) {
 static Expr *additive_expr(Parser *p) {
     Expr *expr = multiplicative_expr(p);
 
-    while (match(p, TOK_PLUS, TOK_MINUS)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_PLUS, TOK_MINUS)) {
+        Token op  = previous(p);
         Expr *rhs = multiplicative_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -196,10 +203,10 @@ static Expr *additive_expr(Parser *p) {
 static Expr *shift_expr(Parser *p) {
     Expr *expr = additive_expr(p);
 
-    while (match(p, TOK_LESS_LESS, TOK_GREATER_GREATER)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_LESS_LESS, TOK_GREATER_GREATER)) {
+        Token op  = previous(p);
         Expr *rhs = additive_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -209,10 +216,10 @@ static Expr *shift_expr(Parser *p) {
 static Expr *relational_expr(Parser *p) {
     Expr *expr = shift_expr(p);
 
-    while (match(p, TOK_LESS, TOK_GREATER, TOK_LESS_EQUALS, TOK_GREATER_EQUALS)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_LESS, TOK_GREATER, TOK_LESS_EQUALS, TOK_GREATER_EQUALS)) {
+        Token op  = previous(p);
         Expr *rhs = shift_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -222,10 +229,10 @@ static Expr *relational_expr(Parser *p) {
 static Expr *equality_expr(Parser *p) {
     Expr *expr = relational_expr(p);
 
-    while (match(p, TOK_EQUALS_EQUALS, TOK_BANG_EQUALS)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_EQUALS_EQUALS, TOK_BANG_EQUALS)) {
+        Token op  = previous(p);
         Expr *rhs = relational_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -235,10 +242,10 @@ static Expr *equality_expr(Parser *p) {
 static Expr *bitwise_and_expr(Parser *p) {
     Expr *expr = equality_expr(p);
 
-    while (match(p, TOK_AMPERSAND)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_AMPERSAND)) {
+        Token op  = previous(p);
         Expr *rhs = equality_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -248,10 +255,10 @@ static Expr *bitwise_and_expr(Parser *p) {
 static Expr *bitwise_xor_expr(Parser *p) {
     Expr *expr = bitwise_and_expr(p);
 
-    while (match(p, TOK_CARET)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_CARET)) {
+        Token op  = previous(p);
         Expr *rhs = bitwise_and_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -261,10 +268,10 @@ static Expr *bitwise_xor_expr(Parser *p) {
 static Expr *bitwise_or_expr(Parser *p) {
     Expr *expr = bitwise_xor_expr(p);
 
-    while (match(p, TOK_PIPE)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_PIPE)) {
+        Token op  = previous(p);
         Expr *rhs = bitwise_xor_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -274,10 +281,10 @@ static Expr *bitwise_or_expr(Parser *p) {
 static Expr *logical_and_expr(Parser *p) {
     Expr *expr = bitwise_or_expr(p);
 
-    while (match(p, TOK_AMPERSAND_AMPERSAND)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_AMPERSAND_AMPERSAND)) {
+        Token op  = previous(p);
         Expr *rhs = bitwise_or_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -287,10 +294,10 @@ static Expr *logical_and_expr(Parser *p) {
 static Expr *logical_or_expr(Parser *p) {
     Expr *expr = logical_and_expr(p);
 
-    while (match(p, TOK_PIPE_PIPE)) {
-        Token op = previous(p);
+    while (MATCH(p, TOK_PIPE_PIPE)) {
+        Token op  = previous(p);
         Expr *rhs = logical_and_expr(p);
-        expr = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_binary((BinOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
@@ -300,12 +307,12 @@ static Expr *logical_or_expr(Parser *p) {
 static Expr *conditional_expr(Parser *p) {
     Expr *expr = logical_or_expr(p);
 
-    if (match(p, TOK_QUESTION_MARK)) {
+    if (MATCH(p, TOK_QUESTION_MARK)) {
         Location qmarkLoc = previous(p).loc;
-        Expr *trueBranch = expression(p);
+        Expr *trueBranch  = expression(p);
         expect(p, TOK_COLON, "Expected \':\'");
         Expr *falseBranch = conditional_expr(p);
-        expr = expr_make_conditional(expr, trueBranch, falseBranch, qmarkLoc);
+        expr              = expr_make_conditional(expr, trueBranch, falseBranch, qmarkLoc);
     }
 
     return expr;
@@ -315,18 +322,20 @@ static Expr *conditional_expr(Parser *p) {
 static Expr *assignment_expr(Parser *p) {
     Expr *expr = conditional_expr(p);
 
-    if (match(p, TOK_EQUALS, TOK_PLUS_EQUALS, TOK_MINUS_EQUALS, TOK_STAR_EQUALS, TOK_SLASH_EQUALS, TOK_PERCENT_EQUALS,
+    if (MATCH(p, TOK_EQUALS, TOK_PLUS_EQUALS, TOK_MINUS_EQUALS, TOK_STAR_EQUALS, TOK_SLASH_EQUALS, TOK_PERCENT_EQUALS,
               TOK_AMPERSAND_EQUALS, TOK_CARET_EQUALS, TOK_PIPE_EQUALS, TOK_LESS_LESS_EQUALS,
               TOK_GREATER_GREATER_EQUALS)) {
-        Token op = previous(p);
+        Token op  = previous(p);
         Expr *rhs = assignment_expr(p);
-        expr = expr_make_assign((AssignOp) op.kind, expr, rhs, op.loc);
+        expr      = expr_make_assign((AssignOp) op.kind, expr, rhs, op.loc);
     }
 
     return expr;
 }
 
-static Expr *expression(Parser *p) { return assignment_expr(p); }
+static Expr *expression(Parser *p) {
+    return assignment_expr(p);
+}
 
 /******************************************************************************
  * Statement Parsing
@@ -339,9 +348,9 @@ Stmt *var_stmt_ext(Parser *p, Type *type, Token nameTok, StorageSpecifier storag
     assert(nameTok.kind == TOK_IDENTIFIER);
     String name = nameTok.as.identifier;
 
-    if (match(p, TOK_EQUALS)) {
+    if (MATCH(p, TOK_EQUALS)) {
         if (storage == SPEC_EXTERN)
-            parser_error(p, "Cannot assign an external variable");
+            PARSER_ERROR(p, "Cannot assign an external variable");
         else
             init = expression(p);
     } else if (storage != SPEC_EXTERN) {
@@ -355,11 +364,14 @@ Stmt *var_stmt_ext(Parser *p, Type *type, Token nameTok, StorageSpecifier storag
 
 Stmt *var_stmt(Parser *p) {
     StorageSpecifier storage = parse_storage_local(p);
-    Type *type = parse_type(p);
+    Type *type               = parse_type(p);
     if (!type) {
-        if (peek(p).kind == TOK_PUB) parser_error(p, "'pub' is not allowed here");
-        else if (peek(p).kind == TOK_EXTERN) parser_error(p, "'extern' is not allowed here");
-        else parser_error(p, "Expected variable type");
+        if (peek(p).kind == TOK_PUB)
+            PARSER_ERROR(p, "'pub' is not allowed here");
+        else if (peek(p).kind == TOK_EXTERN)
+            PARSER_ERROR(p, "'extern' is not allowed here");
+        else
+            PARSER_ERROR(p, "Expected variable type");
     }
 
     Token name = expect(p, TOK_IDENTIFIER, "Expected variable name");
@@ -373,21 +385,21 @@ Stmt *for_stmt(Parser *p) {
     Stmt *init = NULL;
     if (is_type(p))
         init = var_stmt(p);
-    else if (!match(p, TOK_SEMICOLON)) {
-        if (match(p, TOK_EXTERN, TOK_PUB, TOK_STATIC)) parser_error(p, "Storage specifiers are not allowed here");
+    else if (!MATCH(p, TOK_SEMICOLON)) {
+        if (MATCH(p, TOK_EXTERN, TOK_PUB, TOK_STATIC)) PARSER_ERROR(p, "Storage specifiers are not allowed here");
 
         init = stmt_make_expr(expression(p), previous(p).loc);
         expect(p, TOK_SEMICOLON, "Expected ';' after expression");
     }
 
     Expr *cond = NULL;
-    if (!match(p, TOK_SEMICOLON)) {
+    if (!MATCH(p, TOK_SEMICOLON)) {
         cond = expression(p);
         expect(p, TOK_SEMICOLON, "Expected ';' after for-loop condition");
     }
 
     Expr *inc = NULL;
-    if (!match(p, TOK_RIGHT_PAREN)) {
+    if (!MATCH(p, TOK_RIGHT_PAREN)) {
         inc = expression(p);
         expect(p, TOK_RIGHT_PAREN, "Expected ')' after for clauses");
     }
@@ -419,7 +431,7 @@ Stmt *if_stmt(Parser *p) {
     Stmt *thenBranch = statement(p);
 
     Stmt *elseBranch = NULL;
-    if (match(p, TOK_ELSE)) elseBranch = statement(p);
+    if (MATCH(p, TOK_ELSE)) elseBranch = statement(p);
 
     return stmt_make_if(cond, thenBranch, elseBranch, loc);
 }
@@ -427,9 +439,9 @@ Stmt *if_stmt(Parser *p) {
 StmtList stmt_list(Parser *p) {
     StmtList body = {0};
 
-    while (!match(p, TOK_RIGHT_BRACE)) {
+    while (!MATCH(p, TOK_RIGHT_BRACE)) {
         Stmt *s = statement(p);
-        list_append(&body, s);
+        LIST_APPEND(&body, s);
     }
 
     return body;
@@ -454,17 +466,17 @@ Stmt *continue_stmt(Parser *p) {
 
 Stmt *return_stmt(Parser *p) {
     Location loc = previous(p).loc;
-    Expr *ret_val = NULL;
-    if (!match(p, TOK_SEMICOLON)) {
-        ret_val = expression(p);
+    Expr *retVal = NULL;
+    if (!MATCH(p, TOK_SEMICOLON)) {
+        retVal = expression(p);
         expect(p, TOK_SEMICOLON, "Expected ';'");
     }
-    return stmt_make_return(ret_val, loc);
+    return stmt_make_return(retVal, loc);
 }
 
 Stmt *do_while_stmt(Parser *p) {
     Location loc = previous(p).loc;
-    Stmt *body = statement(p);
+    Stmt *body   = statement(p);
 
     expect(p, TOK_WHILE, "Expect 'while' in do/while loop");
     expect(p, TOK_LEFT_PAREN, "Exected '(' after after while");
@@ -476,19 +488,47 @@ Stmt *do_while_stmt(Parser *p) {
     return stmt_make_do_while(cond, body, loc);
 }
 
+Stmt *switch_stmt(Parser *p) {
+    Location loc = previous(p).loc;
+    expect(p, TOK_LEFT_PAREN, "Expected '(' after switch");
+    Expr *value = expression(p);
+    expect(p, TOK_RIGHT_PAREN, "Expect ')' after switch value");
+
+    expect(p, TOK_LEFT_BRACE, "Expected '{' to start switch block");
+    SwitchCaseList cases = {0};
+    Stmt *wildcard       = NULL;
+    while (!MATCH(p, TOK_RIGHT_BRACE)) {
+        expect(p, TOK_CASE, "Expected 'case'");
+        if (MATCH(p, TOK_UNDERSCOE)) {
+            expect(p, TOK_COLON, "Expected ':' after case value");
+            wildcard = statement(p);
+            expect(p, TOK_RIGHT_BRACE, "Wildcard case must be the last case in switch");
+            break;
+        }
+        Expr *caseValue = expression(p);
+        expect(p, TOK_COLON, "Expected ':' after case value");
+        Stmt *body       = statement(p);
+        SwitchCase case_ = (SwitchCase){caseValue, body, 0};
+        LIST_APPEND(&cases, case_);
+    }
+
+    return stmt_make_switch(value, cases, wildcard, loc);
+}
+
 Stmt *statement(Parser *p) {
-    if (is_decl_start(p))         return var_stmt(p);
-    if (match(p, TOK_FOR))        return for_stmt(p);
-    if (match(p, TOK_WHILE))      return while_stmt(p);
-    if (match(p, TOK_IF))         return if_stmt(p);
-    if (match(p, TOK_LEFT_BRACE)) return block_stmt(p);
-    if (match(p, TOK_BREAK))      return break_stmt(p);
-    if (match(p, TOK_CONTINUE))   return continue_stmt(p);
-    if (match(p, TOK_RETURN))     return return_stmt(p);
-    if (match(p, TOK_DO))         return do_while_stmt(p);
+    if (is_decl_start(p)) return var_stmt(p);
+    if (MATCH(p, TOK_FOR)) return for_stmt(p);
+    if (MATCH(p, TOK_WHILE)) return while_stmt(p);
+    if (MATCH(p, TOK_IF)) return if_stmt(p);
+    if (MATCH(p, TOK_LEFT_BRACE)) return block_stmt(p);
+    if (MATCH(p, TOK_BREAK)) return break_stmt(p);
+    if (MATCH(p, TOK_CONTINUE)) return continue_stmt(p);
+    if (MATCH(p, TOK_RETURN)) return return_stmt(p);
+    if (MATCH(p, TOK_DO)) return do_while_stmt(p);
+    if (MATCH(p, TOK_SWITCH)) return switch_stmt(p);
 
     Location loc = peek(p).loc;
-    if (match(p, TOK_SEMICOLON))  return stmt_make_null(loc);
+    if (MATCH(p, TOK_SEMICOLON)) return stmt_make_null(loc);
 
     Expr *expr = expression(p);
     expect(p, TOK_SEMICOLON, "Expected ';' after expression");
@@ -497,19 +537,19 @@ Stmt *statement(Parser *p) {
 
 StmtList params_list(Parser *p) {
     StmtList params = {0};
-    if (match(p, TOK_RIGHT_PAREN)) return params;
+    if (MATCH(p, TOK_RIGHT_PAREN)) return params;
 
     while (true) {
         Type *type = parse_type(p);
-        if (!type) parser_error(p, "Expected parameter type");
+        if (!type) PARSER_ERROR(p, "Expected parameter type");
 
         expect(p, TOK_IDENTIFIER, "Expected parameter name");
         Token nameToken = previous(p);
 
         Stmt *param = stmt_make_var(type, nameToken.as.identifier, NULL, SPEC_NONE, nameToken.loc);
-        list_append(&params, param);
+        LIST_APPEND(&params, param);
 
-        if (!match(p, TOK_COMMA)) {
+        if (!MATCH(p, TOK_COMMA)) {
             expect(p, TOK_RIGHT_PAREN, "Expected ')'");
             break;
         }
@@ -534,30 +574,34 @@ static Stmt *func_def_stmt(Parser *p, Type *ret, Token nameTok, StorageSpecifier
 
 static Stmt *top_level_decl(Parser *p) {
     StorageSpecifier storage = parse_storage_global(p);
-    Type *type = parse_type(p);
+    Type *type               = parse_type(p);
     if (!type) {
-        if (peek(p).kind == TOK_STATIC) parser_error(p, "'static' is not allowed here");
-        else parser_error(p, "Expected type");
+        if (peek(p).kind == TOK_STATIC)
+            PARSER_ERROR(p, "'static' is not allowed here");
+        else
+            PARSER_ERROR(p, "Expected type");
     }
 
     Token name = expect(p, TOK_IDENTIFIER, "Expected identifier");
 
-    if (match(p, TOK_LEFT_PAREN)) return func_def_stmt(p, type, name, storage);
-    else return var_stmt_ext(p, type, name, storage);
+    if (MATCH(p, TOK_LEFT_PAREN))
+        return func_def_stmt(p, type, name, storage);
+    else
+        return var_stmt_ext(p, type, name, storage);
 
-    // parser_error(p, "Unkown top level declaration");
+    // PARSER_ERROR(p, "Unkown top level declaration");
 }
 
 void translation_unit(Parser *p) {
     while (!is_at_end(p)) {
         Stmt *s = top_level_decl(p);
-        list_append(&p->unit->ast, s);
+        LIST_APPEND(&p->unit->ast, s);
     }
 }
 
 void parse(TranslationUnit *unit) {
     Parser p = (Parser){
-        .unit = unit,
+        .unit  = unit,
         .index = 0,
     };
 
